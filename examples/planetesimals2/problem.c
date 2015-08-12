@@ -1,15 +1,8 @@
 /**
- * Close Encounter
+ * Spreading ring
  *
- * This example integrates a densely packed planetary system 
- * which becomes unstable on a timescale of only a few orbits. The IAS15 
- * integrator with adaptive timestepping is used. This integrator 
- * automatically decreases the timestep whenever a close 
- * encounter happens. IAS15 is very high order and ideally suited for the 
- * detection of these kind of encounters.
+ * A narrow ring of collisional particles is spreading.
  */
-//test
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -20,33 +13,47 @@ void heartbeat(struct reb_simulation* r);
 
 int main(int argc, char* argv[]){
 	struct reb_simulation* r = reb_create_simulation();
-	r->dt 		= 0.01*2.*M_PI;		// initial timestep
-	r->integrator 	= REB_INTEGRATOR_IAS15;
-	r->heartbeat  	= heartbeat;
-	r->usleep	= 10000;		// Slow down integration (for visualization only)
-
-	// Add star
-	struct reb_particle star = {0};
-	star.m = 1;
-	reb_add(r, star);
+	// Setup constants
+	r->integrator	= REB_INTEGRATOR_LEAPFROG;
+	r->collision	= REB_COLLISION_TREE;
+	r->boundary	= REB_BOUNDARY_OPEN;
+	r->G 		= 1;		
+	r->N_active	= 1;
+	r->softening 	= 0.01;		
+	r->dt 		= 1e-3;
+	r->heartbeat	= heartbeat;
 	
-	// Add planets
-	int N_planets = 7;
-	for (int i=0;i<N_planets;i++){
-		double a = 1.+(double)i/(double)(N_planets-1);		// semi major axis
-		double v = sqrt(1./a); 					// velocity (circular orbit)
-		struct reb_particle planet = {0};
-		planet.m = 1e-4; 
-		planet.x = a; 
-		planet.vy = v; 
-		reb_add(r, planet); 
+	double boxsize = 4.8;
+	reb_configure_box(r, boxsize, 1, 1, 1);
+
+	// Setup particles
+	int _N = 1000;
+	// Initial conditions
+	struct reb_particle star = {0};
+	star.m 		= 1;
+	star.r		= 0.01;
+	reb_add(r, star);
+
+	while(r->N<_N){
+		struct reb_particle pt = {0};
+		double a	= reb_random_powerlaw(boxsize/2.9,boxsize/3.1,.5);
+		double phi 	= reb_random_uniform(0,2.*M_PI);
+		pt.x 		= a*cos(phi);
+		pt.y 		= a*sin(phi);
+		pt.z 		= a*reb_random_normal(0.0001);
+		double vkep 	= sqrt(r->G*star.m/a);
+		pt.vx 		=  vkep * sin(phi);
+		pt.vy 		= -vkep * cos(phi);
+		pt.m 		= 0.0001;
+		pt.r 		= .3/sqrt((double)_N);
+		reb_add(r, pt);
 	}
-	reb_move_to_com(r);		// This makes sure the planetary systems stays within the computational domain and doesn't drift.
+
 	reb_integrate(r, INFINITY);
 }
 
 void heartbeat(struct reb_simulation* r){
-	if (reb_output_check(r, 10.*2.*M_PI)){  
+	if (reb_output_check(r, 0.0*r->dt)){
 		reb_output_timing(r, 0);
 	}
 }
