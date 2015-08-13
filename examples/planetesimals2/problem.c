@@ -25,13 +25,12 @@ int main(int argc, char* argv[]){
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary	= REB_BOUNDARY_OPEN;
     r->additional_forces = planetesimal_forces;
-	r->G 		= 1;		
 	r->N_active	= 2;
 	r->heartbeat	= heartbeat;
     //r->usleep   = 20000; //larger the number, slower OpenGL simulation
     
     // System constants
-    tmax = 10000;
+    tmax = 20;
     double N_Rhill = atof(argv[1]);     //# hill radii for boundary between switch. Try 3?
     double dRHill = atof(argv[2]);      //Number of hill radii buffer. Default = 2?
     double N_planetesimals = 20;

@@ -39,7 +39,7 @@
 static double initial_dt = 0;
 static unsigned int reb_integrator_hybrid_switch_warning = 0;
 
-static double get_min_ratio(struct reb_simulation* const r, double* ratioout){
+static double get_min_ratio(struct reb_simulation* const r){
 	const int N = r->N;
 	const int N_active = r->N_active;
 	const int N_var = r->N_var;
@@ -48,87 +48,40 @@ static double get_min_ratio(struct reb_simulation* const r, double* ratioout){
 	const int _N_active = ((N_active==-1)?N:N_active)- N_var;
 	const int _N_real   = N - N_var;
 	double min_ratio = 1e308;
-    int index_of_encounter = 0;
 	for (int i=1; i<_N_active; i++){
 		struct reb_particle pi = particles[i];
-        for (int j=1; j<_N_real; j++){
-            if (i==j) continue;
-            const double dxj = p0.x - particles[j].x;
-            const double dyj = p0.y - particles[j].y;
-            const double dzj = p0.z - particles[j].z;
-            const double r0j2 = dxj*dxj + dyj*dyj + dzj*dzj;
+	for (int j=1; j<_N_real; j++){
+		if (i==j) continue;
+		const double dxj = p0.x - particles[j].x;
+		const double dyj = p0.y - particles[j].y;
+		const double dzj = p0.z - particles[j].z;
+		const double r0j2 = dxj*dxj + dyj*dyj + dzj*dzj;
 
-            const double dx = pi.x - particles[j].x;
-            const double dy = pi.y - particles[j].y;
-            const double dz = pi.z - particles[j].z;
-            const double rij2 = dx*dx + dy*dy + dz*dz;
+		const double dx = pi.x - particles[j].x;
+		const double dy = pi.y - particles[j].y;
+		const double dz = pi.z - particles[j].z;
+		const double rij2 = dx*dx + dy*dy + dz*dz;
 		
-            const double F0j = p0.m/r0j2;
-            const double Fij = pi.m/rij2;
+		const double F0j = p0.m/r0j2;
+		const double Fij = pi.m/rij2;
 
-            const double ratio = F0j/Fij;
+		const double ratio = F0j/Fij;
 			
-            if (ratio<min_ratio){
-                min_ratio = ratio;
-            }
-        
-            if(ratio<r->ri_hybrid.switch_ratio){
-                index_of_encounter = j;
-                *ratioout = ratio/(r->ri_hybrid.switch_ratio);
-                goto outer;
-            }
-        }
-    }
-outer:;
-	//return min_ratio;
-    return index_of_encounter;
+		if (ratio<min_ratio){
+			min_ratio = ratio;
+		}
+	}
+	}
+	return min_ratio;
 }
 
+
 void reb_integrator_hybrid_part1(struct reb_simulation* r){
-	//const double ratio = get_min_ratio(r);
-    double ratio = 0;
-    int encounter_index = get_min_ratio(r, &ratio);
+	const double ratio = get_min_ratio(r);
 	if (initial_dt==0.){
 		initial_dt = r->dt;
 	}
-	//if (ratio<r->ri_hybrid.switch_ratio){
-    if(encounter_index != 0){
-        //A.S. new *************** - create new rebound simulation
-        struct reb_simulation* s = reb_create_simulation();
-        s->dt = r->dt;
-        s->N_active = r->N_active;
-        s->ri_hybrid.switch_ratio = r->ri_hybrid.switch_ratio;
-        s->integrator = REB_INTEGRATOR_IAS15;
-        
-        struct reb_particle* restrict const particles = r->particles;
-        struct reb_particle p0 = particles[0];
-        reb_add(s,p0);
-        
-        for(int k=1; k<s->N_active; k++){
-            struct reb_particle p = particles[k];
-            reb_add(s,p);
-        }
-        //assume for now only one particle at a time does close encounter
-        int dt_counter=0;   //count # of while loops
-        struct reb_particle pt = particles[encounter_index];
-        reb_add(s,pt);
-        
-        const double timestep = s->dt;
-        
-        printf("\n about to conduct simulation of new particle,ratio=%f \n",ratio);
-        while(encounter_index != 0){
-            reb_integrate(s, timestep);
-            dt_counter++;
-            encounter_index = get_min_ratio(s,&ratio);
-            
-            struct reb_particle* restrict const particles_out = s->particles;
-            struct reb_particle pt_out = particles_out[s->N_active];
-            printf("index=%d,position=x,y,vx,v%f,%f,%f,%f,ratio=%f\n",encounter_index,pt_out.x,pt_out.y,pt_out.vx,pt_out.vy,ratio);
-        }
-        
-        printf("finished simulation of particle\n");
-        //A.S. new end***************
-        
+	if (ratio<r->ri_hybrid.switch_ratio){
 		if (r->ri_hybrid.mode==SYMPLECTIC){
 			reb_integrator_ias15_reset(r); //previous guesses no good anymore
 			if (reb_integrator_hybrid_switch_warning==0.){
