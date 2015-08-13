@@ -12,6 +12,7 @@
 #include "../examples/planetesimals2/functions.h"
 
 void heartbeat(struct reb_simulation* r);
+void planetesimal_forces(struct reb_simulation* r);
 
 double tmax, planetesimal_mass;
 int n_output;
@@ -23,15 +24,16 @@ int main(int argc, char* argv[]){
 	r->integrator	= atoi(argv[3]);    //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, HYBRID = 5
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary	= REB_BOUNDARY_OPEN;
+    r->additional_forces = planetesimal_forces;
 	r->G 		= 1;		
 	r->N_active	= 2;
 	r->heartbeat	= heartbeat;
     //r->usleep   = 20000; //larger the number, slower OpenGL simulation
     
     // System constants
+    tmax = 10000;
     double N_Rhill = atof(argv[1]);     //# hill radii for boundary between switch. Try 3?
     double dRHill = atof(argv[2]);      //Number of hill radii buffer. Default = 2?
-    tmax = 10;
     double N_planetesimals = 20;
     double M_planetesimals = 3e-6; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
 	
@@ -91,6 +93,34 @@ int main(int argc, char* argv[]){
     // The WH integrator assumes a heliocentric coordinatesystem.
     if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
 	reb_integrate(r, tmax); //Integrate! INFINITY is a choice
+}
+
+void planetesimal_forces(struct reb_simulation *r){
+    const double G = r->G;
+    const int N = r->N;
+    struct reb_particle* const particles = r->particles;
+    struct reb_particle com = particles[0];
+    struct reb_particle* planet = &(particles[1]);
+    const double Gm1 = G*planetesimal_mass;
+    const double x = planet->x-com.x;
+    const double y = planet->y-com.y;
+    const double z = planet->z-com.z;
+    for(int i=2;i<N;i++){//add forces to planet
+        struct reb_particle* p = &(particles[i]);
+        const double xp = p->x-com.x;
+        const double yp = p->y-com.y;
+        const double zp = p->z-com.z;
+        
+        const double dx = x - xp;
+        const double dy = y - yp;
+        const double dz = z - zp;
+        const double rinv = 1./sqrt( dx*dx + dy*dy + dz*dz );
+        const double ac = Gm1*rinv*rinv*rinv;  //force/mass = acceleration
+        
+        planet->ax += ac*dx;    //perturbation on planet due to planetesimals
+        planet->ay += ac*dy;
+        planet->az += ac*dz;
+    }
 }
 
 void heartbeat(struct reb_simulation* r){
