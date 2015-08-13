@@ -15,6 +15,83 @@
 #include "functions.h"
 #include "../../src/rebound.h"
 
+void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double tmax, int N_active, int N, double m_planetesimal, double total_planetesimal_mass, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double nrhill, double drh){
+    
+    system("rm -v output/orbit*.txt");
+    
+    char* us = "_";
+    char* txt = ".txt";
+    char* intgrtr;
+    
+    char str[100] = {0};
+    if(r->integrator == REB_INTEGRATOR_HYBRID){
+        intgrtr = "HYBRID";
+        strcat(str, intgrtr);
+        strcat(str, us);
+        int hybrid_rint = (int) nrhill;
+        char str3[15];
+        sprintf(str3, "%d", hybrid_rint);
+        strcat(str, str3);
+        strcat(str, us);
+        int drint = (int) drh;
+        char str2[15];
+        sprintf(str2, "%d", drint);
+        strcat(str, str2);
+        
+        //char strtime[10];
+        //sprintf(strtime, "%d", hybrid_rint);
+        
+    } else{ //pure IAS15 or WH
+        if(r->integrator==REB_INTEGRATOR_IAS15) intgrtr = "IAS15"; else intgrtr = "WHFAST";
+        char* teq = "_t=";
+        strcat(str, intgrtr);
+        strcat(str, teq);
+        char dtstr[15];
+        sprintf(dtstr, "%.0f", tmax);
+        strcat(str, dtstr); //planet directory
+    }
+    
+    strcat(legenddir, str);
+    strcat(planetdir, str);
+    strcat(planetdir, txt);
+    
+    char* file = "Properties.txt";
+    strcat(legenddir, us);
+    strcat(legenddir, file);
+    FILE *ff;
+    ff=fopen(legenddir, "w");
+    fprintf(ff,"General:\ndt, tmax,  N_active, N_Rhill, dRHill, hybrid_switch_ratio, Integrator\n");
+    fprintf(ff,"%f,%.1f,%d,%f,%f,%f,%s \n\n",r->dt,tmax,N_active,nrhill,drh,r->ri_hybrid.switch_ratio,intgrtr);
+    fprintf(ff,"Planet/Star:\nplanet mass, semi-major axis, e_initial, Stellar Mass\n");
+    fprintf(ff,"%f,%f,%f,%f\n\n",mp,a,e,Ms);
+    fprintf(ff,"Planetesimal:\nN_planetesimals, Mtot_planetsimal, m_planetesimal, planetesimal boundary conditions: inner/outer edge, powerlaw\n");
+    fprintf(ff,"%d,%f,%.11f,%f,%f,%f\n\n",N-N_active,total_planetesimal_mass, m_planetesimal, inner, outer, powerlaw);
+    fclose(ff);
+    
+    //remove any old planet files if there are
+    char rmv[100] = {0};
+    char* rm_v = "rm -v ";
+    strcat(rmv, rm_v);
+    strcat(rmv, planetdir);
+    system(rmv);
+    
+}
+
+double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double e_max, double N_Rhill, double dRHill){
+    if(dRHill > N_Rhill){
+        printf("\033[1mWarning!\033[0m dRhill !> N_RHill. Setting dRhill = N_Rhill/2 \n");
+        dRHill = 0.5*N_Rhill;
+    }
+    double Hill = a*(1 - e_max)*pow(mp/(3*Ms),1./3.);
+    double r2_E = N_Rhill*N_Rhill*Hill*Hill;
+    r->ri_hybrid.switch_ratio = Ms*r2_E/(mp*a*a*1.21);
+    double vmax = sqrt(r->G*(Ms + mp)*(1 + e_max)/(a*(1 - e_max)));   //peri speed
+    double dt = dRHill*Hill/vmax;
+    printf("timesetep is dt = %f, hybrid_switch_ratio=%f \n",dt,r->ri_hybrid.switch_ratio);
+    
+    return dt;
+}
+
 void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb_simulation* r){
     //first need to fill arrays
     //struct particle com = particles[0];
