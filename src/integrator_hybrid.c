@@ -51,34 +51,40 @@ static double get_min_ratio(struct reb_simulation* const r, double* ratioout){
     int index_of_encounter = 0;
 	for (int i=1; i<_N_active; i++){
 		struct reb_particle pi = particles[i];
-        for (int j=1; j<_N_real; j++){
-            if (i==j) continue;
-            const double dxj = p0.x - particles[j].x;
-            const double dyj = p0.y - particles[j].y;
-            const double dzj = p0.z - particles[j].z;
-            const double r0j2 = dxj*dxj + dyj*dyj + dzj*dzj;
+		const double dxi = p0.x - pi.x;
+		const double dyi = p0.y - pi.y;
+		const double dzi = p0.z - pi.z;
+		const double r0i2 = dxi*dxi + dyi*dyi + dzi*dzi;
+		const double rhi = r0i2*pow((pi.m/(p0.m*3.)), 2./3.);
 
-            const double dx = pi.x - particles[j].x;
-            const double dy = pi.y - particles[j].y;
-            const double dz = pi.z - particles[j].z;
-            const double rij2 = dx*dx + dy*dy + dz*dz;
-		
-            const double F0j = p0.m/r0j2;
-            const double Fij = pi.m/rij2;
+		for (int j=1; j<_N_real; j++){
+			if (i==j) continue;
 
-            const double ratio = F0j/Fij;
-			
-            if (ratio<min_ratio){
-                min_ratio = ratio;
-            }
-        
+			struct reb_particle pj = particles[j];
+
+			const double dx = pi.x - pj.x;
+			const double dy = pi.y - pj.y;
+			const double dz = pi.z - pj.z;
+			const double rij2 = dx*dx + dy*dy + dz*dz;
+			const double dxj = p0.x - pj.x;
+			const double dyj = p0.y - pj.y;
+			const double dzj = p0.z - pj.z;
+			const double r0j2 = dxj*dxj + dyj*dyj + dzj*dzj;
+			const double rhj = r0j2*pow((pj.m/(p0.m*3.)), 2./3.);
+
+			const double ratio = rij2/(rhi+rhj);
+
+			if (ratio<min_ratio){
+				min_ratio = ratio;
+			}
+            
             if(ratio<r->ri_hybrid.switch_ratio){
                 index_of_encounter = j;
                 *ratioout = ratio/(r->ri_hybrid.switch_ratio);
                 goto outer;
             }
-        }
-    }
+		}
+	}
 outer:;
 	//return min_ratio;
     return index_of_encounter;
@@ -121,9 +127,9 @@ void reb_integrator_hybrid_part1(struct reb_simulation* r){
             dt_counter++;
             encounter_index = get_min_ratio(s,&ratio);
             
-            struct reb_particle* restrict const particles_out = s->particles;
-            struct reb_particle pt_out = particles_out[s->N_active];
-            printf("index=%d,position=x,y,vx,v%f,%f,%f,%f,ratio=%f\n",encounter_index,pt_out.x,pt_out.y,pt_out.vx,pt_out.vy,ratio);
+            //struct reb_particle* restrict const particles_out = s->particles;
+            //struct reb_particle pt_out = particles_out[s->N_active];
+            //printf("index=%d,position=x,y,vx,v%f,%f,%f,%f,ratio=%f\n",encounter_index,pt_out.x,pt_out.y,pt_out.vx,pt_out.vy,ratio);
         }
         
         printf("finished simulation of particle\n");
@@ -186,6 +192,6 @@ void reb_integrator_hybrid_reset(struct reb_simulation* r){
 	reb_integrator_hybrid_switch_warning = 0;
 	reb_integrator_whfast_reset(r);
 	reb_integrator_ias15_reset(r);
-	r->ri_hybrid.switch_ratio = 400.;
+	r->ri_hybrid.switch_ratio = 8.;
 	initial_dt = 0.;
 }
