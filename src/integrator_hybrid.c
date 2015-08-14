@@ -120,17 +120,20 @@ void reb_integrator_hybrid_part1(struct reb_simulation* r){
         reb_add(s,pt);
         
         const double timestep = s->dt;
+        s->exact_finish_time = 1;
         
-        printf("\n about to conduct simulation of new particle,ratio=%f \n",ratio);
+        //different index here, only 3 particles
+        //struct reb_particle* restrict const particles_out = s->particles;
+        //struct reb_particle pt_out = particles_out[s->N-1];
+        //printf("\n ini, encounter_index=%d,x,y,vx,vy=%.12f,%.12f,%.12f,%.12f,ratio=%f,N_active=%d\n",encounter_index,pt_out.x,pt_out.y,pt_out.vx,pt_out.vy,ratio,s->N_active);
         while(encounter_index != 0){
-            reb_integrate(s, timestep);
+            reb_integrate(s, s->t+40*timestep);
             dt_counter++;
             encounter_index = get_min_ratio(s,&ratio);
-            
-            //struct reb_particle* restrict const particles_out = s->particles;
-            //struct reb_particle pt_out = particles_out[s->N_active];
-            //printf("index=%d,position=x,y,vx,v%f,%f,%f,%f,ratio=%f\n",encounter_index,pt_out.x,pt_out.y,pt_out.vx,pt_out.vy,ratio);
         }
+        //pt_out = particles_out[s->N-1];
+        //printf("counter=%d,encounter_index=%d,after,position=x,y,vx,v%.12f,%.12f,%.12f,%.12f,ratio=%f,time=%f\n",dt_counter,encounter_index,pt_out.x,pt_out.y,pt_out.vx,pt_out.vy,ratio,s->t);
+        exit(0);
         
         printf("finished simulation of particle\n");
         //A.S. new end***************

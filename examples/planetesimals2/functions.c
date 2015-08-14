@@ -83,8 +83,9 @@ double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double 
         dRHill = 0.5*N_Rhill;
     }
     double Hill = a*(1 - e_max)*pow(mp/(3*Ms),1./3.);
-    double r2_E = N_Rhill*N_Rhill*Hill*Hill;
-    r->ri_hybrid.switch_ratio = Ms*r2_E/(mp*a*a*1.21);
+    //double r2_E = N_Rhill*N_Rhill*Hill*Hill;
+    //r->ri_hybrid.switch_ratio = Ms*r2_E/(mp*a*a*1.21);
+    r->ri_hybrid.switch_ratio = N_Rhill;
     double vmax = sqrt(r->G*(Ms + mp)*(1 + e_max)/(a*(1 - e_max)));   //peri speed
     double dt = dRHill*Hill/vmax;
     printf("timesetep is dt = %f, hybrid_switch_ratio=%f \n",dt,r->ri_hybrid.switch_ratio);
