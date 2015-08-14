@@ -77,14 +77,16 @@ void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double t
     
 }
 
-double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double e_max, double N_Rhill, double dRHill){
+double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double N_Rhill, double dRHill){
     if(dRHill > N_Rhill){
         printf("\033[1mWarning!\033[0m dRhill !> N_RHill. Setting dRhill = N_Rhill/2 \n");
         dRHill = 0.5*N_Rhill;
     }
+    double e_max = 0.3;  //max hypothesized eccentricity that the planet/esimals could have
     double Hill = a*(1 - e_max)*pow(mp/(3*Ms),1./3.);
-    double r2_E = N_Rhill*N_Rhill*Hill*Hill;
-    r->ri_hybrid.switch_ratio = Ms*r2_E/(mp*a*a*1.21);
+    //double r2_E = N_Rhill*N_Rhill*Hill*Hill;
+    //r->ri_hybrid.switch_ratio = Ms*r2_E/(mp*a*a*1.21);
+    r->ri_hybrid.switch_ratio = N_Rhill;    //looks like ratio is rij squared, so this should be too?
     double vmax = sqrt(r->G*(Ms + mp)*(1 + e_max)/(a*(1 - e_max)));   //peri speed
     double dt = dRHill*Hill/vmax;
     printf("timesetep is dt = %f, hybrid_switch_ratio=%f \n",dt,r->ri_hybrid.switch_ratio);
@@ -158,4 +160,122 @@ void calc_ae(double* a, double* e, struct reb_simulation* r){
     const double ez = muinv*( term1*dz - term2*dvz );
     *e = sqrt(ex*ex + ey*ey + ez*ez);   // eccentricity
     *a = -mu/( vv - 2.*mu*dinv );
+}
+
+void planetesimal_forces(struct reb_simulation *r){
+    const double G = r->G;
+    const int N = r->N;
+    struct reb_particle* const particles = r->particles;
+    struct reb_particle com = particles[0];
+    struct reb_particle* planet = &(particles[1]);
+    const double Gm1 = G*planetesimal_mass;
+    const double x = planet->x-com.x;
+    const double y = planet->y-com.y;
+    const double z = planet->z-com.z;
+    for(int i=2;i<N;i++){//add forces to planet
+        struct reb_particle* p = &(particles[i]);
+        const double xp = p->x-com.x;
+        const double yp = p->y-com.y;
+        const double zp = p->z-com.z;
+        
+        const double dx = x - xp;
+        const double dy = y - yp;
+        const double dz = z - zp;
+        const double rinv = 1./sqrt( dx*dx + dy*dy + dz*dz );
+        const double ac = Gm1*rinv*rinv*rinv;  //force/mass = acceleration
+        
+        planet->ax += ac*dx;    //perturbation on planet due to planetesimals
+        planet->ay += ac*dy;
+        planet->az += ac*dz;
+    }
+    //if(printting==1)printf("did planetesimal forces\n");
+}
+
+double check_for_encounter(struct reb_simulation* const r, double* ratioout){
+    const int N = r->N;
+    const int N_active = r->N_active;
+    const int N_var = r->N_var;
+    struct reb_particle* restrict const particles = r->particles;
+    struct reb_particle p0 = particles[0];
+    const int _N_active = ((N_active==-1)?N:N_active)- N_var;
+    const int _N_real   = N - N_var;
+    int index_of_encounter = 0;
+    for (int i=1; i<_N_active; i++){
+        struct reb_particle pi = particles[i];
+        const double dxi = p0.x - pi.x;
+        const double dyi = p0.y - pi.y;
+        const double dzi = p0.z - pi.z;
+        const double r0i2 = dxi*dxi + dyi*dyi + dzi*dzi;
+        const double rhi = r0i2*pow((pi.m/(p0.m*3.)), 2./3.);
+        
+        for (int j=1; j<_N_real; j++){
+            if (i==j) continue;
+            
+            struct reb_particle pj = particles[j];
+            
+            const double dx = pi.x - pj.x;
+            const double dy = pi.y - pj.y;
+            const double dz = pi.z - pj.z;
+            const double rij2 = dx*dx + dy*dy + dz*dz;
+            const double dxj = p0.x - pj.x;
+            const double dyj = p0.y - pj.y;
+            const double dzj = p0.z - pj.z;
+            const double r0j2 = dxj*dxj + dyj*dyj + dzj*dzj;
+            const double rhj = r0j2*pow((pj.m/(p0.m*3.)), 2./3.);
+            
+            const double ratio = rij2/(rhi+rhj);
+            
+            if(ratio<r->ri_hybrid.switch_ratio){
+                index_of_encounter = j;
+                *ratioout = ratio/(r->ri_hybrid.switch_ratio);
+                goto outer;
+            }
+        }
+    }
+outer:;
+    //return min_ratio;
+    return index_of_encounter;
+}
+
+void close_encounter(struct reb_simulation* r){
+    double ratio = 0;
+    int encounter_index = check_for_encounter(r, &ratio);
+    if(encounter_index != 0){//create new rebound simulation
+        struct reb_simulation* s = reb_create_simulation();
+        s->dt = r->dt;
+        s->N_active = r->N_active;
+        s->additional_forces = planetesimal_forces;
+        s->ri_hybrid.switch_ratio = r->ri_hybrid.switch_ratio;
+        s->integrator = REB_INTEGRATOR_IAS15;
+        
+        struct reb_particle* restrict const particles = r->particles;
+        struct reb_particle p0 = particles[0];
+        reb_add(s,p0);
+        
+        for(int k=1; k<s->N_active; k++){
+            struct reb_particle p = particles[k];
+            reb_add(s,p);
+        }
+        //assume for now only one particle at a time does close encounter - don't need to have this assumption
+        int dt_counter=0;   //count # of while loops
+        struct reb_particle pt = particles[encounter_index];
+        reb_add(s,pt);
+        
+        const double timestep = s->dt;
+        s->exact_finish_time = 1;
+        
+        //different index here, only 3 particles
+        //struct reb_particle* restrict const particles_out = s->particles;
+        //struct reb_particle pt_out = particles_out[s->N-1];
+        //printf("\n ini, encounter_index=%d,x,y,vx,vy=%.12f,%.12f,%.12f,%.12f,ratio=%f,N_active=%d\n",encounter_index,pt_out.x,pt_out.y,pt_out.vx,pt_out.vy,ratio,s->N_active);
+        //printting=1;
+        while(encounter_index != 0){
+            reb_integrate(s, s->t+40*timestep);
+            dt_counter++;
+            encounter_index = check_for_encounter(s,&ratio);
+        }
+        //pt_out = particles_out[s->N-1];
+        //printf("counter=%d,encounter_index=%d,after,position=x,y,vx,v%.12f,%.12f,%.12f,%.12f,ratio=%f,time=%f\n",dt_counter,encounter_index,pt_out.x,pt_out.y,pt_out.vx,pt_out.vy,ratio,s->t);
+        exit(0);
+    }
 }
