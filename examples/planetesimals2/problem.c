@@ -12,7 +12,7 @@
 #include "../examples/planetesimals2/functions.h"
 
 void heartbeat(struct reb_simulation* r);
-void planetesimal_forces(struct reb_simulation* r);
+void close_encounter(struct reb_simulation* r);
 
 double tmax, planetesimal_mass;
 int n_output;
@@ -22,7 +22,7 @@ int main(int argc, char* argv[]){
 	struct reb_simulation* r = reb_create_simulation();
 	// Setup constants
     tmax = 20;
-	r->integrator	= atoi(argv[3]);    //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, HYBRID = 5
+	r->integrator	= REB_INTEGRATOR_WHFAST;    //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, HYBRID = 5
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary	= REB_BOUNDARY_OPEN;
     r->additional_forces = planetesimal_forces;
@@ -97,7 +97,9 @@ int main(int argc, char* argv[]){
 }
 
 void heartbeat(struct reb_simulation* r){
-	if (reb_output_check(r, tmax/n_output)){
+    close_encounter(r);
+    
+    if (reb_output_check(r, tmax/n_output)){
         double a_p=0, e_p=0, Etot=0, Ltot=0;
         calc_ae(&a_p, &e_p, r);
         calc_ELtot(&Etot, &Ltot, planetesimal_mass, r);
