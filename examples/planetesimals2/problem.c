@@ -94,34 +94,6 @@ int main(int argc, char* argv[]){
 	reb_integrate(r, tmax); //Integrate! INFINITY is a choice
 }
 
-void planetesimal_forces(struct reb_simulation *r){
-    const double G = r->G;
-    const int N = r->N;
-    struct reb_particle* const particles = r->particles;
-    struct reb_particle com = particles[0];
-    struct reb_particle* planet = &(particles[1]);
-    const double Gm1 = G*planetesimal_mass;
-    const double x = planet->x-com.x;
-    const double y = planet->y-com.y;
-    const double z = planet->z-com.z;
-    for(int i=2;i<N;i++){//add forces to planet
-        struct reb_particle* p = &(particles[i]);
-        const double xp = p->x-com.x;
-        const double yp = p->y-com.y;
-        const double zp = p->z-com.z;
-        
-        const double dx = x - xp;
-        const double dy = y - yp;
-        const double dz = z - zp;
-        const double rinv = 1./sqrt( dx*dx + dy*dy + dz*dz );
-        const double ac = Gm1*rinv*rinv*rinv;  //force/mass = acceleration
-        
-        planet->ax += ac*dx;    //perturbation on planet due to planetesimals
-        planet->ay += ac*dy;
-        planet->az += ac*dz;
-    }
-}
-
 void heartbeat(struct reb_simulation* r){
 	if (reb_output_check(r, tmax/n_output)){
         double a_p=0, e_p=0, Etot=0, Ltot=0;

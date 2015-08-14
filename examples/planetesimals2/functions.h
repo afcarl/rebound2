@@ -20,8 +20,9 @@ void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb
 
 void calc_ae(double* a, double* e, struct reb_simulation* r);
 
-void time_init(void);
+void planetesimal_forces(struct reb_simulation *r); //best way to do this??
 
-void time_end(char* dir);
+extern double planetesimal_mass;
+extern int printting;
 
 #endif /* defined(____functions__) */

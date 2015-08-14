@@ -33,11 +33,16 @@
 #include "integrator.h"
 #include "integrator_whfast.h"
 #include "integrator_ias15.h"
+#include "../examples/planetesimals2/functions.h"
 
 // Switch to non-symplectic integrator if force_form_star/force_from_other_particle < r->ri_hybrid.switch_ratio.
 
 static double initial_dt = 0;
 static unsigned int reb_integrator_hybrid_switch_warning = 0;
+
+//void planetesimal_forces(struct reb_simulation* r);
+
+int printting = 0;
 
 static double get_min_ratio(struct reb_simulation* const r, double* ratioout){
 	const int N = r->N;
@@ -103,6 +108,7 @@ void reb_integrator_hybrid_part1(struct reb_simulation* r){
         struct reb_simulation* s = reb_create_simulation();
         s->dt = r->dt;
         s->N_active = r->N_active;
+        //s->additional_forces = planetesimal_forces;   //how to do this?
         s->ri_hybrid.switch_ratio = r->ri_hybrid.switch_ratio;
         s->integrator = REB_INTEGRATOR_IAS15;
         
@@ -126,6 +132,7 @@ void reb_integrator_hybrid_part1(struct reb_simulation* r){
         //struct reb_particle* restrict const particles_out = s->particles;
         //struct reb_particle pt_out = particles_out[s->N-1];
         //printf("\n ini, encounter_index=%d,x,y,vx,vy=%.12f,%.12f,%.12f,%.12f,ratio=%f,N_active=%d\n",encounter_index,pt_out.x,pt_out.y,pt_out.vx,pt_out.vy,ratio,s->N_active);
+        printting=1;
         while(encounter_index != 0){
             reb_integrate(s, s->t+40*timestep);
             dt_counter++;

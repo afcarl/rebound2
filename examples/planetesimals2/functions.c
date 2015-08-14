@@ -85,7 +85,7 @@ double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double 
     double Hill = a*(1 - e_max)*pow(mp/(3*Ms),1./3.);
     //double r2_E = N_Rhill*N_Rhill*Hill*Hill;
     //r->ri_hybrid.switch_ratio = Ms*r2_E/(mp*a*a*1.21);
-    r->ri_hybrid.switch_ratio = N_Rhill;
+    r->ri_hybrid.switch_ratio = N_Rhill;    //looks like ratio is rij squared, so this should be too?
     double vmax = sqrt(r->G*(Ms + mp)*(1 + e_max)/(a*(1 - e_max)));   //peri speed
     double dt = dRHill*Hill/vmax;
     printf("timesetep is dt = %f, hybrid_switch_ratio=%f \n",dt,r->ri_hybrid.switch_ratio);
@@ -159,4 +159,33 @@ void calc_ae(double* a, double* e, struct reb_simulation* r){
     const double ez = muinv*( term1*dz - term2*dvz );
     *e = sqrt(ex*ex + ey*ey + ez*ez);   // eccentricity
     *a = -mu/( vv - 2.*mu*dinv );
+}
+
+void planetesimal_forces(struct reb_simulation *r){
+    const double G = r->G;
+    const int N = r->N;
+    struct reb_particle* const particles = r->particles;
+    struct reb_particle com = particles[0];
+    struct reb_particle* planet = &(particles[1]);
+    const double Gm1 = G*planetesimal_mass;
+    const double x = planet->x-com.x;
+    const double y = planet->y-com.y;
+    const double z = planet->z-com.z;
+    for(int i=2;i<N;i++){//add forces to planet
+        struct reb_particle* p = &(particles[i]);
+        const double xp = p->x-com.x;
+        const double yp = p->y-com.y;
+        const double zp = p->z-com.z;
+        
+        const double dx = x - xp;
+        const double dy = y - yp;
+        const double dz = z - zp;
+        const double rinv = 1./sqrt( dx*dx + dy*dy + dz*dz );
+        const double ac = Gm1*rinv*rinv*rinv;  //force/mass = acceleration
+        
+        planet->ax += ac*dx;    //perturbation on planet due to planetesimals
+        planet->ay += ac*dy;
+        planet->az += ac*dz;
+    }
+    if(printting==1) printf("did planetesimal forces\n");
 }
