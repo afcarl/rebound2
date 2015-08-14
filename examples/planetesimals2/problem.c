@@ -21,6 +21,7 @@ char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
 int main(int argc, char* argv[]){
 	struct reb_simulation* r = reb_create_simulation();
 	// Setup constants
+    tmax = 20;
 	r->integrator	= atoi(argv[3]);    //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, HYBRID = 5
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary	= REB_BOUNDARY_OPEN;
@@ -30,15 +31,14 @@ int main(int argc, char* argv[]){
     //r->usleep   = 20000; //larger the number, slower OpenGL simulation
     
     // System constants
-    tmax = 20;
     double N_Rhill = atof(argv[1]);     //# hill radii for boundary between switch. Try 3?
     double dRHill = atof(argv[2]);      //Number of hill radii buffer. Default = 2?
     double N_planetesimals = 20;
-    double M_planetesimals = 3e-6; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
+    double M_planetesimals = 3e-5; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
 	
     // Other constants
     n_output = 50000;
-    double boxsize = 4.8;
+    double boxsize = 5;
     double kicksperorbit = 50.;
 	reb_configure_box(r, boxsize, 1, 1, 1);
 
@@ -49,25 +49,27 @@ int main(int argc, char* argv[]){
 	reb_add(r, star);
 
     //planet 1
-    double a1=1, m1=1e-5, e1=0.01;
+    double a1=0.7, m1=5e-5, e1=0.01;
     struct reb_particle p1 = reb_tools_init_orbit2d(r->G,star.m,m1,a1,e1,0,0);
     reb_add(r, p1);
     
+    //planet 2
+    double a2=1, m2=5e-5, e2=0.01;
+    struct reb_particle p2 = reb_tools_init_orbit2d(r->G,star.m,m2,a2,e2,0,0);
+    reb_add(r, p2);
+    
     //calc dt
-    double e_max = 0.3;     //max hypothesized eccentricity that the planet/esimals could have
     if(r->integrator == REB_INTEGRATOR_HYBRID){
-        r->dt = calc_dt(r, m1, star.m, a1, e_max, N_Rhill, dRHill);
-        //dt = sqrt(4.0*M_PI*pow(a,3)/(G*star.m))/kicksperorbit;
+        r->dt = calc_dt(r, m1, star.m, a1, N_Rhill, dRHill);
     } else { //IAS15, WH
         r->dt = sqrt(4.0*M_PI*pow(a1,3)/(r->G*star.m))/kicksperorbit;
         printf("dt = %f \n",r->dt);
-        
         N_Rhill = -1;
         dRHill = -1;
     }
     
     //planetesimals
-    double outer = 4, inner = 12, powerlaw = 0.5;  //higher the inner number, closer to the star
+    double outer = 3, inner = 14, powerlaw = 0.5;  //higher the inner number, closer to the star
     int seed = 13;          //seed was 11
     srand(seed);
     planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal

@@ -77,11 +77,12 @@ void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double t
     
 }
 
-double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double e_max, double N_Rhill, double dRHill){
+double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double N_Rhill, double dRHill){
     if(dRHill > N_Rhill){
         printf("\033[1mWarning!\033[0m dRhill !> N_RHill. Setting dRhill = N_Rhill/2 \n");
         dRHill = 0.5*N_Rhill;
     }
+    double e_max = 0.3;  //max hypothesized eccentricity that the planet/esimals could have
     double Hill = a*(1 - e_max)*pow(mp/(3*Ms),1./3.);
     //double r2_E = N_Rhill*N_Rhill*Hill*Hill;
     //r->ri_hybrid.switch_ratio = Ms*r2_E/(mp*a*a*1.21);
@@ -187,5 +188,5 @@ void planetesimal_forces(struct reb_simulation *r){
         planet->ay += ac*dy;
         planet->az += ac*dz;
     }
-    if(printting==1) printf("did planetesimal forces\n");
+    //if(printting==1)printf("did planetesimal forces\n");
 }
