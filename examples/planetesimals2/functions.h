@@ -24,8 +24,11 @@ void planetesimal_forces(struct reb_simulation *a, struct reb_simulation *b, int
 
 double check_for_encounter(struct reb_simulation* const r, double* ratioout);
 
-void close_encounter(struct reb_simulation* r, int* encounter_index, double* encounter_exit_time);
+struct reb_simulation* close_encounter(struct reb_simulation* r, int* encounter_index, double* encounter_exit_time);
 
+void inactive_particle(struct reb_particle* pt, double Ms, double G);
+
+//external variables
 extern double planetesimal_mass;
 
 #endif /* defined(____functions__) */

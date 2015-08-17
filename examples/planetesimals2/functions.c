@@ -250,18 +250,18 @@ outer:;
     return index_of_encounter;
 }
 
-void close_encounter(struct reb_simulation* r, int* CE_index, double* CE_exit_time){
+struct reb_simulation* close_encounter(struct reb_simulation* r, int* CE_index, double* CE_exit_time){
     double ratio = 0;
+    struct reb_simulation* s = NULL;
     int encounter_index = check_for_encounter(r, &ratio);
+    *CE_index = encounter_index;
     if(encounter_index != 0){//create new rebound simulation
-        struct reb_simulation* s = reb_create_simulation();
+        s = reb_create_simulation();
         s->N_active = r->N_active;
         s->ri_hybrid.switch_ratio = r->ri_hybrid.switch_ratio;
         s->integrator = REB_INTEGRATOR_IAS15;
         s->exact_finish_time = 1;
-        s->dt = r->dt;
-        const double timestep = s->dt;
-        printf("dt=%f!!!!! \n",s->dt/10.);
+        const double timestep = r->dt;
         
         struct reb_particle* restrict const particles = r->particles;
         struct reb_particle p0 = particles[0];
@@ -271,32 +271,43 @@ void close_encounter(struct reb_simulation* r, int* CE_index, double* CE_exit_ti
             struct reb_particle p = particles[k];
             reb_add(s,p);
         }
-        //assume for now only one particle at a time does close encounter - don't need to have this assumption
+        //copy contents of particle into new simulation, and then put the particle
+        //(from the global sim) temporarily out of harms way.
         int dt_counter=0;   //count # of while loops
         struct reb_particle pt = particles[encounter_index];
         pt.id = 3;
         reb_add(s,pt);
+        //printf("\n old params: %f,%f,%f,%f,%f,%f,   ",pt.x,pt.y,pt.vx,pt.vy,pt.ax,pt.ay);
+        inactive_particle(&pt,p0.m,r->G);
+        //printf("new params: %f,%f,%f,%f,%f,%f \n",pt.x,pt.y,pt.vx,pt.vy,pt.ax,pt.ay);
         
         //different index here, only 3 particles
-        //struct reb_particle* restrict const particles_out = s->particles;
-        //struct reb_particle pt_out = particles_out[s->N-1];
-        //printf("\n ini, encounter_index=%d,x,y,vx,vy=%.12f,%.12f,%.12f,%.12f,ratio=%f,N_active=%d\n",encounter_index,pt_out.x,pt_out.y,pt_out.vx,pt_out.vy,ratio,s->N_active);
-        //printting=1;
         while(encounter_index != 0){
-            reb_integrate(s, s->t+timestep);
-            planetesimal_forces(s,r,1);
+            reb_integrate(s, (dt_counter + 1)*timestep);
+            planetesimal_forces(s,r,0); //needs to be changed to 1********************
             dt_counter++;
             encounter_index = check_for_encounter(s,&ratio);
-            struct reb_particle* const p = s->particles;
-            printf("planet1: dt_counter=%d, ax,ay,az = %f,%f,%f \n",dt_counter, p[1].ax, p[1].ay, p[1].az);
+            //struct reb_particle* const p = s->particles;
+            //printf("planet1: dt_counter=%d, ax,ay,az = %f,%f,%f, time=%f \n",dt_counter, p[1].x, p[1].y, p[1].z, s->t);
         }
-        exit(0);
-        *CE_exit_time = s->t;
-        //pt_out = particles_out[s->N-1];
-        //printf("counter=%d,encounter_index=%d,after,position=x,y,vx,v%.12f,%.12f,%.12f,%.12f,ratio=%f,time=%f\n",dt_counter,encounter_index,pt_out.x,pt_out.y,pt_out.vx,pt_out.vy,ratio,s->t);
-        //exit(0);
+        *CE_exit_time = s->t + r->t;
+        printf("# iterations behind!!! = %f \n",s->t / r->dt);
     }
-    *CE_index = encounter_index;
+    return s;
+}
+
+void inactive_particle(struct reb_particle* pt, double Ms, double G){
+    double a = 4;   //temporarily put particle way out of harms way.
     
-    //return s;
+    double phi = 0;
+    pt->x 		= a*cos(phi);
+    pt->y 		= a*sin(phi);
+    pt->z 		= 0;
+    double vkep = sqrt(G*Ms/a);
+    pt->vx 		= -vkep * sin(phi);
+    pt->vy 		= vkep * cos(phi);
+    pt->vz       = 0;
+    pt->ax       = 0;
+    pt->ay       = 0;
+    pt->az       = 0;
 }

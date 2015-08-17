@@ -83,7 +83,7 @@ int main(int argc, char* argv[]){
 		double vkep = sqrt(r->G*star.m/a);
 		pt.vx 		= -vkep * sin(phi);
 		pt.vy 		= vkep * cos(phi);
-		pt.m 		= 0.0001;
+		pt.m 		= 0;
 		pt.r 		= .3/sqrt((double)N_planetesimals);
         pt.id       = 2;
 		reb_add(r, pt);
@@ -101,8 +101,11 @@ void heartbeat(struct reb_simulation* r){
     //forces, close encounter stuff
     planetesimal_forces(r,NULL,0);
     if(r->integrator == REB_INTEGRATOR_WHFAST){
-        close_encounter(r,&CE_index,&CE_exit_time);
-        if(CE_index != 0) exit(0);
+        struct reb_simulation* s = close_encounter(r,&CE_index,&CE_exit_time);
+        if(CE_index != 0){
+            printf("CE_index=%d, CE_exit_time=%f, time=%f,dt=%f \n",CE_index,CE_exit_time,r->t,r->dt);
+            exit(0);
+        }
         //encounter_update_global(r,);
     }
     
