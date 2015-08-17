@@ -1,7 +1,7 @@
 /**
- * Spreading ring
+ * A.S. This is my planetesimal disk with special integrator for close encounters.
+ *      Particle id's: 0 = star, 1 = massive body, 2 = planetesimal, 3 = CLOSE ENCOUNTER
  *
- * A narrow ring of collisional particles is spreading.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,21 +12,17 @@
 #include "../examples/planetesimals2/functions.h"
 
 void heartbeat(struct reb_simulation* r);
-void close_encounter(struct reb_simulation* r);
-
-double tmax, planetesimal_mass;
-int n_output;
+double tmax, planetesimal_mass, CE_exit_time = 0;
+int n_output, CE_index = 0;
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
 
 int main(int argc, char* argv[]){
 	struct reb_simulation* r = reb_create_simulation();
 	// Setup constants
-    tmax = 20;
+    tmax = 50;
 	r->integrator	= REB_INTEGRATOR_WHFAST;    //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, HYBRID = 5
 	r->collision	= REB_COLLISION_NONE;
-	r->boundary	= REB_BOUNDARY_OPEN;
-    r->additional_forces = planetesimal_forces;
-	r->N_active	= 2;
+	r->boundary     = REB_BOUNDARY_OPEN;
 	r->heartbeat	= heartbeat;
     //r->usleep   = 20000; //larger the number, slower OpenGL simulation
     
@@ -46,27 +42,31 @@ int main(int argc, char* argv[]){
 	struct reb_particle star = {0};
 	star.m 		= 1;
 	star.r		= 0.01;
+    star.id     = 0;
 	reb_add(r, star);
+    r->N_active = 1;
 
     //planet 1
     double a1=0.7, m1=5e-5, e1=0.01;
     struct reb_particle p1 = reb_tools_init_orbit2d(r->G,star.m,m1,a1,e1,0,0);
+    p1.id   = 1;
     reb_add(r, p1);
+    r->N_active++;
     
     //planet 2
-    double a2=1, m2=5e-5, e2=0.01;
-    struct reb_particle p2 = reb_tools_init_orbit2d(r->G,star.m,m2,a2,e2,0,0);
-    reb_add(r, p2);
+    //double a2=1, m2=5e-5, e2=0.01;
+    //struct reb_particle p2 = reb_tools_init_orbit2d(r->G,star.m,m2,a2,e2,0,0);
+    //p1.id   = 1;
+    //reb_add(r, p2);
+    //r->N_active++;
     
     //calc dt
-    if(r->integrator == REB_INTEGRATOR_HYBRID){
-        r->dt = calc_dt(r, m1, star.m, a1, N_Rhill, dRHill);
-    } else { //IAS15, WH
+    if(r->integrator == REB_INTEGRATOR_IAS15){
         r->dt = sqrt(4.0*M_PI*pow(a1,3)/(r->G*star.m))/kicksperorbit;
         printf("dt = %f \n",r->dt);
         N_Rhill = -1;
         dRHill = -1;
-    }
+    } else r->dt = calc_dt(r, m1, star.m, a1, N_Rhill, dRHill);
     
     //planetesimals
     double outer = 3, inner = 14, powerlaw = 0.5;  //higher the inner number, closer to the star
@@ -80,11 +80,12 @@ int main(int argc, char* argv[]){
 		pt.x 		= a*cos(phi);
 		pt.y 		= a*sin(phi);
 		pt.z 		= a*reb_random_normal(0.0001);
-		double vkep 	= sqrt(r->G*star.m/a);
+		double vkep = sqrt(r->G*star.m/a);
 		pt.vx 		= -vkep * sin(phi);
 		pt.vy 		= vkep * cos(phi);
 		pt.m 		= 0.0001;
 		pt.r 		= .3/sqrt((double)N_planetesimals);
+        pt.id       = 2;
 		reb_add(r, pt);
 	}
     
@@ -97,8 +98,16 @@ int main(int argc, char* argv[]){
 }
 
 void heartbeat(struct reb_simulation* r){
-    close_encounter(r);
+    //forces, close encounter stuff
+    planetesimal_forces(r,NULL,0);
+    if(r->integrator == REB_INTEGRATOR_WHFAST){
+        close_encounter(r,&CE_index,&CE_exit_time);
+        if(CE_index != 0) exit(0);
+        //encounter_update_global(r,);
+    }
     
+    
+    //output stuff
     if (reb_output_check(r, tmax/n_output)){
         double a_p=0, e_p=0, Etot=0, Ltot=0;
         calc_ae(&a_p, &e_p, r);

@@ -162,33 +162,47 @@ void calc_ae(double* a, double* e, struct reb_simulation* r){
     *a = -mu/( vv - 2.*mu*dinv );
 }
 
-void planetesimal_forces(struct reb_simulation *r){
-    const double G = r->G;
-    const int N = r->N;
-    struct reb_particle* const particles = r->particles;
+void planetesimal_forces(struct reb_simulation *a, struct reb_simulation *b, int close_encounter){
+    const double G = a->G;
+    const int N = a->N;
+    const int N_active = a->N_active;
+    struct reb_particle* const particles = a->particles;
     struct reb_particle com = particles[0];
-    struct reb_particle* planet = &(particles[1]);
     const double Gm1 = G*planetesimal_mass;
-    const double x = planet->x-com.x;
-    const double y = planet->y-com.y;
-    const double z = planet->z-com.z;
-    for(int i=2;i<N;i++){//add forces to planet
-        struct reb_particle* p = &(particles[i]);
-        const double xp = p->x-com.x;
-        const double yp = p->y-com.y;
-        const double zp = p->z-com.z;
-        
-        const double dx = x - xp;
-        const double dy = y - yp;
-        const double dz = z - zp;
-        const double rinv = 1./sqrt( dx*dx + dy*dy + dz*dz );
-        const double ac = Gm1*rinv*rinv*rinv;  //force/mass = acceleration
-        
-        planet->ax += ac*dx;    //perturbation on planet due to planetesimals
-        planet->ay += ac*dy;
-        planet->az += ac*dz;
+    for(int i=1;i<N_active;i++){
+        struct reb_particle* planet = &(particles[i]);
+        const double x = planet->x-com.x;
+        const double y = planet->y-com.y;
+        const double z = planet->z-com.z;
+        for(int j=N_active;j<N;j++){//add forces to planet
+            struct reb_particle* p = &(particles[j]);
+            //if(p->id == 4) continue;
+            const double xp = p->x-com.x;
+            const double yp = p->y-com.y;
+            const double zp = p->z-com.z;
+            
+            const double dx = x - xp;
+            const double dy = y - yp;
+            const double dz = z - zp;
+            const double rinv = 1./sqrt( dx*dx + dy*dy + dz*dz );
+            const double ac = Gm1*rinv*rinv*rinv;  //force/mass = acceleration
+            
+            const double xx = ac*dx;
+            const double yy = ac*dy;
+            const double zz = ac*dz;
+            
+            planet->ax += xx;    //perturbation on planet due to planetesimals
+            planet->ay += yy;
+            planet->az += zz;
+            if(close_encounter == 1){//update planet forces in global sim with the forces calc'd here.
+                struct reb_particle* const global_particles = b->particles;
+                struct reb_particle* global_planet = &(global_particles[i]);
+                global_planet->ax += xx;
+                global_planet->ay += yy;
+                global_planet->az += zz;
+            }
+        }
     }
-    //if(printting==1)printf("did planetesimal forces\n");
 }
 
 double check_for_encounter(struct reb_simulation* const r, double* ratioout){
@@ -233,36 +247,35 @@ double check_for_encounter(struct reb_simulation* const r, double* ratioout){
         }
     }
 outer:;
-    //return min_ratio;
     return index_of_encounter;
 }
 
-void close_encounter(struct reb_simulation* r){
+void close_encounter(struct reb_simulation* r, int* CE_index, double* CE_exit_time){
     double ratio = 0;
     int encounter_index = check_for_encounter(r, &ratio);
     if(encounter_index != 0){//create new rebound simulation
         struct reb_simulation* s = reb_create_simulation();
-        s->dt = r->dt;
         s->N_active = r->N_active;
-        s->additional_forces = planetesimal_forces;
         s->ri_hybrid.switch_ratio = r->ri_hybrid.switch_ratio;
         s->integrator = REB_INTEGRATOR_IAS15;
+        s->exact_finish_time = 1;
+        s->dt = r->dt;
+        const double timestep = s->dt;
+        printf("dt=%f!!!!! \n",s->dt/10.);
         
         struct reb_particle* restrict const particles = r->particles;
         struct reb_particle p0 = particles[0];
         reb_add(s,p0);
         
-        for(int k=1; k<s->N_active; k++){
+        for(int k=1; k<s->N_active; k++){//add massive particles
             struct reb_particle p = particles[k];
             reb_add(s,p);
         }
         //assume for now only one particle at a time does close encounter - don't need to have this assumption
         int dt_counter=0;   //count # of while loops
         struct reb_particle pt = particles[encounter_index];
+        pt.id = 3;
         reb_add(s,pt);
-        
-        const double timestep = s->dt;
-        s->exact_finish_time = 1;
         
         //different index here, only 3 particles
         //struct reb_particle* restrict const particles_out = s->particles;
@@ -270,12 +283,20 @@ void close_encounter(struct reb_simulation* r){
         //printf("\n ini, encounter_index=%d,x,y,vx,vy=%.12f,%.12f,%.12f,%.12f,ratio=%f,N_active=%d\n",encounter_index,pt_out.x,pt_out.y,pt_out.vx,pt_out.vy,ratio,s->N_active);
         //printting=1;
         while(encounter_index != 0){
-            reb_integrate(s, s->t+40*timestep);
+            reb_integrate(s, s->t+timestep);
+            planetesimal_forces(s,r,1);
             dt_counter++;
             encounter_index = check_for_encounter(s,&ratio);
+            struct reb_particle* const p = s->particles;
+            printf("planet1: dt_counter=%d, ax,ay,az = %f,%f,%f \n",dt_counter, p[1].ax, p[1].ay, p[1].az);
         }
+        exit(0);
+        *CE_exit_time = s->t;
         //pt_out = particles_out[s->N-1];
         //printf("counter=%d,encounter_index=%d,after,position=x,y,vx,v%.12f,%.12f,%.12f,%.12f,ratio=%f,time=%f\n",dt_counter,encounter_index,pt_out.x,pt_out.y,pt_out.vx,pt_out.vy,ratio,s->t);
-        exit(0);
+        //exit(0);
     }
+    *CE_index = encounter_index;
+    
+    //return s;
 }
