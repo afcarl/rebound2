@@ -238,9 +238,8 @@ outer:;
     return index_of_encounter;
 }
 
+//initialize mini-simulation for close encounters
 void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
-    //initialize mini-simulation for close encounters
-
     s->N_active = r->N_active;
     s->ri_hybrid.switch_ratio = r->ri_hybrid.switch_ratio;
     s->integrator = REB_INTEGRATOR_IAS15;
