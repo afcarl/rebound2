@@ -94,6 +94,7 @@ int main(int argc, char* argv[]){
     //naming stuff
     legend(plntdir, lgnddir, r, tmax, r->N_active, r->N, planetesimal_mass, M_planetesimals, inner, outer, powerlaw, m1, a1, e1, star.m, N_Rhill, dRHill);
     
+    //initialize mini simulation (IAS15)
     s = reb_create_simulation();
     ini_mini(r,s);
     
@@ -108,14 +109,19 @@ void heartbeat(struct reb_simulation* r){
         encounter_index = check_for_encounter(r);
         if(encounter_index != 0){
             if(previous_encounter_index == 0){ //initialize mini simulation
+                fprintf(stderr,"\n\033[1mInfo!\033[0m Particle entering Hill Sphere at t=%f.\n",r->t);
                 update_mini(r,s,encounter_index);
+                struct reb_particle* mini = s->particles;
+                struct reb_particle p2 = mini[s->N_active];
+                printf("minipart1OUT: x,y,vx,vy=%f,%f,%f,%f,%f,%f\n",p2.x, p2.y, p2.vx, p2.vy,p2.ax,p2.ay);
                 previous_encounter_index = encounter_index;
                 
             } else if(previous_encounter_index == encounter_index){//make sure we're dealing with the same particle, and nothing weird happened.
                 reb_integrate(s, s->t + s->dt);
                 update_global(s,r,encounter_index);
             }
-        } else if(previous_encounter_index != 0){//particle left hill sphere, delete simulation
+        } else if(previous_encounter_index != 0){//particle left hill sphere, update final time
+             fprintf(stderr,"\n\033[1mInfo!\033[0m Particle leaving Hill Sphere at t=%f.\n",r->t);
             reb_integrate(s, s->t + s->dt);
             update_global(s,r,previous_encounter_index);
             previous_encounter_index = 0;

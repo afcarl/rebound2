@@ -263,34 +263,26 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
 void update_mini(struct reb_simulation* const r, struct reb_simulation* s, int encounter_index){
     s->t = r->t;
     
-    //update massive particles
-    struct reb_particle* restrict const global = r->particles;
+    struct reb_particle* const global = r->particles;
     struct reb_particle* mini = s->particles;
-    for(int i=0; i<s->N_active; i++){
-        struct reb_particle p1 = global[i];
-        struct reb_particle p2 = mini[i];
-        p2 = p1;
-    }
+    
+    //update massive particles
+    for(int i=0; i<s->N_active; i++) mini[i] = global[i];
+    
     //update test particle inside Hill Sphere
-    struct reb_particle pt = global[encounter_index];
-    struct reb_particle p2 = mini[s->N_active];
-    p2 = pt;
+    mini[s->N_active] = global[encounter_index];
 }
 
 void update_global(struct reb_simulation* const s, struct reb_simulation* r, int encounter_index){
     
+    struct reb_particle* global = r->particles;
+    struct reb_particle* const mini = s->particles;
+    
     //update massive particles
-    struct reb_particle* global = r->particles;                 //will change
-    struct reb_particle* restrict const mini = s->particles;   //won't change
-    for(int i=0; i<s->N_active; i++){
-        struct reb_particle p1 = global[i];
-        struct reb_particle p2 = mini[i];
-        p1 = p2;
-    }
+    for(int i=0; i<s->N_active; i++) global[i] = mini[i];
+        
     //update test particle
-    struct reb_particle p1 = global[encounter_index];
-    struct reb_particle p2 = mini[s->N_active];
-    p1 = p2;
+    global[encounter_index] = mini[s->N_active];
 }
 
 /*
