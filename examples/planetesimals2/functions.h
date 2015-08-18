@@ -20,13 +20,15 @@ void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb
 
 void calc_ae(double* a, double* e, struct reb_simulation* r);
 
-void planetesimal_forces(struct reb_simulation *a, struct reb_simulation *b, int close_encounter);
+void planetesimal_forces(struct reb_simulation *a);
 
-double check_for_encounter(struct reb_simulation* const r, double* ratioout);
+int check_for_encounter(struct reb_simulation* const r);
 
-struct reb_simulation* close_encounter(struct reb_simulation* r, int* encounter_index, double* encounter_exit_time);
+void ini_mini(struct reb_simulation* const r, struct reb_simulation* s);
 
-void inactive_particle(struct reb_particle* pt, double Ms, double G);
+void update_mini(struct reb_simulation* const r, struct reb_simulation* const s, int encounter_index);
+
+void update_global(struct reb_simulation* const s, struct reb_simulation* const r, int encounter_index);
 
 //external variables
 extern double planetesimal_mass;

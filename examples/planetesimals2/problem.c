@@ -13,8 +13,9 @@
 
 void heartbeat(struct reb_simulation* r);
 double tmax, planetesimal_mass, CE_exit_time = 0;
-int n_output, CE_index = 0;
+int n_output, CE_index = 0, encounter_index = 0, previous_encounter_index = 0;
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
+struct reb_simulation* s;
 
 int main(int argc, char* argv[]){
 	struct reb_simulation* r = reb_create_simulation();
@@ -24,6 +25,7 @@ int main(int argc, char* argv[]){
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary     = REB_BOUNDARY_OPEN;
 	r->heartbeat	= heartbeat;
+    r->additional_forces = planetesimal_forces;
     //r->usleep   = 20000; //larger the number, slower OpenGL simulation
     
     // System constants
@@ -92,6 +94,9 @@ int main(int argc, char* argv[]){
     //naming stuff
     legend(plntdir, lgnddir, r, tmax, r->N_active, r->N, planetesimal_mass, M_planetesimals, inner, outer, powerlaw, m1, a1, e1, star.m, N_Rhill, dRHill);
     
+    s = reb_create_simulation();
+    ini_mini(r,s);
+    
     // The WH integrator assumes a heliocentric coordinatesystem.
     if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
 	reb_integrate(r, tmax); //Integrate! INFINITY is a choice
@@ -99,16 +104,24 @@ int main(int argc, char* argv[]){
 
 void heartbeat(struct reb_simulation* r){
     //forces, close encounter stuff
-    planetesimal_forces(r,NULL,0);
     if(r->integrator == REB_INTEGRATOR_WHFAST){
-        struct reb_simulation* s = close_encounter(r,&CE_index,&CE_exit_time);
-        if(CE_index != 0){
-            printf("CE_index=%d, CE_exit_time=%f, time=%f,dt=%f \n",CE_index,CE_exit_time,r->t,r->dt);
-            exit(0);
+        encounter_index = check_for_encounter(r);
+        if(encounter_index != 0){
+            if(previous_encounter_index == 0){ //initialize mini simulation
+                update_mini(r,s,encounter_index);
+                previous_encounter_index = encounter_index;
+                
+            } else if(previous_encounter_index == encounter_index){//make sure we're dealing with the same particle, and nothing weird happened.
+                reb_integrate(s, s->t + s->dt);
+                update_global(s,r,encounter_index);
+            }
+        } else if(previous_encounter_index != 0){//particle left hill sphere, delete simulation
+            reb_integrate(s, s->t + s->dt);
+            update_global(s,r,previous_encounter_index);
+            previous_encounter_index = 0;
         }
-        //encounter_update_global(r,);
+        
     }
-    
     
     //output stuff
     if (reb_output_check(r, tmax/n_output)){
