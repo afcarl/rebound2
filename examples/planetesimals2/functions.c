@@ -14,6 +14,7 @@
 #include <sys/time.h>
 #include "functions.h"
 #include "../../src/rebound.h"
+#include "../../src/integrator_whfast.h"
 
 void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double tmax, int N_active, int N, double m_planetesimal, double total_planetesimal_mass, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double nrhill, double drh){
     
@@ -65,7 +66,7 @@ void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double t
     fprintf(ff,"Planet/Star:\nplanet mass, semi-major axis, e_initial, Stellar Mass\n");
     fprintf(ff,"%f,%f,%f,%f\n\n",mp,a,e,Ms);
     fprintf(ff,"Planetesimal:\nN_planetesimals, Mtot_planetsimal, m_planetesimal, planetesimal boundary conditions: inner/outer edge, powerlaw\n");
-    fprintf(ff,"%d,%f,%.11f,%f,%f,%f\n\n",N-N_active,total_planetesimal_mass, m_planetesimal, inner, outer, powerlaw);
+    fprintf(ff,"%d,%.10f,%.15f,%f,%f,%f\n\n",N-N_active,total_planetesimal_mass, m_planetesimal, inner, outer, powerlaw);
     fclose(ff);
     
     //remove any old planet files if there are
@@ -209,7 +210,7 @@ int check_for_encounter(struct reb_simulation* const r){
         const double dyi = p0.y - pi.y;
         const double dzi = p0.z - pi.z;
         const double r0i2 = dxi*dxi + dyi*dyi + dzi*dzi;
-        const double rhi = r0i2*pow((pi.m/(p0.m*3.)), 2./3.);
+        const double rhi = r0i2*pow((pi.m/(p0.m*3.)), 2./3.); //can make this faster later
         
         for (int j=1; j<_N_real; j++){
             if (i==j) continue;
@@ -224,7 +225,7 @@ int check_for_encounter(struct reb_simulation* const r){
             const double dyj = p0.y - pj.y;
             const double dzj = p0.z - pj.z;
             const double r0j2 = dxj*dxj + dyj*dyj + dzj*dzj;
-            const double rhj = r0j2*pow((pj.m/(p0.m*3.)), 2./3.);
+            const double rhj = r0j2*pow((pj.m/(p0.m*3.)), 2./3.); //can make this faster later
             
             const double ratio = rij2/(rhi+rhj);
             
@@ -241,19 +242,17 @@ outer:;
 //initialize mini-simulation for close encounters
 void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
     s->N_active = r->N_active;
-    s->ri_hybrid.switch_ratio = r->ri_hybrid.switch_ratio;
     s->integrator = REB_INTEGRATOR_IAS15;
     s->additional_forces = planetesimal_forces;
     s->exact_finish_time = 1;
     s->dt = r->dt;
     
-    //add massive particles
     struct reb_particle* restrict const particles = r->particles;
     for(int k=0; k<s->N_active; k++){
         struct reb_particle p = particles[k];
         reb_add(s,p);
     }
-    //add dummy test particle
+    //add (dummy) test particle
     struct reb_particle pt = particles[r->N_active];
     reb_add(s,pt);
     reb_move_to_com(s);
@@ -265,19 +264,27 @@ void update_mini(struct reb_simulation* const r, struct reb_simulation* s, int e
     struct reb_particle* const global = r->particles;
     struct reb_particle* mini = s->particles;
     
-    //update massive particles
+    //update (all) massive particles
     for(int i=0; i<s->N_active; i++) mini[i] = global[i];
     
     //update test particle inside Hill Sphere
     mini[s->N_active] = global[encounter_index];
+    
+    //before IAS15 simulation starts, move to COM
+    reb_move_to_com(s);
 }
 
 void update_global(struct reb_simulation* const s, struct reb_simulation* r, int encounter_index){
     
+    printf("time comparison inner: r->t=%f, s->t=%f, s->dt=%f \n",r->t, s->t, s->dt);
+    //struct reb_particle* const global1 = r->particles;
+    //struct reb_particle* mini1 = s->particles;
+    //printf("star:x=%f,%f,y=%f,%f,vx=%f,%f,vy=%f,%f \n",global1[0].x,mini1[0].x,global1[0].y,mini1[0].y,global1[0].vx,mini1[0].vx,global1[0].vy,mini1[0].vy);
+    
     struct reb_particle* global = r->particles;
     struct reb_particle* const mini = s->particles;
     
-    //update massive particles
+    //update (all) massive particles
     for(int i=0; i<s->N_active; i++) global[i] = mini[i];
         
     //update test particle

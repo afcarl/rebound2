@@ -32,7 +32,7 @@ int main(int argc, char* argv[]){
     double N_Rhill = atof(argv[1]);     //# hill radii for boundary between switch. Try 3?
     double dRHill = atof(argv[2]);      //Number of hill radii buffer. Default = 2?
     double N_planetesimals = 20;
-    double M_planetesimals = 3e-5; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
+    double M_planetesimals = 3e-6; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
 	
     // Other constants
     n_output = 50000;
@@ -69,6 +69,7 @@ int main(int argc, char* argv[]){
         N_Rhill = -1;
         dRHill = -1;
     } else r->dt = calc_dt(r, m1, star.m, a1, N_Rhill, dRHill);
+    r->dt = 0.015;
     
     //planetesimals
     double outer = 3, inner = 14, powerlaw = 0.5;  //higher the inner number, closer to the star
@@ -109,16 +110,17 @@ void heartbeat(struct reb_simulation* r){
         encounter_index = check_for_encounter(r);
         if(encounter_index != 0){
             if(previous_encounter_index == 0){ //initialize mini simulation
-                fprintf(stderr,"\n\033[1mParticle %d\033[0m  entering Hill Sphere at t=%f.\n",encounter_index, r->t);
+                fprintf(stderr,"\n\033[1mParticle %d entering\033[0m Hill Sphere at t=%f. \n",encounter_index, r->t);
                 update_mini(r,s,encounter_index);
                 previous_encounter_index = encounter_index;
                 
             } else if(previous_encounter_index == encounter_index){//make sure we're dealing with the same particle, and nothing weird happened.
                 reb_integrate(s, s->t + s->dt);
                 update_global(s,r,encounter_index);
+                //printf("time comparison outer: r->t=%f, s->t=%f \n",r->t, s->t);
             }
         } else if(previous_encounter_index != 0){//particle left hill sphere, update final time
-             fprintf(stderr,"\n\033[1mParticle %d\033[0m  leaving Hill Sphere at t=%f.\n",previous_encounter_index, r->t);
+             fprintf(stderr,"\n\033[1mParticle %d leaving\033[0m Hill Sphere at t=%f.\n",previous_encounter_index, r->t);
             reb_integrate(s, s->t + s->dt);
             update_global(s,r,previous_encounter_index);
             previous_encounter_index = 0;
