@@ -6,9 +6,17 @@ import math
 import matplotlib.cm as cm
 pi = math.pi
 
-names=['time (years)','Semi-Major Axis (AU)','Eccentricity','(Ei - E0) / E0','Total Ang. Mom.']
+names=['time (years)','Semi-Major Axis (AU)','Eccentricity','(Ei - E0) / E0','Total Ang. Mom.','planet-star distance']
 colors=['b','g','m','r','c','y']
-N=1
+
+file_name=str(sys.argv[1])
+
+#Get number of massive planets
+fos = open(file_name[0:-4]+'_Properties.txt', 'r')
+for i in xrange(0,3):
+    header = fos.readline()
+output = header.split(",")
+N_active = int(output[2]) - 1    #-1 cause of the star
 
 #time, a, e, i, Omega (long. of asc. node), omega, l (mean longitude), P, f
 arg1=int(sys.argv[2])
@@ -21,22 +29,22 @@ elif len(sys.argv) == 6:
     arg3 = int(sys.argv[4])
     arg4 = int(sys.argv[5])
 
-file_name=str(sys.argv[1])
 fos = open(''+file_name, 'r')
 data = np.loadtxt(fos, delimiter=',')
 
-for i in range(0,N): #only 1 planet for now
-    p=data[i::N]
+for i in range(0,N_active): #only 1 planet for now
+    p=data[i::N_active]
     if arg2 == 3:
         E0 = p[0,arg2]
         y = abs((p[arg4:arg3,arg2] - E0)/E0)
     else:
         y = p[arg4:arg3,arg2]
-    plt.plot(p[arg4:arg3,arg1], y, 'o'+colors[i], markeredgecolor='none', ms = 2)#, label='m$_{'+str(i+1)+'}$='+str(round(100*mp[i]/(3*10**(-6)))/100.)+' m$_{earth}$', )
+    plt.plot(p[arg4:arg3,arg1], y, 'o'+colors[i], markeredgecolor='none', ms = 2, label='planet '+str(i), )
 
-#if arg1==1:
-#    plt.ylim([0.699,0.701])
+if arg2==1:
+    plt.ylim([0.699,0.701])
 plt.xlim([p[arg4,0],p[arg3,0]])
 plt.xlabel('' + names[arg1])
 plt.ylabel('' + names[arg2])
+plt.legend(loc='upper left',prop={'size':10})
 plt.show()

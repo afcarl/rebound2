@@ -16,7 +16,9 @@
 #include "../../src/rebound.h"
 #include "../../src/integrator_whfast.h"
 
-void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double tmax, int N_active, int N, double m_planetesimal, double total_planetesimal_mass, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double nrhill, double drh){
+void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh){
+    
+    int N_active = r->N_active, N = r->N;
     
     system("rm -v output/orbit*.txt");
     
@@ -25,11 +27,11 @@ void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double t
     char* intgrtr;
     
     char str[100] = {0};
-    if(r->integrator == REB_INTEGRATOR_HYBRID){
+    if(r->integrator == REB_INTEGRATOR_WHFAST){
         intgrtr = "HYBRID";
         strcat(str, intgrtr);
         strcat(str, us);
-        int hybrid_rint = (int) nrhill;
+        int hybrid_rint = (int) r->ri_hybrid.switch_ratio;
         char str3[15];
         sprintf(str3, "%d", hybrid_rint);
         strcat(str, str3);
@@ -42,8 +44,8 @@ void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double t
         //char strtime[10];
         //sprintf(strtime, "%d", hybrid_rint);
         
-    } else{ //pure IAS15 or WH
-        if(r->integrator==REB_INTEGRATOR_IAS15) intgrtr = "IAS15"; else intgrtr = "WHFAST";
+    } else{ //pure IAS15
+        intgrtr = "IAS15";
         char* teq = "_t=";
         strcat(str, intgrtr);
         strcat(str, teq);
@@ -61,8 +63,8 @@ void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double t
     strcat(legenddir, file);
     FILE *ff;
     ff=fopen(legenddir, "w");
-    fprintf(ff,"General:\ndt, tmax,  N_active, N_Rhill, dRHill, hybrid_switch_ratio, Integrator\n");
-    fprintf(ff,"%f,%.1f,%d,%f,%f,%f,%s \n\n",r->dt,tmax,N_active,nrhill,drh,r->ri_hybrid.switch_ratio,intgrtr);
+    fprintf(ff,"General:\ndt, tmax, N_active, N_Rhill (ri_hybrid.switch_ratio), dRHill, Integrator\n");
+    fprintf(ff,"%f,%.1f,%d,%f,%f,%s \n\n",r->dt,tmax,N_active,r->ri_hybrid.switch_ratio,drh,intgrtr);
     fprintf(ff,"Planet/Star:\nplanet mass, semi-major axis, e_initial, Stellar Mass\n");
     fprintf(ff,"%f,%f,%f,%f\n\n",mp,a,e,Ms);
     fprintf(ff,"Planetesimal:\nN_planetesimals, Mtot_planetsimal, m_planetesimal, planetesimal boundary conditions: inner/outer edge, powerlaw\n");
@@ -78,26 +80,22 @@ void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double t
     
 }
 
-double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double N_Rhill, double dRHill){
-    if(dRHill > N_Rhill){
+double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double dRHill){
+    
+    if(dRHill > r->ri_hybrid.switch_ratio){
         printf("\033[1mWarning!\033[0m dRhill !> N_RHill. Setting dRhill = N_Rhill/2 \n");
-        dRHill = 0.5*N_Rhill;
+        dRHill = 0.5*r->ri_hybrid.switch_ratio;
     }
     double e_max = 0.3;  //max hypothesized eccentricity that the planet/esimals could have
     double Hill = a*(1 - e_max)*pow(mp/(3*Ms),1./3.);
-    //double r2_E = N_Rhill*N_Rhill*Hill*Hill;
-    //r->ri_hybrid.switch_ratio = Ms*r2_E/(mp*a*a*1.21);
-    r->ri_hybrid.switch_ratio = N_Rhill;    //looks like ratio is rij squared, so this should be too?
     double vmax = sqrt(r->G*(Ms + mp)*(1 + e_max)/(a*(1 - e_max)));   //peri speed
     double dt = dRHill*Hill/vmax;
-    printf("timesetep is dt = %f, hybrid_switch_ratio=%f \n",dt,r->ri_hybrid.switch_ratio);
+    printf("timesetep is dt = %f, ri_hybrid.switch_ratio=%f \n",dt,r->ri_hybrid.switch_ratio);
     
     return dt;
 }
 
 void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb_simulation* r){
-    //first need to fill arrays
-    //struct particle com = particles[0];
     double m1,m2;
     int N_active = r->N_active, N = r->N;
     const double G = r->G;
@@ -129,10 +127,6 @@ void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb
             double ddz = dz - par2.z;
             E -= G*m1*m2/sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
         }
-        //const double E0 = -0.000037107314178;
-        //if(abs((E - E0)/E0) > 0.001){
-        //    printf("x,y,z,vx,vy,vz=%f,%f,%f,%f,%f,%f\n",dx,dy,dz,dvx,dvy,dvz);
-        //}
     }
         
     *Etot = E;
@@ -140,10 +134,10 @@ void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb
 }
 
 //Calculates 'a' and 'e' of planet each output.
-void calc_ae(double* a, double* e, struct reb_simulation* r){
+void calc_ae(double* a, double* e, double* d_out, struct reb_simulation* r, int i){
     struct reb_particle* const particles = r->particles;
     struct reb_particle com = particles[0];
-    struct reb_particle* par = &(particles[1]); //planet occupies first slot.
+    struct reb_particle* par = &(particles[i]); //output planets only.
     const double G = r->G;
     const double m = par->m;
     const double mu = G*(com.m + m);
@@ -166,6 +160,7 @@ void calc_ae(double* a, double* e, struct reb_simulation* r){
     const double ez = muinv*( term1*dz - term2*dvz );
     *e = sqrt(ex*ex + ey*ey + ez*ez);   // eccentricity
     *a = -mu/( vv - 2.*mu*dinv );
+    *d_out = d;
 }
 
 void planetesimal_forces(struct reb_simulation *a){
@@ -189,7 +184,6 @@ void planetesimal_forces(struct reb_simulation *a){
             body->ax -= ac*dx;    //perturbation on planet due to planetesimals. Minus sign?
             body->ay -= ac*dy;
             body->az -= ac*dz;
-            
         }
     }
 }
@@ -215,7 +209,6 @@ int check_for_encounter(struct reb_simulation* const r){
             if (i==j) continue;
             
             struct reb_particle pj = particles[j];
-            
             const double dx = pi.x - pj.x;
             const double dy = pi.y - pj.y;
             const double dz = pi.z - pj.z;
@@ -246,7 +239,7 @@ outer:;
 void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
     s->N_active = r->N_active;
     s->integrator = REB_INTEGRATOR_IAS15;
-    //s->additional_forces = planetesimal_forces;
+    s->additional_forces = planetesimal_forces;
     s->exact_finish_time = 1;
     s->dt = r->dt;
     
@@ -264,9 +257,10 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
 void update_mini(struct reb_simulation* const r, struct reb_simulation* s, int encounter_index){
     s->t = r->t;
     
-    //update particles
     struct reb_particle* const global = r->particles;
     struct reb_particle* mini = s->particles;
+    
+    //update particles
     for(int i=0; i<s->N_active; i++) mini[i] = global[i];   //massive
     mini[s->N_active] = global[encounter_index];            //test particle
     
@@ -274,16 +268,12 @@ void update_mini(struct reb_simulation* const r, struct reb_simulation* s, int e
 }
 
 void update_global(struct reb_simulation* const s, struct reb_simulation* r, int encounter_index){
-    
-    //printf("time comparison inner: r->t=%f, s->t=%f, s->dt=%f \n",r->t, s->t, s->dt);
-    
     struct reb_particle* global = r->particles;
     struct reb_particle* const mini = s->particles;
-    
+
     //update particles
     for(int i=0; i<s->N_active; i++) global[i] = mini[i];   //massive
     global[encounter_index] = mini[s->N_active];            //test particle
-    
     
     //const double dx = mini[1].x - mini[2].x;
     //const double dy = mini[1].y - mini[2].y;
