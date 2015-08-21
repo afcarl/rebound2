@@ -12,21 +12,25 @@
 #include <stdio.h>
 #include "../../src/rebound.h"
 
-void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double tmax, int N_active, int N, double m_planetesimal, double total_planetesimal_mass, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double nrhill, double drh);
+void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh);
 
-double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double N_Rhill, double dRHill);
+double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double dRHill);
 
 void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb_simulation* r);
 
-void calc_ae(double* a, double* e, struct reb_simulation* r);
+void calc_ae(double* a, double* e, double* d, struct reb_simulation* r, int i);
 
-void planetesimal_forces(struct reb_simulation *r);
+void planetesimal_forces(struct reb_simulation *a);
 
-double check_for_encounter(struct reb_simulation* const r, double* ratioout);
+int check_for_encounter(struct reb_simulation* const r);
 
-void close_encounter(struct reb_simulation* r);
+void ini_mini(struct reb_simulation* const r, struct reb_simulation* s);
 
+void update_mini(struct reb_simulation* const r, struct reb_simulation* const s, int encounter_index);
+
+void update_global(struct reb_simulation* const s, struct reb_simulation* const r, int encounter_index);
+
+//external variables
 extern double planetesimal_mass;
-extern int printting;
 
 #endif /* defined(____functions__) */
