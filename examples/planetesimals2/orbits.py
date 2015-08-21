@@ -34,7 +34,8 @@ for i in range(0,N): #only 1 planet for now
         y = p[arg4:arg3,arg2]
     plt.plot(p[arg4:arg3,arg1], y, 'o'+colors[i], markeredgecolor='none', ms = 2)#, label='m$_{'+str(i+1)+'}$='+str(round(100*mp[i]/(3*10**(-6)))/100.)+' m$_{earth}$', )
 
-plt.ylim([0.698,0.702])
+#if arg1==1:
+#    plt.ylim([0.699,0.701])
 plt.xlim([p[arg4,0],p[arg3,0]])
 plt.xlabel('' + names[arg1])
 plt.ylabel('' + names[arg2])

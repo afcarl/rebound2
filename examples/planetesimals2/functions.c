@@ -104,14 +104,14 @@ void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb
     double L = 0, E = 0;
     struct reb_particle* const particles = r->particles;
     for(int i=0;i<N;i++){
-        struct reb_particle* par = &(particles[i]); //planet occupies first slot.
-        if(i > N_active - 1) m1 = planetesimal_mass; else m1 = par->m;
-        const double dvx = par->vx;
-        const double dvy = par->vy;
-        const double dvz = par->vz;
-        const double dx = par->x;
-        const double dy = par->y;
-        const double dz = par->z;
+        struct reb_particle par = particles[i]; //planet occupies first slot.
+        if(i >= N_active) m1 = planetesimal_mass; else m1 = par.m;
+        const double dvx = par.vx;
+        const double dvy = par.vy;
+        const double dvz = par.vz;
+        const double dx = par.x;
+        const double dy = par.y;
+        const double dz = par.z;
         
         //L_tot = m*(r x v)
         const double hx = dy*dvz - dz*dvy;
@@ -122,14 +122,19 @@ void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb
         //E_tot
         E += 0.5*m1*(dvx*dvx + dvy*dvy + dvz*dvz);
         for(int j=i+1;j<N;j++){
-            struct reb_particle* par2 = &(particles[j]);
-            if(j > N_active - 1) m2 = planetesimal_mass; else m2 = par2->m;
-            double ddx = dx - par2->x;
-            double ddy = dy - par2->y;
-            double ddz = dz - par2->z;
+            struct reb_particle par2 = particles[j];
+            if(j >= N_active) m2 = planetesimal_mass; else m2 = par2.m;
+            double ddx = dx - par2.x;
+            double ddy = dy - par2.y;
+            double ddz = dz - par2.z;
             E -= G*m1*m2/sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
         }
+        //const double E0 = -0.000037107314178;
+        //if(abs((E - E0)/E0) > 0.001){
+        //    printf("x,y,z,vx,vy,vz=%f,%f,%f,%f,%f,%f\n",dx,dy,dz,dvx,dvy,dvz);
+        //}
     }
+        
     *Etot = E;
     *Ltot = L;
 }
@@ -168,29 +173,23 @@ void planetesimal_forces(struct reb_simulation *a){
     const int N = a->N;
     const int N_active = a->N_active;
     struct reb_particle* const particles = a->particles;
-    struct reb_particle com = particles[0];
     const double Gm1 = G*planetesimal_mass;
-    for(int i=1;i<N_active;i++){
-        struct reb_particle* planet = &(particles[i]);
-        const double x = planet->x-com.x;
-        const double y = planet->y-com.y;
-        const double z = planet->z-com.z;
-        for(int j=N_active;j<N;j++){//add forces to planet
+    for(int i=0;i<N_active;i++){
+        struct reb_particle* body = &(particles[i]);
+        for(int j=N_active;j<N;j++){//add forces to massive bodies
             struct reb_particle* p = &(particles[j]);
-            //if(p->id == 4) continue;
-            const double xp = p->x-com.x;
-            const double yp = p->y-com.y;
-            const double zp = p->z-com.z;
             
-            const double dx = x - xp;
-            const double dy = y - yp;
-            const double dz = z - zp;
-            const double rinv = 1./sqrt( dx*dx + dy*dy + dz*dz );
-            const double ac = Gm1*rinv*rinv*rinv;  //force/mass = acceleration
+            const double dx = body->x - p->x;
+            const double dy = body->y - p->y;
+            const double dz = body->z - p->z;
+           
+            const double rijinv = 1.0/sqrt(dx*dx + dy*dy + dz*dz);
+            const double ac = Gm1*rijinv*rijinv*rijinv;  //force/mass = acceleration
             
-            planet->ax += ac*dx;    //perturbation on planet due to planetesimals
-            planet->ay += ac*dy;
-            planet->az += ac*dz;
+            body->ax -= ac*dx;    //perturbation on planet due to planetesimals. Minus sign?
+            body->ay -= ac*dy;
+            body->az -= ac*dz;
+            
         }
     }
 }
@@ -233,6 +232,10 @@ int check_for_encounter(struct reb_simulation* const r){
                 index_of_encounter = j;
                 goto outer;
             }
+            
+            if(rij2 < 5e-8){
+                fprintf(stderr,"\n\033[1mAlert!\033[0m Particle/Planet collision should have happened.\n");
+            }
         }
     }
 outer:;
@@ -243,7 +246,7 @@ outer:;
 void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
     s->N_active = r->N_active;
     s->integrator = REB_INTEGRATOR_IAS15;
-    s->additional_forces = planetesimal_forces;
+    //s->additional_forces = planetesimal_forces;
     s->exact_finish_time = 1;
     s->dt = r->dt;
     
@@ -261,93 +264,31 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
 void update_mini(struct reb_simulation* const r, struct reb_simulation* s, int encounter_index){
     s->t = r->t;
     
+    //update particles
     struct reb_particle* const global = r->particles;
     struct reb_particle* mini = s->particles;
+    for(int i=0; i<s->N_active; i++) mini[i] = global[i];   //massive
+    mini[s->N_active] = global[encounter_index];            //test particle
     
-    //update (all) massive particles
-    for(int i=0; i<s->N_active; i++) mini[i] = global[i];
-    
-    //update test particle inside Hill Sphere
-    mini[s->N_active] = global[encounter_index];
-    
-    //before IAS15 simulation starts, move to COM
-    reb_move_to_com(s);
+    reb_move_to_com(s);     //before IAS15 simulation starts, move to COM
 }
 
 void update_global(struct reb_simulation* const s, struct reb_simulation* r, int encounter_index){
     
-    printf("time comparison inner: r->t=%f, s->t=%f, s->dt=%f \n",r->t, s->t, s->dt);
-    //struct reb_particle* const global1 = r->particles;
-    //struct reb_particle* mini1 = s->particles;
-    //printf("star:x=%f,%f,y=%f,%f,vx=%f,%f,vy=%f,%f \n",global1[0].x,mini1[0].x,global1[0].y,mini1[0].y,global1[0].vx,mini1[0].vx,global1[0].vy,mini1[0].vy);
+    //printf("time comparison inner: r->t=%f, s->t=%f, s->dt=%f \n",r->t, s->t, s->dt);
     
     struct reb_particle* global = r->particles;
     struct reb_particle* const mini = s->particles;
     
-    //update (all) massive particles
-    for(int i=0; i<s->N_active; i++) global[i] = mini[i];
-        
-    //update test particle
-    global[encounter_index] = mini[s->N_active];
-}
-
-/*
-void close_encounter(struct reb_simulation* r){
-    double ratio = 0;
-    int encounter_index = check_for_encounter(r);
-    if(encounter_index != 0){//create new rebound simulation
-        struct reb_simulation* s = reb_create_simulation();
-        s->N_active = r->N_active;
-        s->ri_hybrid.switch_ratio = r->ri_hybrid.switch_ratio;
-        s->integrator = REB_INTEGRATOR_IAS15;
-        s->exact_finish_time = 1;
-        const double timestep = r->dt;
-        
-        struct reb_particle* restrict const particles = r->particles;
-        struct reb_particle p0 = particles[0];
-        reb_add(s,p0);
-        
-        for(int k=1; k<s->N_active; k++){//add massive particles
-            struct reb_particle p = particles[k];
-            reb_add(s,p);
-        }
-        //copy contents of particle into new simulation, and then put the particle
-        //(from the global sim) temporarily out of harms way.
-        int dt_counter=0;   //count # of while loops
-        struct reb_particle pt = particles[encounter_index];
-        pt.id = 3;
-        reb_add(s,pt);
-        //printf("\n old params: %f,%f,%f,%f,%f,%f,   ",pt.x,pt.y,pt.vx,pt.vy,pt.ax,pt.ay);
-        inactive_particle(&pt,p0.m,r->G);
-        //printf("new params: %f,%f,%f,%f,%f,%f \n",pt.x,pt.y,pt.vx,pt.vy,pt.ax,pt.ay);
-        
-        //different index here, only 3 particles
-        while(encounter_index != 0){
-            dt_counter++;
-            reb_integrate(s, dt_counter*timestep);
-            planetesimal_forces(s,r,0); //needs to be changed to 1********************
-            encounter_index = check_for_encounter(s,&ratio);
-            //struct reb_particle* const p = s->particles;
-            //printf("planet1: dt_counter=%d, ax,ay,az = %f,%f,%f, time=%f \n",dt_counter, p[1].x, p[1].y, p[1].z, s->t);
-        }
-        *CE_exit_time = s->t + r->t;
-    }
-}
-*/
-
-/*
-void inactive_particle(struct reb_particle* pt, double Ms, double G){
-    double a = 4;   //temporarily put particle way out of harms way.
+    //update particles
+    for(int i=0; i<s->N_active; i++) global[i] = mini[i];   //massive
+    global[encounter_index] = mini[s->N_active];            //test particle
     
-    double phi = 0;
-    pt->x 		= a*cos(phi);
-    pt->y 		= a*sin(phi);
-    pt->z 		= 0;
-    double vkep = sqrt(G*Ms/a);
-    pt->vx 		= -vkep * sin(phi);
-    pt->vy 		= vkep * cos(phi);
-    pt->vz       = 0;
-    pt->ax       = 0;
-    pt->ay       = 0;
-    pt->az       = 0;
-}*/
+    
+    //const double dx = mini[1].x - mini[2].x;
+    //const double dy = mini[1].y - mini[2].y;
+    //const double dz = mini[1].z - mini[2].z;
+    //double rij2 = dx*dx + dy*dy + dz*dz;
+    //printf("t=%f, particle-planet distance = %.10f\n",r->t, sqrt(rij2));
+}
+
