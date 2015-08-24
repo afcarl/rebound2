@@ -23,7 +23,7 @@ void calc_ae(double* a, double* e, double* d, struct reb_simulation* r, int i);
 
 void planetesimal_forces(struct reb_simulation *a);
 
-int check_for_encounter(struct reb_simulation* const r);
+void check_for_encounter(struct reb_simulation* const r, int** index_of_encounters, int* N_encounters);
 
 void ini_mini(struct reb_simulation* const r, struct reb_simulation* s);
 

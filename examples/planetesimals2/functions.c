@@ -188,13 +188,12 @@ void planetesimal_forces(struct reb_simulation *a){
     }
 }
 
-int check_for_encounter(struct reb_simulation* const r){
+void check_for_encounter(struct reb_simulation* const r, int** index_of_encounters, int* N_encounters){
     const int N = r->N;
     const int N_active = r->N_active;
     struct reb_particle* restrict const particles = r->particles;
     struct reb_particle p0 = particles[0];
-    int index_of_encounter = 0;
-    int N_encounters = 0;
+    int num_encounters = 0;
     for (int i=1; i<N_active; i++){
         struct reb_particle pi = particles[i];
         const double dxi = p0.x - pi.x;
@@ -220,8 +219,21 @@ int check_for_encounter(struct reb_simulation* const r){
             const double ratio = rij2/(rhi+rhj);
             
             if(ratio<r->ri_hybrid.switch_ratio){
-                index_of_encounter = j;
-                N_encounters++;
+                num_encounters++;
+                if(num_encounters == 1){
+                    *index_of_encounters = malloc(num_encounters*sizeof(int));
+                    *index_of_encounters[0] = j;
+                }
+                else if(num_encounters > 1){//multiple close encounters
+                    int* tmpindex = realloc(*index_of_encounters,num_encounters*sizeof(int));
+                    if(!tmpindex){
+                        fprintf(stderr,"\n\033[1mAlert!\033[0m Could not reallocate close encounter particle array. Not tracking particle. Exiting.\n");
+                        exit(0);
+                    } else {
+                        tmpindex[num_encounters - 1] = j;
+                        *index_of_encounters = tmpindex;
+                    }
+                }
             }
             
             if(rij2 < 5e-8){
@@ -229,9 +241,7 @@ int check_for_encounter(struct reb_simulation* const r){
             }
         }
     }
-    if(N_encounters > 1) fprintf(stderr,"\n\033[1mAlert!\033[0m Multiple particles in Hill Sphere, not tracking them all.\n");
-    
-    return index_of_encounter;
+    *N_encounters = num_encounters;
 }
 
 //initialize mini-simulation for close encounters

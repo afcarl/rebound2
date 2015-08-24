@@ -14,7 +14,8 @@
 
 void heartbeat(struct reb_simulation* r);
 double tmax, planetesimal_mass, CE_exit_time = 0;
-int n_output, CE_index = 0, encounter_index = 0, previous_encounter_index = 0, warning = 0, N_encounters = 0;
+int n_output, CE_index = 0, warning = 0, N_encounters = 0;
+int* encounter_index = NULL;
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
 struct reb_simulation* s;
 
@@ -32,7 +33,7 @@ int main(int argc, char* argv[]){
     
     // System constants
     double dRHill = atof(argv[2]);      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
-    double N_planetesimals = 20;
+    double N_planetesimals = 50;
     double M_planetesimals = 3e-6; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
 	
     // Other constants
@@ -105,14 +106,17 @@ int main(int argc, char* argv[]){
     clock_t timer = clock();
 	reb_integrate(r, tmax);
     clock_finish(timer,N_encounters,lgnddir);
+    //free_mem(encounter_index);
 }
 
 void heartbeat(struct reb_simulation* r){
     if(r->integrator == REB_INTEGRATOR_WHFAST){
-        encounter_index = check_for_encounter(r);
+        int N_encounters = 0;
+        check_for_encounter(r, &encounter_index, &N_encounters);
+        /*
         if(encounter_index != 0){
             if(previous_encounter_index == 0){ //initialize mini simulation
-                fprintf(stderr,"\n\033[1mParticle %d entering\033[0m Hill Sphere at t=%f. \n",encounter_index, r->t);
+                //fprintf(stderr,"\n\033[1mParticle %d entering\033[0m Hill Sphere at t=%f. \n",encounter_index, r->t);
                 update_mini(r,s,encounter_index);
                 previous_encounter_index = encounter_index;
                 
@@ -134,7 +138,7 @@ void heartbeat(struct reb_simulation* r){
             previous_encounter_index = 0;
             N_encounters++;
         }
-        
+        */
     }
     
     //output stuff
