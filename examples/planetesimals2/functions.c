@@ -181,7 +181,7 @@ void planetesimal_forces(struct reb_simulation *a){
             const double rijinv = 1.0/sqrt(dx*dx + dy*dy + dz*dz);
             const double ac = Gm1*rijinv*rijinv*rijinv;  //force/mass = acceleration
             
-            body->ax -= ac*dx;    //perturbation on planet due to planetesimals. Minus sign?
+            body->ax -= ac*dx;    //perturbation on planets due to planetesimals.
             body->ay -= ac*dy;
             body->az -= ac*dz;
         }
@@ -191,13 +191,11 @@ void planetesimal_forces(struct reb_simulation *a){
 int check_for_encounter(struct reb_simulation* const r){
     const int N = r->N;
     const int N_active = r->N_active;
-    const int N_var = r->N_var;
     struct reb_particle* restrict const particles = r->particles;
     struct reb_particle p0 = particles[0];
-    const int _N_active = ((N_active==-1)?N:N_active)- N_var;
-    const int _N_real   = N - N_var;
     int index_of_encounter = 0;
-    for (int i=1; i<_N_active; i++){
+    int N_encounters = 0;
+    for (int i=1; i<N_active; i++){
         struct reb_particle pi = particles[i];
         const double dxi = p0.x - pi.x;
         const double dyi = p0.y - pi.y;
@@ -205,7 +203,7 @@ int check_for_encounter(struct reb_simulation* const r){
         const double r0i2 = dxi*dxi + dyi*dyi + dzi*dzi;
         const double rhi = r0i2*pow((pi.m/(p0.m*3.)), 2./3.); //can make this faster later
         
-        for (int j=1; j<_N_real; j++){
+        for (int j=1; j<N; j++){
             if (i==j) continue;
             
             struct reb_particle pj = particles[j];
@@ -223,7 +221,7 @@ int check_for_encounter(struct reb_simulation* const r){
             
             if(ratio<r->ri_hybrid.switch_ratio){
                 index_of_encounter = j;
-                goto outer;
+                N_encounters++;
             }
             
             if(rij2 < 5e-8){
@@ -231,7 +229,8 @@ int check_for_encounter(struct reb_simulation* const r){
             }
         }
     }
-outer:;
+    if(N_encounters > 1) fprintf(stderr,"\n\033[1mAlert!\033[0m Multiple particles in Hill Sphere, not tracking them all.\n");
+    
     return index_of_encounter;
 }
 
@@ -282,3 +281,11 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
     //printf("t=%f, particle-planet distance = %.10f\n",r->t, sqrt(rij2));
 }
 
+void clock_finish(clock_t timer, int N_encounters, char* legenddir){
+    timer = clock() - timer;
+    FILE *ff;
+    ff=fopen(legenddir, "a");
+    double result = ((float)timer)/CLOCKS_PER_SEC;
+    fprintf(ff,"Elapsed simulation time is %f s, with %d close encounters.\n",result,N_encounters);
+    printf("\n\nSimulation complete. Elapsed simulation time is %f s, with %d close encounters.\n\n",result,N_encounters);
+}

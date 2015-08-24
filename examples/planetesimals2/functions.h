@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include "../../src/rebound.h"
 
+//FUNCTIONS******************************
 void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh);
 
 double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double dRHill);
@@ -30,7 +31,11 @@ void update_mini(struct reb_simulation* const r, struct reb_simulation* const s,
 
 void update_global(struct reb_simulation* const s, struct reb_simulation* const r, int encounter_index);
 
-//external variables
+void clock_finish(clock_t timer, int N_encounters, char* legenddir);
+
+//EXTERNAL VARIABLES******************************
 extern double planetesimal_mass;
+
+
 
 #endif /* defined(____functions__) */
