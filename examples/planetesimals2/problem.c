@@ -47,19 +47,21 @@ int main(int argc, char* argv[]){
 	struct reb_particle star = {0};
 	star.m 		= 1;
 	star.r		= 0.01;
-    star.id     = 0;
+    star.id     = 0;        // 0 = star
 	reb_add(r, star);
     r->N_active = 1;
 
     //planet 1
     double a1=0.7, m1=5e-5, e1=0.01;
     struct reb_particle p1 = reb_tools_init_orbit2d(r->G,star.m,m1,a1,e1,0,0);
+    p1.id = 1;              //1 = planet
     reb_add(r, p1);
     r->N_active++;
     
     //planet 2
     double a2=1, m2=5e-5, e2=0.01;
     struct reb_particle p2 = reb_tools_init_orbit2d(r->G,star.m,m2,a2,e2,0,0);
+    p2.id = 1;              //1 = planet
     reb_add(r, p2);
     r->N_active++;
     
@@ -89,7 +91,7 @@ int main(int argc, char* argv[]){
 		pt.vy 		= vkep * cos(phi);
 		pt.m 		= 0;
 		pt.r 		= .3/sqrt((double)N_planetesimals);
-        pt.id       = 2;
+        pt.id       = 2;    //2 = planetesimal
 		reb_add(r, pt);
 	}
     
@@ -124,10 +126,12 @@ void heartbeat(struct reb_simulation* r){
                //I think do nothing...
             }
         } else if(dN > 0){                  //new particle entering, update mini
-            reb_integrate(s, r->t);
+            if(N_encounters > 1)reb_integrate(s, r->t); //Just update for 1st particle in Hill
             add_mini_and_update(r,s,encounter_index,N_encounters);
         } else {                            //dN < 0, old particle leaving
-                
+            reb_integrate(s, r->t);
+            compare_encounter_indices(s,encounter_index, previous_encounter_index);   //change particle id = 3 here for removal
+            subtract_mini_and_update(r,s,previous_encounter_index,N_encounters);
         }
         /*
             if(previous_encounter_index == 0){ //initialize mini simulation

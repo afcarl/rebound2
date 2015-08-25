@@ -272,19 +272,18 @@ void add_mini_and_update(struct reb_simulation* const r, struct reb_simulation* 
     //If first update in a while, sync up times, update massive bodies
     if(N_encounters == 1){
         s->t = r->t;    
-        for(int i=0; i<N_active; i++) mini[i] = global[i];   //massive
+        for(int i=0; i<N_active; i++) mini[i] = global[i];
+    } else {
+        //update any particles already present that were just integrated by mini
+        for(int i=0; i<N_active; i++) global[i] = mini[i];   //massive
+        for(int j=0; j<N_encounters - 1; j++) global[encounter_index[j]] = mini[N_active + j];
     }
     
-    //update any particles already present that were just integrated by mini
-    for(int i=0; i<N_active; i++) global[i] = mini[i];   //massive
-    for(int j=0; j<N_encounters - 1; j++) global[encounter_index[j]] = mini[N_active + j];     //update test particle(s)
-    
-    //add newest test particle and update it
+    //add newest test particle to mini
     //int mini_index = N_active-1+N_encounters;
     int global_index = encounter_index[N_encounters - 1]; //newest particle crossing Hill radius
     struct reb_particle pt = global[global_index];
     reb_add(s,pt);
-    //mini[mini_index] = global[global_index];            //test particle
 }
 
 void update_global(struct reb_simulation* const s, struct reb_simulation* r, int* encounter_index, int N_encounters){
@@ -292,9 +291,9 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
     struct reb_particle* global = r->particles;
     struct reb_particle* const mini = s->particles;
 
-    //update particles
-    for(int i=0; i<N_active; i++) global[i] = mini[i];   //massive
-    for(int j=0; j<N_encounters; j++) global[encounter_index[j]] = mini[N_active + j];     //update test particle(s)
+    //update massive and planetesimal particles
+    for(int i=0; i<N_active; i++) global[i] = mini[i];
+    for(int j=0; j<N_encounters; j++) global[encounter_index[j]] = mini[N_active + j];
     
     //const double dx = mini[1].x - mini[2].x;
     //const double dy = mini[1].y - mini[2].y;
@@ -303,22 +302,23 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
     //printf("t=%f, particle-planet distance = %.10f\n",r->t, sqrt(rij2));
 }
 
-void subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int* encounter_index, int N_encounters){
+void compare_encounter_indices(struct reb_simulation* s, int* encounter_index, int* previous_encounter_index){
+    
+}
+
+void subtract_mini_and_update(struct reb_simulation* const r, struct reb_simulation* s, int* previous_encounter_index, int N_encounters){
     int N_active = s->N_active;
     struct reb_particle* const global = r->particles;
     struct reb_particle* mini = s->particles;
     
-    if(N_encounters == 1){//first update in a while, sync up times, update massive bodies
-        s->t = r->t;
-        for(int i=0; i<N_active; i++) mini[i] = global[i];   //massive
-    }
+    //update massive and planetesimal particles
+    for(int i=0; i<N_active; i++) global[i] = mini[i];
+    for(int j=0; j<N_encounters; j++) global[encounter_index[j]] = mini[N_active + j];
     
-    //add newest test particle and update it
-    //int mini_index = N_active-1+N_encounters;
-    int global_index = encounter_index[N_encounters - 1]; //newest particle crossing Hill radius
-    struct reb_particle pt = global[global_index];
-    reb_add(s,pt);
-    //mini[mini_index] = global[global_index];            //test particle
+    //remove particle that has left Hill sphere by id!!
+    int id = 3;
+    int keep_sorted = 1;
+    reb_remove_by_id(s,id,keep_sorted);
 }
 
 void clock_finish(clock_t timer, int N_encounters, char* legenddir){
