@@ -257,32 +257,35 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
         struct reb_particle p = particles[k];
         reb_add(s,p);
     }
-    //add (dummy) test particle
-    struct reb_particle pt = particles[r->N_active];
-    reb_add(s,pt);
-    reb_move_to_com(s);
+    
+    reb_move_to_com(s);         //before IAS15 simulation starts, move to COM
 }
 
-void update_mini(struct reb_simulation* const r, struct reb_simulation* s, int encounter_index){
-    s->t = r->t;
-    
+void add_mini(struct reb_simulation* const r, struct reb_simulation* s, int* encounter_index, int N_encounters){
+    int N_active = s->N_active;
     struct reb_particle* const global = r->particles;
     struct reb_particle* mini = s->particles;
     
-    //update particles
-    for(int i=0; i<s->N_active; i++) mini[i] = global[i];   //massive
-    mini[s->N_active] = global[encounter_index];            //test particle
+    if(N_encounters == 1){//first update in a while, sync up times, update massive bodies
+        s->t = r->t;    
+        for(int i=0; i<N_active; i++) mini[i] = global[i];   //massive
+    }
     
-    reb_move_to_com(s);     //before IAS15 simulation starts, move to COM
+    //add newest test particle and update it
+    int mini_index = N_active-1+N_encounters;       //newest particle crossing Hill radius
+    struct reb_particle pt = particles[mini_index];
+    reb_add(s,pt);
+    mini[mini_index] = global[encounter_index[N_encounters - 1]];            //test particle
 }
 
-void update_global(struct reb_simulation* const s, struct reb_simulation* r, int encounter_index){
+void update_global(struct reb_simulation* const s, struct reb_simulation* r, int* encounter_index, int N_encounters){
+    int N_active = s->N_active;
     struct reb_particle* global = r->particles;
     struct reb_particle* const mini = s->particles;
 
     //update particles
-    for(int i=0; i<s->N_active; i++) global[i] = mini[i];   //massive
-    global[encounter_index] = mini[s->N_active];            //test particle
+    for(int i=0; i<N_active; i++) global[i] = mini[i];   //massive
+    for(int j=0; j<N_encounters; j++) global[encounter_index[j]] = mini[N_active + j];     //update test particle(s)
     
     //const double dx = mini[1].x - mini[2].x;
     //const double dy = mini[1].y - mini[2].y;

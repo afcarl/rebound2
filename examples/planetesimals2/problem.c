@@ -14,8 +14,9 @@
 
 void heartbeat(struct reb_simulation* r);
 double tmax, planetesimal_mass, CE_exit_time = 0;
-int n_output, CE_index = 0, warning = 0, N_encounters = 0;
+int n_output, CE_index = 0, warning = 0, N_encounters = 0, N_encounters_previous;
 int* encounter_index = NULL;
+int* previous_encounter_index = NULL;
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
 struct reb_simulation* s;
 
@@ -111,10 +112,23 @@ int main(int argc, char* argv[]){
 
 void heartbeat(struct reb_simulation* r){
     if(r->integrator == REB_INTEGRATOR_WHFAST){
-        int N_encounters = 0;
+        N_encounters = 0;
         check_for_encounter(r, &encounter_index, &N_encounters);
+        dN = N_encounters - N_encounters_previous;
+        if(dN == 0){//no new particles entering Hill Sphere
+            if(N_encounters != 0){//particle inside Hill sphere
+                reb_integrate(s, r->t);
+                update_global(s,r,encounter_index,N_encounters);
+            } else {//no particle inside Hill sphere
+               //I think do nothing...
+            }
+        } else if(dN > 0){//new particle entering
+            add_mini(r,s,encounter_index,N_encounters);
+            reb_integrate(s, r->t);
+        } else {//dN < 0, old particle leaving
+                
+        }
         /*
-        if(encounter_index != 0){
             if(previous_encounter_index == 0){ //initialize mini simulation
                 //fprintf(stderr,"\n\033[1mParticle %d entering\033[0m Hill Sphere at t=%f. \n",encounter_index, r->t);
                 update_mini(r,s,encounter_index);
@@ -137,8 +151,7 @@ void heartbeat(struct reb_simulation* r){
             update_global(s,r,previous_encounter_index);
             previous_encounter_index = 0;
             N_encounters++;
-        }
-        */
+        }*/
     }
     
     //output stuff
