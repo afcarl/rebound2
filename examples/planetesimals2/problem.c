@@ -115,18 +115,18 @@ void heartbeat(struct reb_simulation* r){
     if(r->integrator == REB_INTEGRATOR_WHFAST){
         N_encounters = 0;
         check_for_encounter(r, &encounter_index, &N_encounters);
-        dN = N_encounters - N_encounters_previous;
-        if(dN == 0){//no new particles entering Hill Sphere
-            if(N_encounters != 0){//particle inside Hill sphere
+        int dN = N_encounters - N_encounters_previous;
+        if(dN == 0){                        //no new particles entering Hill Sphere
+            if(N_encounters != 0){          //particle(s) inside Hill sphere
                 reb_integrate(s, r->t);
                 update_global(s,r,encounter_index,N_encounters);
-            } else {//no particle inside Hill sphere
+            } else {                        //no particle inside Hill sphere
                //I think do nothing...
             }
-        } else if(dN > 0){//new particle entering
-            add_mini(r,s,encounter_index,N_encounters);
+        } else if(dN > 0){                  //new particle entering, update mini
             reb_integrate(s, r->t);
-        } else {//dN < 0, old particle leaving
+            add_mini_and_update(r,s,encounter_index,N_encounters);
+        } else {                            //dN < 0, old particle leaving
                 
         }
         /*
