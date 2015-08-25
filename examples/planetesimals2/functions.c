@@ -222,14 +222,11 @@ void check_for_encounter(struct reb_simulation* const r, int** index_of_encounte
             
             if(ratio<r->ri_hybrid.switch_ratio){
                 num_encounters++;
-                if(num_encounters == 1){
-                    *index_of_encounters = malloc(num_encounters*sizeof(int));
-                    *index_of_encounters[0] = j;
-                }
+                if(num_encounters == 1) *index_of_encounters[0] = j;
                 else if(num_encounters > 1){//multiple close encounters
                     int* tmpindex = realloc(*index_of_encounters,num_encounters*sizeof(int));
                     if(!tmpindex){
-                        fprintf(stderr,"\n\033[1mAlert!\033[0m Could not reallocate close encounter particle array. Not tracking particle. Exiting.\n");
+                        fprintf(stderr,"\n\033[1mAlert!\033[0m Could not reallocate new particle into array. Not tracking particle. Exiting.\n");
                         exit(0);
                     } else {
                         tmpindex[num_encounters - 1] = j;
@@ -263,7 +260,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
     reb_move_to_com(s);         //before IAS15 simulation starts, move to COM
 }
 
-void add_mini_and_update(struct reb_simulation* const r, struct reb_simulation* s, int* encounter_index, int N_encounters){
+void update_and_add_mini(struct reb_simulation* const r, struct reb_simulation* s, int* encounter_index, int N_encounters){
     int N_active = s->N_active;
     struct reb_particle* global = r->particles;
     struct reb_particle* mini = s->particles;
@@ -279,7 +276,6 @@ void add_mini_and_update(struct reb_simulation* const r, struct reb_simulation* 
     }
     
     //add newest test particle to mini
-    //int mini_index = N_active-1+N_encounters;
     int global_index = encounter_index[N_encounters - 1]; //newest particle crossing Hill radius
     struct reb_particle pt = global[global_index];
     reb_add(s,pt);
@@ -301,23 +297,52 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
     //printf("t=%f, particle-planet distance = %.10f\n",r->t, sqrt(rij2));
 }
 
-void compare_encounter_indices(struct reb_simulation* s, int* encounter_index, int* previous_encounter_index){
-    
+void compare_encounter_indices(struct reb_simulation* s, int* encounter_index, int* previous_encounter_index, int N_encounters, int removal_id){
+    int particle_remove = 0;
+    struct reb_particle* particles = s->particles;
+    for(int i=0;i<N_encounters;i++){
+        if(encounter_index[i] != previous_encounter_index[i]){
+            particles[i+1].id = removal_id;
+            particle_remove++;
+            //check
+            if(encounter_index[i] != previous_encounter_index[i+1]){
+                fprintf(stderr,"\n\033[1mAlert!\033[0m Something out of order, particle arrays don't match. Exiting. \n");
+                exit(0);
+            }
+        }
+    }
+    if(particle_remove == 0) particles[N_encounters].id = removal_id;
 }
 
-void subtract_mini_and_update(struct reb_simulation* const r, struct reb_simulation* s, int* previous_encounter_index, int N_encounters){
+void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int* previous_encounter_index, int N_encounters, int removal_id){
     int N_active = s->N_active;
     struct reb_particle* const global = r->particles;
     struct reb_particle* mini = s->particles;
     
-    //update massive and planetesimal particles
+    //update massive bodies and planetesimals
     for(int i=0; i<N_active; i++) global[i] = mini[i];
-    for(int j=0; j<N_encounters; j++) global[encounter_index[j]] = mini[N_active + j];
+    for(int j=0; j<N_encounters; j++) global[previous_encounter_index[j]] = mini[N_active + j];
     
-    //remove particle that has left Hill sphere by id!!
-    int id = 3;
+    //remove particle that has left Hill sphere by id
     int keep_sorted = 1;
-    reb_remove_by_id(s,id,keep_sorted);
+    reb_remove_by_id(s,removal_id,keep_sorted);
+}
+
+void update_encounter_indices(int** encounter_index, int** previous_encounter_index, int* N_encounters, int* N_encounters_previous){
+    //transfer values from encounter_index to previous_encounter_index
+    //****more efficient way to do this???******
+    *previous_encounter_index = realloc(*previous_encounter_index,*N_encounters*sizeof(int));
+    for(int i=0;i<*N_encounters;i++){
+        *previous_encounter_index[i] = *encounter_index[i];
+    }
+    
+    //reset encounter index
+    *encounter_index = realloc(*encounter_index,sizeof(int));   //reset to single element
+    *encounter_index[0] = 0;
+    
+    //reset encounter counters.
+    *N_encounters_previous = *N_encounters;
+    *N_encounters = 0;
 }
 
 void clock_finish(clock_t timer, int N_encounters, char* legenddir){

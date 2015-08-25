@@ -95,44 +95,63 @@ int main(int argc, char* argv[]){
 		reb_add(r, pt);
 	}
     
-    //naming stuff
+    //Initializing stuff
     legend(plntdir, lgnddir, r, tmax, planetesimal_mass, M_planetesimals, inner, outer, powerlaw, m1, a1, e1, star.m, dRHill);
-    
-    //initialize mini simulation (IAS15)
-    s = reb_create_simulation();
+    s = reb_create_simulation();    //initialize mini simulation (IAS15)
     ini_mini(r,s);
-    
-    // The WH integrator assumes a heliocentric coordinatesystem.
     if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
-    
-    //Integrate! Time it.
     calc_ELtot(&E_ini, &L_ini, planetesimal_mass, r);
     clock_t timer = clock();
+    encounter_index = malloc(sizeof(int));
+    previous_encounter_index = malloc(sizeof(int));
+    
+    //Integrate!
 	reb_integrate(r, tmax);
+    
+    //finish
     clock_finish(timer,N_encounters,lgnddir);
-    //free_mem(encounter_index);
+    free(encounter_index);
+    free(previous_encounter_index);
 }
 
 void heartbeat(struct reb_simulation* r){
     if(r->integrator == REB_INTEGRATOR_WHFAST){
-        N_encounters = 0;
         check_for_encounter(r, &encounter_index, &N_encounters);
         int dN = N_encounters - N_encounters_previous;
-        if(dN == 0){                        //no new particles entering Hill Sphere
-            if(N_encounters != 0){          //particle(s) inside Hill sphere
-                reb_integrate(s, r->t);
-                update_global(s,r,encounter_index,N_encounters);
-            } else {                        //no particle inside Hill sphere
-               //I think do nothing...
-            }
-        } else if(dN > 0){                  //new particle entering, update mini
-            if(N_encounters > 1)reb_integrate(s, r->t); //Just update for 1st particle in Hill
-            add_mini_and_update(r,s,encounter_index,N_encounters);
-        } else {                            //dN < 0, old particle leaving
-            reb_integrate(s, r->t);
-            compare_encounter_indices(s,encounter_index, previous_encounter_index);   //change particle id = 3 here for removal
-            subtract_mini_and_update(r,s,previous_encounter_index,N_encounters);
+        if(abs(dN) > 1){
+            fprintf(stderr,"\n\033[1mAlert!\033[0m %d Particles entering/leaving Hill sphere simultaneously. Exiting.\n",dN);
+            exit(0);
         }
+        switch(dN){     //assume that particles can only enter/leave Hill sphere 1 at a time.
+            case 0:{    //no new particles entering Hill Sphere
+                if(N_encounters != 0){          //particle(s) inside Hill sphere
+                    reb_integrate(s, r->t);
+                    update_global(s,r,encounter_index,N_encounters);
+                }       //else do nothing I think....
+            }break;
+            case 1:{    //new particle entering, update mini
+                if(N_encounters > 1)reb_integrate(s, r->t); //Just update for 1st particle in Hill
+                update_and_add_mini(r,s,encounter_index,N_encounters);
+            } break;
+            case -1:{    //dN < 0, old particle leaving
+                reb_integrate(s, r->t);
+                int removal_id = 3;
+                compare_encounter_indices(s,encounter_index,previous_encounter_index,N_encounters,removal_id);
+                update_and_subtract_mini(r,s,previous_encounter_index,N_encounters,removal_id);
+            } break;
+        }
+        update_encounter_indices(&encounter_index, &previous_encounter_index, &N_encounters, &N_encounters_previous);
+
+        /*
+         struct reb_particle* global = r->particles;
+         struct reb_particle* mini = s->particles;
+         for(int i=0;i<r->N_active+N_encounters;i++){
+         printf("mini %d, x,y,vx,vy=%f,%f,%f,%f\n",i,mini[i].x,mini[i].y,mini[i].vx,mini[i].vy);
+         printf("mini %d, x,y,vx,vy=%f,%f,%f,%f\n",i,global[i].x,global[i].y,global[i].vx,global[i].vy);
+         }
+         int i = encounter_index[0];
+         printf("mini %d, x,y,vx,vy=%f,%f,%f,%f\n",i,global[i].x,global[i].y,global[i].vx,global[i].vy);
+         exit(0);*/
         /*
             if(previous_encounter_index == 0){ //initialize mini simulation
                 //fprintf(stderr,"\n\033[1mParticle %d entering\033[0m Hill Sphere at t=%f. \n",encounter_index, r->t);
