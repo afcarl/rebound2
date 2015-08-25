@@ -101,7 +101,7 @@ void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb
     const double G = r->G;
     double L = 0, E = 0;
     struct reb_particle* const particles = r->particles;
-    for(int i=0;i<N_active;i++){
+    for(int i=0;i<N_active;i++){//I think it should be N? Energy is transferred in a close encounter. But then I get 10^-4 errors.
         struct reb_particle par = particles[i];
         if(i < N_active) m1 = par.m; else m1 = planetesimal_mass;
         const double dvx = par.vx;
