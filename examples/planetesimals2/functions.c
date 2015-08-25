@@ -101,7 +101,7 @@ void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb
     const double G = r->G;
     double L = 0, E = 0;
     struct reb_particle* const particles = r->particles;
-    for(int i=0;i<N_active;i++){//I think it should be N? Energy is transferred in a close encounter. But then I get 10^-4 errors.
+    for(int i=0;i<N;i++){//I think it should be N?
         struct reb_particle par = particles[i];
         if(i < N_active) m1 = par.m; else m1 = planetesimal_mass;
         const double dvx = par.vx;
@@ -123,7 +123,6 @@ void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb
             for(int j=i+1;j<N;j++){
                 struct reb_particle par2 = particles[j];
                 if(j < N_active) m2 = par2.m; else m2 = planetesimal_mass;
-                m2 = par2.m;
                 double ddx = dx - par2.x;
                 double ddy = dy - par2.y;
                 double ddz = dz - par2.z;
@@ -175,11 +174,11 @@ void planetesimal_forces(struct reb_simulation *a){
     for(int i=0;i<N_active;i++){
         struct reb_particle* body = &(particles[i]);
         for(int j=N_active;j<N;j++){//add forces to massive bodies
-            struct reb_particle* p = &(particles[j]);
+            struct reb_particle p = particles[j];
             
-            const double dx = body->x - p->x;
-            const double dy = body->y - p->y;
-            const double dz = body->z - p->z;
+            const double dx = body->x - p.x;
+            const double dy = body->y - p.y;
+            const double dz = body->z - p.z;
            
             const double rijinv = 1.0/sqrt(dx*dx + dy*dy + dz*dz);
             const double ac = Gm1*rijinv*rijinv*rijinv;  //force/mass = acceleration

@@ -26,7 +26,7 @@ int main(int argc, char* argv[]){
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary     = REB_BOUNDARY_OPEN;
 	r->heartbeat	= heartbeat;
-    //r->additional_forces = planetesimal_forces;
+    r->additional_forces = planetesimal_forces;
     r->ri_hybrid.switch_ratio = atof(argv[1]);     //# hill radii for boundary between switch. Try 3?
     //r->usleep   = 20000; //larger the number, slower OpenGL simulation
     
