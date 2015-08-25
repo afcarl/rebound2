@@ -132,12 +132,13 @@ void heartbeat(struct reb_simulation* r){
             case 1:{    //new particle entering, update mini
                 if(N_encounters > 1)reb_integrate(s, r->t); //Just update for 1st particle in Hill
                 update_and_add_mini(r,s,encounter_index,N_encounters);
+                printf("\nParticle %d entered Hill \n",encounter_index[0]);
             } break;
             case -1:{    //dN < 0, old particle leaving
                 reb_integrate(s, r->t);
                 int removal_id = 3;
                 compare_encounter_indices(s,encounter_index,previous_encounter_index,N_encounters,removal_id);
-                update_and_subtract_mini(r,s,previous_encounter_index,N_encounters,removal_id);
+                update_and_subtract_mini(r,s,previous_encounter_index,N_encounters_previous,removal_id);
             } break;
         }
         update_encounter_indices(&encounter_index, &previous_encounter_index, &N_encounters, &N_encounters_previous);

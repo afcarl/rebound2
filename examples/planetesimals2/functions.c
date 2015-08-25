@@ -299,8 +299,9 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
 
 void compare_encounter_indices(struct reb_simulation* s, int* encounter_index, int* previous_encounter_index, int N_encounters, int removal_id){
     int particle_remove = 0;
+    int N_active = s->N_active;
     struct reb_particle* particles = s->particles;
-    for(int i=0;i<N_encounters;i++){
+    for(int i=N_active;i<N_active+N_encounters;i++){
         if(encounter_index[i] != previous_encounter_index[i]){
             particles[i+1].id = removal_id;
             particle_remove++;
@@ -311,17 +312,18 @@ void compare_encounter_indices(struct reb_simulation* s, int* encounter_index, i
             }
         }
     }
-    if(particle_remove == 0) particles[N_encounters].id = removal_id;
+    if(particle_remove == 0) particles[N_encounters+N_active].id = removal_id;
 }
 
-void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int* previous_encounter_index, int N_encounters, int removal_id){
+void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int* previous_encounter_index, int N_encounters_previous, int removal_id){
     int N_active = s->N_active;
-    struct reb_particle* const global = r->particles;
+    struct reb_particle* global = r->particles;
     struct reb_particle* mini = s->particles;
     
     //update massive bodies and planetesimals
     for(int i=0; i<N_active; i++) global[i] = mini[i];
-    for(int j=0; j<N_encounters; j++) global[previous_encounter_index[j]] = mini[N_active + j];
+    for(int j=0; j<N_encounters_previous; j++) global[previous_encounter_index[j]] = mini[N_active + j];
+    printf("N_active=%d\n",N_active);
     
     //remove particle that has left Hill sphere by id
     int keep_sorted = 1;

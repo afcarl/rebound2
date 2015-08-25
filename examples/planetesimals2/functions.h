@@ -33,7 +33,7 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* const 
 
 void compare_encounter_indices(struct reb_simulation* s, int* encounter_index, int* previous_encounter_index, int N_encounters, int removal_id);
 
-void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int* previous_encounter_index, int N_encounters, int removal_id);
+void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int* previous_encounter_index, int N_encounters_previous, int removal_id);
 
 void update_encounter_indices(int** encounter_index, int** previous_encounter_index, int* N_encounters, int* N_encounters_previous);
 
