@@ -13,7 +13,7 @@
 #include "../examples/planetesimals2/functions.h"
 
 void heartbeat(struct reb_simulation* r);
-double tmax, planetesimal_mass, CE_exit_time = 0;
+double tmax, planetesimal_mass, CE_exit_time = 0, E_ini, L_ini;
 int n_output, CE_index = 0, warning = 0, N_encounters = 0, N_encounters_previous;
 int* encounter_index = NULL;
 int* previous_encounter_index = NULL;
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]){
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary     = REB_BOUNDARY_OPEN;
 	r->heartbeat	= heartbeat;
-    r->additional_forces = planetesimal_forces;
+    //r->additional_forces = planetesimal_forces;
     r->ri_hybrid.switch_ratio = atof(argv[1]);     //# hill radii for boundary between switch. Try 3?
     //r->usleep   = 20000; //larger the number, slower OpenGL simulation
     
@@ -104,6 +104,7 @@ int main(int argc, char* argv[]){
     if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
     
     //Integrate! Time it.
+    calc_ELtot(&E_ini, &L_ini, planetesimal_mass, r);
     clock_t timer = clock();
 	reb_integrate(r, tmax);
     clock_finish(timer,N_encounters,lgnddir);
@@ -156,16 +157,16 @@ void heartbeat(struct reb_simulation* r){
     
     //output stuff
     if (reb_output_check(r, tmax/n_output)){
-        double Etot = 0, Ltot = 0, a_p = 0, d_p = 0, e_p = 0, t = r->t;
-        calc_ELtot(&Etot, &Ltot, planetesimal_mass, r); //calcs Etot all in one go.
+        double E_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0, t = r->t;
+        calc_ELtot(&E_curr, &L_curr, planetesimal_mass, r); //calcs Etot all in one go.
         for(int i=1;i<r->N_active;i++){
             calc_ae(&a_p, &e_p, &d_p, r, i);
             
             FILE *append;
             append=fopen(plntdir, "a");
-            fprintf(append,"%f,%.8f,%.8f,%.15f,%.15f,%.8f\n",t,a_p,e_p,Etot,Ltot,d_p);
+            fprintf(append,"%f,%.8f,%.8f,%e,%.16f,%.8f\n",t,a_p,e_p,fabs((E_ini - E_curr)/E_ini),fabs((L_ini - L_curr)/L_ini),d_p);
             fclose(append);
-            if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
+            E_curr = E_ini; L_curr = L_ini;
         }
 		reb_output_timing(r, 0);
 	}

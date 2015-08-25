@@ -32,14 +32,12 @@ elif len(sys.argv) == 6:
 fos = open(''+file_name, 'r')
 data = np.loadtxt(fos, delimiter=',')
 
-for i in range(0,N_active): #only 1 planet for now
+for i in xrange(0,N_active):
     p=data[i::N_active]
-    if arg2 == 3:
-        E0 = p[0,arg2]
-        y = abs((p[arg4:arg3,arg2] - E0)/E0)
-    else:
-        y = p[arg4:arg3,arg2]
-    plt.plot(p[arg4:arg3,arg1], y, 'o'+colors[i], markeredgecolor='none', ms = 2, label='planet '+str(i), )
+    plt.plot(p[arg4:arg3,arg1], p[arg4:arg3,arg2], 'o'+colors[i], markeredgecolor='none', ms = 2, label='planet '+str(i), )
+    if arg2 == 3 or arg2==4:
+        plt.yscale('log')
+        break
 
 if arg2==5:
     plt.ylim([0.69,0.71])
