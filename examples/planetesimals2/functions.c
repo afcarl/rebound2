@@ -101,9 +101,9 @@ void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb
     const double G = r->G;
     double L = 0, E = 0;
     struct reb_particle* const particles = r->particles;
-    for(int i=0;i<N;i++){
-        struct reb_particle par = particles[i]; //planet occupies first slot.
-        if(i >= N_active) m1 = planetesimal_mass; else m1 = par.m;
+    for(int i=0;i<N_active;i++){
+        struct reb_particle par = particles[i];
+        if(i < N_active) m1 = par.m; else m1 = planetesimal_mass;
         const double dvx = par.vx;
         const double dvy = par.vy;
         const double dvz = par.vz;
@@ -119,13 +119,16 @@ void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb
         
         //E_tot
         E += 0.5*m1*(dvx*dvx + dvy*dvy + dvz*dvz);
-        for(int j=i+1;j<N;j++){
-            struct reb_particle par2 = particles[j];
-            if(j >= N_active) m2 = planetesimal_mass; else m2 = par2.m;
-            double ddx = dx - par2.x;
-            double ddy = dy - par2.y;
-            double ddz = dz - par2.z;
-            E -= G*m1*m2/sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
+        if(i<N_active){//ignore dE/dx = forces between planetesimals
+            for(int j=i+1;j<N;j++){
+                struct reb_particle par2 = particles[j];
+                if(j < N_active) m2 = par2.m; else m2 = planetesimal_mass;
+                m2 = par2.m;
+                double ddx = dx - par2.x;
+                double ddy = dy - par2.y;
+                double ddz = dz - par2.z;
+                E -= G*m1*m2/sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
+            }
         }
     }
         
