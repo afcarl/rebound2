@@ -254,7 +254,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
     reb_move_to_com(s);         //before IAS15 simulation starts, move to COM
 }
 
-void update_and_add_mini(struct reb_simulation* const r, struct reb_simulation* s, int N_encounters){
+void update_and_add_mini(struct reb_simulation* const r, struct reb_simulation* s, int N_encounters, int N_encounters_previous){
     int N_active = s->N_active;
     struct reb_particle* global = r->particles;
     struct reb_particle* mini = s->particles;
@@ -269,10 +269,20 @@ void update_and_add_mini(struct reb_simulation* const r, struct reb_simulation* 
         for(int j=0; j<N_encounters - 1; j++) global[encounter_index[j]] = mini[N_active + j];
     }
     
-    //add newest test particle to mini
-    int global_index = encounter_index[N_encounters - 1]; //newest particle crossing Hill radius
-    struct reb_particle pt = global[global_index];
+    //add newest test particle to mini - find where it is
+    int global_add_index, found_particle = 0;
+    for(int i=0;i<N_encounters_previous;i++){
+        printf("EI[%d]=%d,PEI=%d,",i,encounter_index[i], previous_encounter_index[i]);
+        if(encounter_index[i] != previous_encounter_index[i]){
+            global_add_index = encounter_index[i];
+            found_particle++;
+            break;
+        }
+    }
+    if(found_particle == 0) global_add_index = encounter_index[N_encounters - 1];
+    struct reb_particle pt = global[global_add_index];
     reb_add(s,pt);
+    printf("particle %d entering Hill sphere. Added to mini sim. \n",global_add_index);
 }
 
 void update_global(struct reb_simulation* const s, struct reb_simulation* r, int N_encounters){
@@ -305,6 +315,7 @@ void compare_encounter_indices(struct reb_simulation* s, int N_encounters, int r
                 fprintf(stderr,"\n\033[1mAlert!\033[0m Something out of order, particle arrays don't match. Exiting. \n");
                 exit(0);
             }
+            break;  //once particle to remove has been identified leave loop
         }
     }
     if(particle_remove == 0){
