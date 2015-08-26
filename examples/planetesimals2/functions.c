@@ -323,7 +323,6 @@ void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulat
     //update massive bodies and planetesimals
     for(int i=0; i<N_active; i++) global[i] = mini[i];
     for(int j=0; j<N_encounters_previous; j++) global[previous_encounter_index[j]] = mini[N_active + j];
-    printf("N_active=%d\n",N_active);
     
     //remove particle that has left Hill sphere by id
     int keep_sorted = 1;

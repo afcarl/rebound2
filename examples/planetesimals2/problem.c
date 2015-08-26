@@ -14,7 +14,7 @@
 
 void heartbeat(struct reb_simulation* r);
 double tmax, planetesimal_mass, CE_exit_time = 0, E_ini, L_ini;
-int n_output, CE_index = 0, warning = 0, N_encounters = 0, N_encounters_previous;
+int n_output, N_encounters = 0, N_encounters_previous, N_encounters_tot = 0;
 int* encounter_index = NULL;
 int* previous_encounter_index = NULL;
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
@@ -109,7 +109,7 @@ int main(int argc, char* argv[]){
 	reb_integrate(r, tmax);
     
     //finish
-    clock_finish(timer,N_encounters,lgnddir);
+    clock_finish(timer,N_encounters_tot,lgnddir);
     free(encounter_index);
     free(previous_encounter_index);
 }
@@ -132,7 +132,7 @@ void heartbeat(struct reb_simulation* r){
             case 1:{    //new particle entering, update mini
                 if(N_encounters > 1)reb_integrate(s, r->t); //Just update for 1st particle in Hill
                 update_and_add_mini(r,s,encounter_index,N_encounters);
-                printf("\nParticle %d entered Hill \n",encounter_index[0]);
+                N_encounters_tot++;
             } break;
             case -1:{    //dN < 0, old particle leaving
                 reb_integrate(s, r->t);
@@ -142,41 +142,6 @@ void heartbeat(struct reb_simulation* r){
             } break;
         }
         update_encounter_indices(&encounter_index, &previous_encounter_index, &N_encounters, &N_encounters_previous);
-
-        /*
-         struct reb_particle* global = r->particles;
-         struct reb_particle* mini = s->particles;
-         for(int i=0;i<r->N_active+N_encounters;i++){
-         printf("mini %d, x,y,vx,vy=%f,%f,%f,%f\n",i,mini[i].x,mini[i].y,mini[i].vx,mini[i].vy);
-         printf("mini %d, x,y,vx,vy=%f,%f,%f,%f\n",i,global[i].x,global[i].y,global[i].vx,global[i].vy);
-         }
-         int i = encounter_index[0];
-         printf("mini %d, x,y,vx,vy=%f,%f,%f,%f\n",i,global[i].x,global[i].y,global[i].vx,global[i].vy);
-         exit(0);*/
-        /*
-            if(previous_encounter_index == 0){ //initialize mini simulation
-                //fprintf(stderr,"\n\033[1mParticle %d entering\033[0m Hill Sphere at t=%f. \n",encounter_index, r->t);
-                update_mini(r,s,encounter_index);
-                previous_encounter_index = encounter_index;
-                
-            } else if(previous_encounter_index == encounter_index){//ensure same particle
-                reb_integrate(s, r->t);
-                update_global(s,r,encounter_index);
-                //printf("time comparison: r->t=%f, s->t=%f, s->dt=%f \n",r->t, s->t, s->dt);
-            }
-            else{
-                if(warning == 0){
-                    fprintf(stderr,"\n\033[1mWarning!\033[0m %d Just entered the Hill Sphere, but %d still inside too. Multiple Particles in Hill Sphere at t=%f. \n",encounter_index, previous_encounter_index, r->t);
-                    warning++;
-                }
-            }
-        } else if(previous_encounter_index != 0){//particle left hill sphere, update final time
-            fprintf(stderr,"\n\033[1mParticle %d leaving\033[0m Hill Sphere at t=%f.\n",previous_encounter_index, r->t);
-            reb_integrate(s, r->t);
-            update_global(s,r,previous_encounter_index);
-            previous_encounter_index = 0;
-            N_encounters++;
-        }*/
     }
     
     //output stuff
