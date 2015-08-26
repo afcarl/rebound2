@@ -116,7 +116,7 @@ int main(int argc, char* argv[]){
 
 void heartbeat(struct reb_simulation* r){
     if(r->integrator == REB_INTEGRATOR_WHFAST){
-        check_for_encounter(r, &encounter_index, &N_encounters);
+        check_for_encounter(r, &N_encounters);
         int dN = N_encounters - N_encounters_previous;
         if(abs(dN) > 1){
             fprintf(stderr,"\n\033[1mAlert!\033[0m %d Particles entering/leaving Hill sphere simultaneously. Exiting.\n",dN);
@@ -136,36 +136,35 @@ void heartbeat(struct reb_simulation* r){
             case 0:{    //no new particles entering Hill Sphere
                 if(N_encounters != 0){          //particle(s) inside Hill sphere
                     reb_integrate(s, r->t);
-                    update_global(s,r,encounter_index,N_encounters);
+                    update_global(s,r,N_encounters);
                 }       //else do nothing I think....
             }break;
             case 1:{    //new particle entering, update mini
                 if(N_encounters > 1)reb_integrate(s, r->t); //Just update for 1st particle in Hill
-                update_and_add_mini(r,s,encounter_index,N_encounters);
+                update_and_add_mini(r,s,N_encounters);
                 printf("particle %d entered\n",encounter_index[N_encounters-1]);
                 N_encounters_tot++;
             } break;
             case -1:{    //dN < 0, old particle leaving
                 reb_integrate(s, r->t);
                 int removal_id = 3;
-                compare_encounter_indices(s,encounter_index,previous_encounter_index,N_encounters,removal_id);
-                update_and_subtract_mini(r,s,previous_encounter_index,N_encounters_previous,removal_id);
+                compare_encounter_indices(s,N_encounters,removal_id);
+                update_and_subtract_mini(r,s,N_encounters_previous,removal_id);
             } break;
         }
-        
+        /*
         if(r->t > 45.8 && r->t < 46.8){
             printf("N_E=%d,size=%lu,",N_encounters,sizeof(encounter_index)/sizeof(encounter_index[0]));
             for(int i=0;i<N_encounters;i++) printf("EI(%d)=%d,",i,encounter_index[i]);
             printf("\n");
         }
-        
-        update_encounter_indices(r->t,&encounter_index, &previous_encounter_index, &N_encounters, &N_encounters_previous);
-        
         if(r->t > 45.8 && r->t < 46.8){
             printf("N_E_P=%d,size=%lu,",N_encounters_previous,sizeof(previous_encounter_index)/sizeof(previous_encounter_index[0]));
             for(int i=0;i<N_encounters_previous;i++) printf("PEI(%d)=%d,",i,previous_encounter_index[i]);
             printf("\n");
         }
+        */
+        update_encounter_indices(r->t, &N_encounters, &N_encounters_previous);
     }
     
     //output stuff

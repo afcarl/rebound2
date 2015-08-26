@@ -190,7 +190,7 @@ void planetesimal_forces(struct reb_simulation *a){
     }
 }
 
-void check_for_encounter(struct reb_simulation* const r, int** index_of_encounters, int* N_encounters){
+void check_for_encounter(struct reb_simulation* const r, int* N_encounters){
     const int N = r->N;
     const int N_active = r->N_active;
     struct reb_particle* restrict const particles = r->particles;
@@ -222,16 +222,10 @@ void check_for_encounter(struct reb_simulation* const r, int** index_of_encounte
             
             if(ratio<r->ri_hybrid.switch_ratio){
                 num_encounters++;
-                if(num_encounters == 1) *index_of_encounters[0] = j;
+                if(num_encounters == 1) encounter_index[0] = j;
                 else if(num_encounters > 1){//multiple close encounters
-                    int* tmpindex = realloc(*index_of_encounters,num_encounters*sizeof(int));
-                    if(!tmpindex){
-                        fprintf(stderr,"\n\033[1mAlert!\033[0m Could not reallocate new particle into array. Not tracking particle. Exiting.\n");
-                        exit(0);
-                    } else {
-                        tmpindex[num_encounters - 1] = j;
-                        *index_of_encounters = tmpindex;
-                    }
+                    encounter_index = realloc(encounter_index,num_encounters*sizeof(int));
+                    encounter_index[num_encounters - 1] = j;
                 }
             }
             
@@ -260,7 +254,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
     reb_move_to_com(s);         //before IAS15 simulation starts, move to COM
 }
 
-void update_and_add_mini(struct reb_simulation* const r, struct reb_simulation* s, int* encounter_index, int N_encounters){
+void update_and_add_mini(struct reb_simulation* const r, struct reb_simulation* s, int N_encounters){
     int N_active = s->N_active;
     struct reb_particle* global = r->particles;
     struct reb_particle* mini = s->particles;
@@ -281,7 +275,7 @@ void update_and_add_mini(struct reb_simulation* const r, struct reb_simulation* 
     reb_add(s,pt);
 }
 
-void update_global(struct reb_simulation* const s, struct reb_simulation* r, int* encounter_index, int N_encounters){
+void update_global(struct reb_simulation* const s, struct reb_simulation* r, int N_encounters){
     int N_active = s->N_active;
     struct reb_particle* global = r->particles;
     struct reb_particle* const mini = s->particles;
@@ -297,15 +291,15 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
     //printf("t=%f, particle-planet distance = %.10f\n",r->t, sqrt(rij2));
 }
 
-void compare_encounter_indices(struct reb_simulation* s, int* encounter_index, int* previous_encounter_index, int N_encounters, int removal_id){
+void compare_encounter_indices(struct reb_simulation* s, int N_encounters, int removal_id){
     int particle_remove = 0;
     int N_active = s->N_active;
     struct reb_particle* particles = s->particles;
-    for(int i=N_active;i<N_active+N_encounters;i++){
-        if(encounter_index[i] != previous_encounter_index[i]){
-            particles[i+1].id = removal_id;
+    for(int i=0;i<N_encounters;i++){
+        if(encounter_index[i] != previous_encounter_index[i]){  //arrays only track tesimals, just i, vs. i+N_active
+            particles[i+N_active].id = removal_id;              //mini simulation has massive + tesimals, needs N_active
             particle_remove++;
-            printf("particle %d leaving\n",previous_encounter_index[i+1]);
+            printf("particle %d leaving\n",previous_encounter_index[i]);
             //check
             if(encounter_index[i] != previous_encounter_index[i+1]){
                 fprintf(stderr,"\n\033[1mAlert!\033[0m Something out of order, particle arrays don't match. Exiting. \n");
@@ -319,7 +313,7 @@ void compare_encounter_indices(struct reb_simulation* s, int* encounter_index, i
     }
 }
 
-void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int* previous_encounter_index, int N_encounters_previous, int removal_id){
+void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int N_encounters_previous, int removal_id){
     int N_active = s->N_active;
     struct reb_particle* global = r->particles;
     struct reb_particle* mini = s->particles;
@@ -333,36 +327,22 @@ void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulat
     reb_remove_by_id(s,removal_id,keep_sorted);
 }
 
-void update_encounter_indices(double t,int** encounter_index, int** previous_encounter_index, int* N_encounters, int* N_encounters_previous){
-    
-    for(int i=0;i<*N_encounters;i++){
-        if(t > 45.8 && t < 46.8) printf("!encounter_index[%d]=%d\n",i,*encounter_index[i]);
-    }
+void update_encounter_indices(double t, int* N_encounters, int* N_encounters_previous){
     
     //transfer values from encounter_index to previous_encounter_index
     //****more efficient way to do this???******
     int size;
     if(*N_encounters == 0) size = 1; else size = *N_encounters;
     
-    int* tmpindex = realloc(*previous_encounter_index,size*sizeof(int));
-    if(!tmpindex){
-        fprintf(stderr,"\n\033[1mAlert!\033[0m Could not reallocate new particle into update_encounter_array. Not tracking particle. Exiting.\n");
-        exit(0);
-    }
+    previous_encounter_index = realloc(previous_encounter_index,size*sizeof(int));
     
-    if(*N_encounters == 0) tmpindex[0] = 0; else {
-        for(int i=0;i<*N_encounters;i++){
-            tmpindex[i] = *encounter_index[i];
-            //if(t > 45.8 && t < 46.8) printf("!encounter_index[%d]=%d,tmpindex=%d\n",i,*encounter_index[i],tmpindex[i]);
-        }
+    if(*N_encounters == 0) previous_encounter_index[0] = 0; else {
+        for(int i=0;i<*N_encounters;i++) previous_encounter_index[i] = encounter_index[i];
     }
-    
-    *previous_encounter_index = tmpindex;
     
     //reset encounter index
-    *encounter_index = realloc(*encounter_index,sizeof(int));   //reset to single element
-    *encounter_index[0] = 0;
-    if(t > 45.8 && t < 46.8) printf("reset encounter_index[0]=%d,size=%lu\n",*encounter_index[0], sizeof(*encounter_index)/sizeof(*encounter_index[0]));
+    encounter_index = realloc(encounter_index,sizeof(int));   //reset to single element
+    encounter_index[0] = 0;
     
     //reset encounter counters.
     *N_encounters_previous = *N_encounters;
