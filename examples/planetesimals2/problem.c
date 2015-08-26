@@ -23,7 +23,7 @@ struct reb_simulation* s;
 int main(int argc, char* argv[]){
 	struct reb_simulation* r = reb_create_simulation();
 	// Setup constants
-    tmax = 500;
+    tmax = 50;
 	r->integrator	= atoi(argv[3]);    //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, HYBRID = 5
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary     = REB_BOUNDARY_OPEN;
@@ -34,7 +34,7 @@ int main(int argc, char* argv[]){
     
     // System constants
     double dRHill = atof(argv[2]);      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
-    double N_planetesimals = 50;
+    double N_planetesimals = 100;
     double M_planetesimals = 3e-6; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
 	
     // Other constants
@@ -120,6 +120,16 @@ void heartbeat(struct reb_simulation* r){
         int dN = N_encounters - N_encounters_previous;
         if(abs(dN) > 1){
             fprintf(stderr,"\n\033[1mAlert!\033[0m %d Particles entering/leaving Hill sphere simultaneously. Exiting.\n",dN);
+            struct reb_particle* const global = r->particles;
+            printf("N_encounters=%d\n",N_encounters);
+            for(int i=0;i<N_encounters;i++){
+                int index = encounter_index[i];
+                const double dx = global[index].x - global[2].x;
+                const double dy = global[index].y - global[2].y;
+                const double dz = global[index].z - global[2].z;
+                double rij2 = dx*dx + dy*dy + dz*dz;
+                printf("particle %d distance=%.14f\n",index,sqrt(rij2));
+            }
             exit(0);
         }
         switch(dN){     //assume that particles can only enter/leave Hill sphere 1 at a time.
@@ -132,6 +142,7 @@ void heartbeat(struct reb_simulation* r){
             case 1:{    //new particle entering, update mini
                 if(N_encounters > 1)reb_integrate(s, r->t); //Just update for 1st particle in Hill
                 update_and_add_mini(r,s,encounter_index,N_encounters);
+                printf("particle %d entered\n",encounter_index[N_encounters-1]);
                 N_encounters_tot++;
             } break;
             case -1:{    //dN < 0, old particle leaving
@@ -141,7 +152,20 @@ void heartbeat(struct reb_simulation* r){
                 update_and_subtract_mini(r,s,previous_encounter_index,N_encounters_previous,removal_id);
             } break;
         }
-        update_encounter_indices(&encounter_index, &previous_encounter_index, &N_encounters, &N_encounters_previous);
+        
+        if(r->t > 45.8 && r->t < 46.8){
+            printf("N_E=%d,size=%lu,",N_encounters,sizeof(encounter_index)/sizeof(encounter_index[0]));
+            for(int i=0;i<N_encounters;i++) printf("EI(%d)=%d,",i,encounter_index[i]);
+            printf("\n");
+        }
+        
+        update_encounter_indices(r->t,&encounter_index, &previous_encounter_index, &N_encounters, &N_encounters_previous);
+        
+        if(r->t > 45.8 && r->t < 46.8){
+            printf("N_E_P=%d,size=%lu,",N_encounters_previous,sizeof(previous_encounter_index)/sizeof(previous_encounter_index[0]));
+            for(int i=0;i<N_encounters_previous;i++) printf("PEI(%d)=%d,",i,previous_encounter_index[i]);
+            printf("\n");
+        }
     }
     
     //output stuff

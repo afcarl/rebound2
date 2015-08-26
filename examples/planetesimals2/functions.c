@@ -267,7 +267,7 @@ void update_and_add_mini(struct reb_simulation* const r, struct reb_simulation* 
     
     //If first update in a while, sync up times, update massive bodies
     if(N_encounters == 1){
-        s->t = r->t;    
+        s->t = r->t;
         for(int i=0; i<N_active; i++) mini[i] = global[i];
     } else {
         //update any particles already present that were just integrated by mini
@@ -305,6 +305,7 @@ void compare_encounter_indices(struct reb_simulation* s, int* encounter_index, i
         if(encounter_index[i] != previous_encounter_index[i]){
             particles[i+1].id = removal_id;
             particle_remove++;
+            printf("particle %d leaving\n",previous_encounter_index[i+1]);
             //check
             if(encounter_index[i] != previous_encounter_index[i+1]){
                 fprintf(stderr,"\n\033[1mAlert!\033[0m Something out of order, particle arrays don't match. Exiting. \n");
@@ -312,7 +313,10 @@ void compare_encounter_indices(struct reb_simulation* s, int* encounter_index, i
             }
         }
     }
-    if(particle_remove == 0) particles[N_encounters+N_active].id = removal_id;
+    if(particle_remove == 0){
+        particles[N_encounters+N_active].id = removal_id;
+        printf("particled %d leaving.\n",previous_encounter_index[N_encounters]);
+    }
 }
 
 void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int* previous_encounter_index, int N_encounters_previous, int removal_id){
@@ -329,17 +333,36 @@ void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulat
     reb_remove_by_id(s,removal_id,keep_sorted);
 }
 
-void update_encounter_indices(int** encounter_index, int** previous_encounter_index, int* N_encounters, int* N_encounters_previous){
+void update_encounter_indices(double t,int** encounter_index, int** previous_encounter_index, int* N_encounters, int* N_encounters_previous){
+    
+    for(int i=0;i<*N_encounters;i++){
+        if(t > 45.8 && t < 46.8) printf("!encounter_index[%d]=%d\n",i,*encounter_index[i]);
+    }
+    
     //transfer values from encounter_index to previous_encounter_index
     //****more efficient way to do this???******
-    *previous_encounter_index = realloc(*previous_encounter_index,*N_encounters*sizeof(int));
-    for(int i=0;i<*N_encounters;i++){
-        *previous_encounter_index[i] = *encounter_index[i];
+    int size;
+    if(*N_encounters == 0) size = 1; else size = *N_encounters;
+    
+    int* tmpindex = realloc(*previous_encounter_index,size*sizeof(int));
+    if(!tmpindex){
+        fprintf(stderr,"\n\033[1mAlert!\033[0m Could not reallocate new particle into update_encounter_array. Not tracking particle. Exiting.\n");
+        exit(0);
     }
+    
+    if(*N_encounters == 0) tmpindex[0] = 0; else {
+        for(int i=0;i<*N_encounters;i++){
+            tmpindex[i] = *encounter_index[i];
+            //if(t > 45.8 && t < 46.8) printf("!encounter_index[%d]=%d,tmpindex=%d\n",i,*encounter_index[i],tmpindex[i]);
+        }
+    }
+    
+    *previous_encounter_index = tmpindex;
     
     //reset encounter index
     *encounter_index = realloc(*encounter_index,sizeof(int));   //reset to single element
     *encounter_index[0] = 0;
+    if(t > 45.8 && t < 46.8) printf("reset encounter_index[0]=%d,size=%lu\n",*encounter_index[0], sizeof(*encounter_index)/sizeof(*encounter_index[0]));
     
     //reset encounter counters.
     *N_encounters_previous = *N_encounters;

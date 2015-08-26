@@ -35,13 +35,14 @@ void compare_encounter_indices(struct reb_simulation* s, int* encounter_index, i
 
 void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int* previous_encounter_index, int N_encounters_previous, int removal_id);
 
-void update_encounter_indices(int** encounter_index, int** previous_encounter_index, int* N_encounters, int* N_encounters_previous);
+void update_encounter_indices(double t,int** encounter_index, int** previous_encounter_index, int* N_encounters, int* N_encounters_previous);
 
 void clock_finish(clock_t timer, int N_encounters, char* legenddir);
 
 //EXTERNAL VARIABLES******************************
 extern double planetesimal_mass;
-
+extern int* encounter_index;
+extern int* previous_encounter_index;
 
 
 #endif /* defined(____functions__) */
