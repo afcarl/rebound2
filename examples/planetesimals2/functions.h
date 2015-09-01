@@ -29,11 +29,11 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s);
 
 void update_and_add_mini(struct reb_simulation* const r, struct reb_simulation* const s, int N_encounters, int N_encounters_previous);
 
-void update_global(struct reb_simulation* const s, struct reb_simulation* const r, int N_encounters);
+void update_global(struct reb_simulation* const s, struct reb_simulation* const r, int N_encounters_previous, int N_encounters);
 
-void compare_encounter_indices(struct reb_simulation* s, int N_encounters, int removal_id);
+void compare_indices_and_subtract(struct reb_simulation* s, int N_encounters, int N_encounters_previous);
 
-void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int N_encounters_previous, int removal_id);
+//void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int N_encounters_previous, int removal_id);
 
 void update_encounter_indices(double t, int* N_encounters, int* N_encounters_previous);
 
