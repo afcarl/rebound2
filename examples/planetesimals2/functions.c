@@ -285,7 +285,7 @@ void update_and_add_mini(struct reb_simulation* const r, struct reb_simulation* 
     //add newest test particle to mini - find where it is
     int global_add_index, found_particle = 0;
     for(int i=0;i<N_encounters_previous;i++){
-        if(encounter_index[i] != previous_encounter_index[i]){
+        if(encounter_index[i] != previous_encounter_index[i]){ //******is this right?? Don't think so...
             global_add_index = encounter_index[i];
             found_particle++;
             break;
@@ -313,6 +313,7 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
                 global[PEI] = mini[mini_index];
                 particle_update++;
                 
+                /*
                 if(PEI == 371 || PEI == 498){
                     const double dx = mini[2].x - mini[mini_index].x;
                     const double dy = mini[2].y - mini[mini_index].y;
@@ -324,7 +325,7 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
                     const double dz2 = mini[1].z - mini[mini_index].z;
                     double rij2_1 = dx2*dx2 + dy2*dy2 + dz2*dz2;
                     printf("t=%f, %d particle-planet distances = %.10f, %.10f, m1=%f, m2=%f\n",r->t, PEI, sqrt(rij2_1), sqrt(rij2), mini[1].m, mini[2].m);
-                }
+                }*/
             }
         }
         
@@ -347,13 +348,19 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
         }
     }
     
-    //for(int j=0; j<N_encounters; j++) global[encounter_index[j]] = mini[N_active + j];
-    
-    //const double dx = mini[1].x - mini[2].x;
-    //const double dy = mini[1].y - mini[2].y;
-    //const double dz = mini[1].z - mini[2].z;
-    //double rij2 = dx*dx + dy*dy + dz*dz;
-    //printf("t=%f, particle-planet distance = %.10f\n",r->t, sqrt(rij2));
+}
+
+//Make sure that one particle doesn't enter as another exits.
+int compare_indices(int N_encounters_previous, int* remove_index, int* add_index){
+    int same_particles = 1;
+    for(int i=0;i<N_encounters_previous;i++){
+        if(encounter_index[i] != previous_encounter_index[i]){
+            *remove_index = previous_encounter_index[i];
+            *add_index = encounter_index[i];
+            same_particles = 0;
+        }
+    }
+    return same_particles;
 }
 
 void compare_indices_and_subtract(struct reb_simulation* s, int N_encounters, int N_encounters_previous){

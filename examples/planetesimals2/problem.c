@@ -59,7 +59,7 @@ int main(int argc, char* argv[]){
     r->N_active++;
     
     //planet 2
-    double a2=1, m2=4e-5, e2=0.01;
+    double a2=1, m2=5e-5, e2=0.01;
     struct reb_particle p2 = reb_tools_init_orbit2d(r->G,star.m,m2,a2,e2,0,0);
     p2.id = 1;              //1 = planet
     reb_add(r, p2);
@@ -123,12 +123,12 @@ void heartbeat(struct reb_simulation* r){
             exit(0);
         }
         /*
-        if(r->t > 54 && r->t < 55){
+        if(r->t > 0 && r->t < 5){
             printf("N_E=%d,size=%lu,",N_encounters,sizeof(encounter_index)/sizeof(encounter_index[0]));
             for(int i=0;i<N_encounters;i++) printf("EI(%d)=%d,",i,encounter_index[i]);
             printf("\n");
         }
-         if(r->t > 54 && r->t < 55){
+         if(r->t > 0 && r->t < 5){
          printf("N_E_P=%d,size=%lu,",N_encounters_previous,sizeof(previous_encounter_index)/sizeof(previous_encounter_index[0]));
          for(int i=0;i<N_encounters_previous;i++) printf("PEI(%d)=%d,",i,previous_encounter_index[i]);
          printf("\n");
@@ -138,8 +138,15 @@ void heartbeat(struct reb_simulation* r){
         switch(dN){     //assume that particles can only enter/leave Hill sphere 1 at a time.
             case 0:{    //no new particles entering Hill Sphere
                 if(N_encounters != 0){          //particle(s) inside Hill sphere
-                    reb_integrate(s, r->t);
-                    update_global(s,r,N_encounters_previous, N_encounters);
+                    int remove_index = 0, add_index = 0;
+                    int same_particles = compare_indices(N_encounters_previous,&remove_index,&add_index);
+                    if(same_particles == 0){//Particle exits as another enters
+                        fprintf(stderr,"\n\033[1mAlert!\033[0m Particle %d exiting as %d enters. Exiting program.\n",remove_index,add_index);
+                        exit(0);
+                    } else {//same particles
+                        reb_integrate(s, r->t);
+                        update_global(s,r,N_encounters_previous, N_encounters);
+                    }
                 }       //else do nothing
             }break;
             case 1:{    //new particle entering, update mini
