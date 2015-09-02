@@ -27,17 +27,9 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters);
 
 void ini_mini(struct reb_simulation* const r, struct reb_simulation* s);
 
-//void update_and_add_mini_or_subtract(struct reb_simulation* const r, struct reb_simulation* const s, int N_encounters, int N_encounters_previous);
-
 void update_global(struct reb_simulation* const s, struct reb_simulation* const r, int N_encounters_previous, int N_encounters);
 
 void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters,int N_encounters_previous, int dN);
-
-//int compare_indices(int N_encounters_previous, int* remove_index, int* add_index);
-
-//void compare_indices_and_subtract(struct reb_simulation* s, int N_encounters, int N_encounters_previous);
-
-//void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int N_encounters_previous, int removal_id);
 
 void update_encounter_indices(double t, int* N_encounters, int* N_encounters_previous);
 

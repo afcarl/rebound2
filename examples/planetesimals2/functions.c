@@ -16,7 +16,7 @@
 #include "../../src/rebound.h"
 #include "../../src/integrator_whfast.h"
 
-void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh){
+void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, int HYBRID_ON){
     
     int N_active = r->N_active, N = r->N;
     
@@ -28,7 +28,7 @@ void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double t
     
     char str[100] = {0};
     if(r->integrator == REB_INTEGRATOR_WHFAST){
-        intgrtr = "HYBRID";
+        if(HYBRID_ON == 1)intgrtr = "HYBRID"; else intgrtr = "WHFAST";
         strcat(str, intgrtr);
         strcat(str, us);
         int hybrid_rint = (int) r->ri_hybrid.switch_ratio;
@@ -190,6 +190,24 @@ void planetesimal_forces(struct reb_simulation *a){
     }
 }
 
+//initialize mini-simulation for close encounters
+void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
+    s->N_active = r->N_active;
+    s->integrator = REB_INTEGRATOR_IAS15;
+    s->additional_forces = planetesimal_forces;
+    s->exact_finish_time = 1;
+    s->dt = r->dt;
+    
+    struct reb_particle* restrict const particles = r->particles;
+    for(int k=0; k<s->N_active; k++){
+        struct reb_particle p = particles[k];
+        reb_add(s,p);
+    }
+    
+    reb_move_to_com(s);         //before IAS15 simulation starts, move to COM
+}
+
+//collect the id/array number of all planetesimals involved in a close encounter
 void check_for_encounter(struct reb_simulation* const r, int* N_encounters){
     const int N = r->N;
     const int N_active = r->N_active;
@@ -237,30 +255,14 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters){
     *N_encounters = num_encounters;
 }
 
-//initialize mini-simulation for close encounters
-void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
-    s->N_active = r->N_active;
-    s->integrator = REB_INTEGRATOR_IAS15;
-    s->additional_forces = planetesimal_forces;
-    s->exact_finish_time = 1;
-    s->dt = r->dt;
-    
-    struct reb_particle* restrict const particles = r->particles;
-    for(int k=0; k<s->N_active; k++){
-        struct reb_particle p = particles[k];
-        reb_add(s,p);
-    }
-    
-    reb_move_to_com(s);         //before IAS15 simulation starts, move to COM
-}
-
+//Just after mini has been integrated up to r->t, update global.
 void update_global(struct reb_simulation* const s, struct reb_simulation* r, int N_encounters_previous, int N_encounters){
     int N_active = s->N_active;
     struct reb_particle* global = r->particles;
     struct reb_particle* const mini = s->particles;
 
     //update massive and planetesimal particles
-    for(int i=0; i<N_active; i++) global[i] = mini[i];  //massive, always in same order
+    for(int i=0; i<N_active; i++) global[i] = mini[i];  //massive particles, always in same order
     for(int j=0; j<N_encounters_previous; j++){
         _Bool particle_update = 0;
         int PEI = previous_encounter_index[j];          //encounter index == global[EI].id
@@ -269,20 +271,6 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
             if(mini[mini_index].id == PEI){
                 global[PEI] = mini[mini_index];
                 particle_update = 1;
-                
-                /*
-                if(PEI == 371 || PEI == 498){
-                    const double dx = mini[2].x - mini[mini_index].x;
-                    const double dy = mini[2].y - mini[mini_index].y;
-                    const double dz = mini[2].z - mini[mini_index].z;
-                    double rij2 = dx*dx + dy*dy + dz*dz;
-                    
-                    const double dx2 = mini[1].x - mini[mini_index].x;
-                    const double dy2 = mini[1].y - mini[mini_index].y;
-                    const double dz2 = mini[1].z - mini[mini_index].z;
-                    double rij2_1 = dx2*dx2 + dy2*dy2 + dz2*dz2;
-                    printf("t=%f, %d particle-planet distances = %.10f, %.10f, m1=%f, m2=%f\n",r->t, PEI, sqrt(rij2_1), sqrt(rij2), mini[1].m, mini[2].m);
-                }*/
             }
         }
         
@@ -323,7 +311,7 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             struct reb_particle pt = global[EI];
             reb_add(s,pt);
             N_encounters_tot++;
-            printf("particle %d added. dN == %d, N_close_encounters=%d\n",EI,dN,N_encounters);
+            //printf("particle %d added. dN == %d, N_close_encounters=%d\n",EI,dN,N_encounters);
         }
     }
     
@@ -339,12 +327,11 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             for(int k=0;removed_particle==0 && k<N_encounters_previous;k++){
                 if(mini[k+N_active].id == PEI){
                     removed_particle = reb_remove(s,k+N_active,1);    //remove particle
-                    printf("particle %d leaving. dN == %d, N_close_encounters=%d.\n",PEI,dN,N_encounters);
+                    //printf("particle %d leaving. dN == %d, N_close_encounters=%d.\n",PEI,dN,N_encounters);
                 }
             }
         }
     }
-
 
 }
 
@@ -377,139 +364,3 @@ void clock_finish(clock_t timer, int N_encounters, char* legenddir){
     fprintf(ff,"Elapsed simulation time is %f s, with %d close encounters.\n",result,N_encounters);
     printf("\n\nSimulation complete. Elapsed simulation time is %f s, with %d close encounters.\n\n",result,N_encounters);
 }
-
-/*
- void compare_indices_and_subtract(struct reb_simulation* s, int N_encounters, int N_encounters_previous){
- 
- //int particle_remove = 0;
- int N_active = s->N_active;
- struct reb_particle* particles = s->particles;
- int removed_particle = 0;
- for(int i=0;i<N_encounters_previous;i++){
- _Bool check_next = 0;
- int index_found = 0;
- int PEI = previous_encounter_index[i];
- for(int j=0;check_next == 0 && j<N_encounters;j++){
- if(encounter_index[j] == PEI){
- index_found++;
- check_next = 1;      //skip to next outer loop iteration.
- }
- }
- if(index_found == 0){
- for(int k=0;k<N_encounters_previous;k++){
- if(particles[k+N_active].id == PEI){
- removed_particle = reb_remove(s,k+N_active,1);    //remove particle
- printf("particle %d leaving\n",PEI);
- goto outer; //if we found our particle to remove, we're done here.
- }
- }
- }
- }
- 
- outer:
- if(removed_particle == 0){
- fprintf(stderr,"\n\033[1mAlert!\033[0m Particle was supposed to be removed but wasn't. Exiting. \n");
- 
- printf("N_encounters=%d,size=%lu,",N_encounters,sizeof(encounter_index)/sizeof(encounter_index[0]));
- for(int i=0;i<N_encounters;i++) printf("EI(%d)=%d,",i,encounter_index[i]);
- printf("\n");
- 
- printf("N_encounters_previous=%d,size=%lu,",N_encounters_previous,sizeof(previous_encounter_index)/sizeof(previous_encounter_index[0]));
- for(int i=0;i<N_encounters_previous;i++) printf("PEI(%d)=%d,",i,previous_encounter_index[i]);
- printf("\n");
- 
- exit(0);
- }
- 
- /*
- if(encounter_index[i] != previous_encounter_index[i]){
- particles[i+N_active].id = removal_id;              //mini simulation has massive + tesimals, needs N_active
- particle_remove++;
- printf("particle %d leaving\n",previous_encounter_index[i]);
- //check
- if(encounter_index[i] != previous_encounter_index[i+1]){
- fprintf(stderr,"\n\033[1mAlert!\033[0m Something out of order, particle arrays don't match. Exiting. \n");
- exit(0);
- }
- break;  //once particle to remove has been identified leave loop
- }
- }
- if(particle_remove == 0){
- particles[N_encounters+N_active].id = removal_id;
- printf("particled %d leaving.\n",previous_encounter_index[N_encounters]);
- }
- }
- */
-
-/*
- //Make sure that one particle doesn't enter as another exits.
- int compare_indices(int N_encounters_previous, int* remove_index, int* add_index){
- int same_particles = 1;
- for(int i=0;i<N_encounters_previous;i++){
- if(encounter_index[i] != previous_encounter_index[i]){
- *remove_index = previous_encounter_index[i];
- *add_index = encounter_index[i];
- same_particles = 0;
- }
- }
- return same_particles;
- }
- */
-
-/*
- void update_and_add_mini_or_subtract(struct reb_simulation* const r, struct reb_simulation* s, int N_encounters, int N_encounters_previous){
- int N_active = s->N_active;
- struct reb_particle* global = r->particles;
- struct reb_particle* mini = s->particles;
- 
- //If first update in a while, sync up times, update massive bodies in mini
- if(N_encounters == 1){
- s->t = r->t;
- for(int i=0; i<N_active; i++) mini[i] = global[i];
- } else {
- //update any particles already present from last iteration that were just integrated by mini
- for(int i=0; i<N_active; i++) global[i] = mini[i];   //massive
-    for(int j=0; j<N_encounters_previous; j++){
-    _Bool particle_update = 0;
-    int PEI = previous_encounter_index[j];        //previous_encounter_index == global[PEI].id = PEI
-    for(int k=0;particle_update == 0 && k<N_encounters_previous;k++){
-        if(mini[N_active + k].id == PEI){
-            global[PEI] = mini[N_active + k];
-            particle_update = 1;
-        }
-    }
- if(particle_update == 0){
- fprintf(stderr,"\n\033[1mAlert!\033[0m Particle %d couldn't be found in update_global. Exiting. \n",PEI);
- exit(0);
- }
- }
- }
- }
- */
-
-/*
- void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int N_encounters_previous, int removal_id){
- int N_active = s->N_active;
- struct reb_particle* global = r->particles;
- struct reb_particle* mini = s->particles;
- 
- //update massive bodies and planetesimals
- for(int i=0; i<N_active; i++) global[i] = mini[i];
- for(int j=0; j<N_encounters_previous; j++){
- int particle_update = 0;
- int PEI = previous_encounter_index[j];        //previous_encounter_index == global[PEI].id == PEI
- for(int k=0;k<N_encounters_previous;k++){
- if(mini[N_active + k].id == PEI){
- global[PEI] = mini[N_active + k];
- particle_update++;
- }
- }
- if(particle_update == 0){
- fprintf(stderr,"\n\033[1mAlert!\033[0m Particle %d couldn't be found in subract_mini. Exiting. \n",PEI);
- for(int k=0;k<N_encounters_previous;k++)printf("id[%d]=%d\n",k,mini[N_active + k].id);
- exit(0);
- }
- }
- //for(int j=0; j<N_encounters_previous; j++) global[previous_encounter_index[j]] = mini[N_active + j];
- 
- }*/

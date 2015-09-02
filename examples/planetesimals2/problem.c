@@ -14,7 +14,7 @@
 
 void heartbeat(struct reb_simulation* r);
 double tmax, planetesimal_mass, CE_exit_time = 0, E_ini, L_ini;
-int n_output, N_encounters = 0, N_encounters_previous, N_encounters_tot = 0;
+int n_output, N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON;
 int* encounter_index = NULL;
 int* previous_encounter_index = NULL;
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
@@ -23,7 +23,8 @@ struct reb_simulation* s;
 int main(int argc, char* argv[]){
 	struct reb_simulation* r = reb_create_simulation();
 	// Setup constants
-    tmax = 100;
+    tmax = 5000;
+    HYBRID_ON = 0;
 	r->integrator	= atoi(argv[3]);    //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, HYBRID = 5
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary     = REB_BOUNDARY_OPEN;
@@ -96,7 +97,7 @@ int main(int argc, char* argv[]){
 	}
     
     //Initializing stuff
-    legend(plntdir, lgnddir, r, tmax, planetesimal_mass, M_planetesimals, inner, outer, powerlaw, m1, a1, e1, star.m, dRHill);
+    legend(plntdir, lgnddir, r, tmax, planetesimal_mass, M_planetesimals, inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,HYBRID_ON);
     s = reb_create_simulation();    //initialize mini simulation (IAS15)
     ini_mini(r,s);
     if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
@@ -115,65 +116,26 @@ int main(int argc, char* argv[]){
 }
 
 void heartbeat(struct reb_simulation* r){
-    if(r->integrator == REB_INTEGRATOR_WHFAST){
+    if(r->integrator == REB_INTEGRATOR_WHFAST && HYBRID_ON == 1){
         check_for_encounter(r, &N_encounters);
         int dN = N_encounters - N_encounters_previous;
-
-        /*
-        if(r->t > 0 && r->t < 5){
-            printf("N_E=%d,size=%lu,",N_encounters,sizeof(encounter_index)/sizeof(encounter_index[0]));
-            for(int i=0;i<N_encounters;i++) printf("EI(%d)=%d,",i,encounter_index[i]);
-            printf("\n");
-        }
-         if(r->t > 0 && r->t < 5){
-         printf("N_E_P=%d,size=%lu,",N_encounters_previous,sizeof(previous_encounter_index)/sizeof(previous_encounter_index[0]));
-         for(int i=0;i<N_encounters_previous;i++) printf("PEI(%d)=%d,",i,previous_encounter_index[i]);
-         printf("\n");
-         }*/
         
-        if(dN==0 && N_encounters == 0){;}//do nothing
-        else if(dN > 0 && N_encounters == 1){//first update in a while, only update massive bodies in mini
-            s->t = r->t;
-            int N_active = s->N_active;
-            struct reb_particle* global = r->particles;
-            struct reb_particle* mini = s->particles;
-            for(int i=0; i<N_active; i++) mini[i] = global[i];
-            add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
+        if(N_encounter_previous == 0){
+            if(N_encounters > 0){
+                //first update in a while, only update massive bodies in mini and add any particles
+                s->t = r->t;
+                int N_active = s->N_active;
+                struct reb_particle* global = r->particles;
+                struct reb_particle* mini = s->particles;
+                for(int i=0; i<N_active; i++) mini[i] = global[i];
+                add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
+            }   //else N_encounters == 0, in which case do nothing.
         } else {//integrate existing mini, update global, check for new particles.
             reb_integrate(s, r->t);
             update_global(s,r,N_encounters_previous, N_encounters);
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
         }
-        
         update_encounter_indices(r->t, &N_encounters, &N_encounters_previous);
-        
-        /*
-        if(dN == 0){    //no net particle change
-            if(N_encounters != 0){          //particle(s) inside Hill sphere
-                reb_integrate(s, r->t);
-                update_global(s,r,N_encounters_previous, N_encounters);
-                add_or_subtract_particles(r,s,N_encounters_previous,dN);
-                //int same_particles = compare_indices(N_encounters_previous,&remove_index,&add_index);
-                //if(same_particles == 0){//Particle exits as another enters
-                    //fprintf(stderr,"\n\033[1mAlert!\033[0m Particle %d exiting as %d enters. Exiting program.\n",remove_index,add_index);
-                    //exit(0);
-            }       //else do nothing
-        }
-        else if(dN > 0){ //new particle(s) entering, update mini
-            if(N_encounters == 1){//if first update in a while, just update massive bodies in mini
-
-            } else{
-                reb_integrate(s, r->t);
-                update_global(s,r,N_encounters_previous, N_encounters);
-                add_or_subtract_particles(r,s,N_encounters_previous,dN);
-            }
-        } else{//old particle(s) leaving, update mini
-            reb_integrate(s, r->t);
-            update_global(s,r,N_encounters_previous, N_encounters);
-            add_or_subtract_particles(r,s,N_encounters_previous,dN);
-            //compare_indices_and_subtract(s,N_encounters,N_encounters_previous);
-            //update_mini(r,s,N_encounters_previous,removal_id);
-        } */
     }
     
     //output stuff
