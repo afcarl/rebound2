@@ -364,6 +364,7 @@ int compare_indices(int N_encounters_previous, int* remove_index, int* add_index
 }
 
 void compare_indices_and_subtract(struct reb_simulation* s, int N_encounters, int N_encounters_previous){
+    
     //int particle_remove = 0;
     int N_active = s->N_active;
     struct reb_particle* particles = s->particles;
@@ -423,33 +424,6 @@ outer:
     }*/
 }
 
-/*
-void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int N_encounters_previous, int removal_id){
-    int N_active = s->N_active;
-    struct reb_particle* global = r->particles;
-    struct reb_particle* mini = s->particles;
-    
-    //update massive bodies and planetesimals
-    for(int i=0; i<N_active; i++) global[i] = mini[i];
-    for(int j=0; j<N_encounters_previous; j++){
-        int particle_update = 0;
-        int PEI = previous_encounter_index[j];        //previous_encounter_index == global[PEI].id == PEI
-        for(int k=0;k<N_encounters_previous;k++){
-            if(mini[N_active + k].id == PEI){
-                global[PEI] = mini[N_active + k];
-                particle_update++;
-            }
-        }
-        if(particle_update == 0){
-            fprintf(stderr,"\n\033[1mAlert!\033[0m Particle %d couldn't be found in subract_mini. Exiting. \n",PEI);
-            for(int k=0;k<N_encounters_previous;k++)printf("id[%d]=%d\n",k,mini[N_active + k].id);
-            exit(0);
-        }
-    }
-    //for(int j=0; j<N_encounters_previous; j++) global[previous_encounter_index[j]] = mini[N_active + j];
-
-}*/
-
 void update_encounter_indices(double t, int* N_encounters, int* N_encounters_previous){
     
     //transfer values from encounter_index to previous_encounter_index
@@ -480,3 +454,30 @@ void clock_finish(clock_t timer, int N_encounters, char* legenddir){
     fprintf(ff,"Elapsed simulation time is %f s, with %d close encounters.\n",result,N_encounters);
     printf("\n\nSimulation complete. Elapsed simulation time is %f s, with %d close encounters.\n\n",result,N_encounters);
 }
+
+/*
+ void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int N_encounters_previous, int removal_id){
+ int N_active = s->N_active;
+ struct reb_particle* global = r->particles;
+ struct reb_particle* mini = s->particles;
+ 
+ //update massive bodies and planetesimals
+ for(int i=0; i<N_active; i++) global[i] = mini[i];
+ for(int j=0; j<N_encounters_previous; j++){
+ int particle_update = 0;
+ int PEI = previous_encounter_index[j];        //previous_encounter_index == global[PEI].id == PEI
+ for(int k=0;k<N_encounters_previous;k++){
+ if(mini[N_active + k].id == PEI){
+ global[PEI] = mini[N_active + k];
+ particle_update++;
+ }
+ }
+ if(particle_update == 0){
+ fprintf(stderr,"\n\033[1mAlert!\033[0m Particle %d couldn't be found in subract_mini. Exiting. \n",PEI);
+ for(int k=0;k<N_encounters_previous;k++)printf("id[%d]=%d\n",k,mini[N_active + k].id);
+ exit(0);
+ }
+ }
+ //for(int j=0; j<N_encounters_previous; j++) global[previous_encounter_index[j]] = mini[N_active + j];
+ 
+ }*/
