@@ -118,10 +118,7 @@ void heartbeat(struct reb_simulation* r){
     if(r->integrator == REB_INTEGRATOR_WHFAST){
         check_for_encounter(r, &N_encounters);
         int dN = N_encounters - N_encounters_previous;
-        if(abs(dN) > 1){
-            fprintf(stderr,"\n\033[1mAlert!\033[0m %d Particles entering/leaving Hill sphere simultaneously. Exiting.\n",dN);
-            exit(0);
-        }
+
         /*
         if(r->t > 0 && r->t < 5){
             printf("N_E=%d,size=%lu,",N_encounters,sizeof(encounter_index)/sizeof(encounter_index[0]));
@@ -132,36 +129,51 @@ void heartbeat(struct reb_simulation* r){
          printf("N_E_P=%d,size=%lu,",N_encounters_previous,sizeof(previous_encounter_index)/sizeof(previous_encounter_index[0]));
          for(int i=0;i<N_encounters_previous;i++) printf("PEI(%d)=%d,",i,previous_encounter_index[i]);
          printf("\n");
-         }
-        */
+         }*/
         
-        switch(dN){     //assume that particles can only enter/leave Hill sphere 1 at a time.
-            case 0:{    //no new particles entering Hill Sphere
-                if(N_encounters != 0){          //particle(s) inside Hill sphere
-                    int remove_index = 0, add_index = 0;
-                    int same_particles = compare_indices(N_encounters_previous,&remove_index,&add_index);
-                    if(same_particles == 0){//Particle exits as another enters
-                        fprintf(stderr,"\n\033[1mAlert!\033[0m Particle %d exiting as %d enters. Exiting program.\n",remove_index,add_index);
-                        exit(0);
-                    } else {//same particles
-                        reb_integrate(s, r->t);
-                        update_global(s,r,N_encounters_previous, N_encounters);
-                    }
-                }       //else do nothing
-            }break;
-            case 1:{    //new particle entering, update mini
-                if(N_encounters > 1)reb_integrate(s, r->t); //Just update for 1st particle in Hill
-                update_and_add_mini(r,s,N_encounters,N_encounters_previous);
-                N_encounters_tot++;
-            } break;
-            case -1:{    //dN < 0, old particle leaving
+        if(dN==0 && N_encounters == 0){;}//do nothing
+        else if(dN > 0 && N_encounters == 1){//first update in a while, only update massive bodies in mini
+            s->t = r->t;
+            int N_active = s->N_active;
+            struct reb_particle* global = r->particles;
+            struct reb_particle* mini = s->particles;
+            for(int i=0; i<N_active; i++) mini[i] = global[i];
+            add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
+        } else {//integrate existing mini, update global, check for new particles.
+            reb_integrate(s, r->t);
+            update_global(s,r,N_encounters_previous, N_encounters);
+            add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
+        }
+        
+        update_encounter_indices(r->t, &N_encounters, &N_encounters_previous);
+        
+        /*
+        if(dN == 0){    //no net particle change
+            if(N_encounters != 0){          //particle(s) inside Hill sphere
                 reb_integrate(s, r->t);
                 update_global(s,r,N_encounters_previous, N_encounters);
-                compare_indices_and_subtract(s,N_encounters,N_encounters_previous);
-                //update_mini(r,s,N_encounters_previous,removal_id);
-            } break;
+                add_or_subtract_particles(r,s,N_encounters_previous,dN);
+                //int same_particles = compare_indices(N_encounters_previous,&remove_index,&add_index);
+                //if(same_particles == 0){//Particle exits as another enters
+                    //fprintf(stderr,"\n\033[1mAlert!\033[0m Particle %d exiting as %d enters. Exiting program.\n",remove_index,add_index);
+                    //exit(0);
+            }       //else do nothing
         }
-        update_encounter_indices(r->t, &N_encounters, &N_encounters_previous);
+        else if(dN > 0){ //new particle(s) entering, update mini
+            if(N_encounters == 1){//if first update in a while, just update massive bodies in mini
+
+            } else{
+                reb_integrate(s, r->t);
+                update_global(s,r,N_encounters_previous, N_encounters);
+                add_or_subtract_particles(r,s,N_encounters_previous,dN);
+            }
+        } else{//old particle(s) leaving, update mini
+            reb_integrate(s, r->t);
+            update_global(s,r,N_encounters_previous, N_encounters);
+            add_or_subtract_particles(r,s,N_encounters_previous,dN);
+            //compare_indices_and_subtract(s,N_encounters,N_encounters_previous);
+            //update_mini(r,s,N_encounters_previous,removal_id);
+        } */
     }
     
     //output stuff

@@ -254,49 +254,6 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
     reb_move_to_com(s);         //before IAS15 simulation starts, move to COM
 }
 
-void update_and_add_mini(struct reb_simulation* const r, struct reb_simulation* s, int N_encounters, int N_encounters_previous){
-    int N_active = s->N_active;
-    struct reb_particle* global = r->particles;
-    struct reb_particle* mini = s->particles;
-    
-    //If first update in a while, sync up times, update massive bodies
-    if(N_encounters == 1){
-        s->t = r->t;
-        for(int i=0; i<N_active; i++) mini[i] = global[i];
-    } else {
-        //update any particles already present from last iteration that were just integrated by mini
-        for(int i=0; i<N_active; i++) global[i] = mini[i];   //massive
-        for(int j=0; j<N_encounters_previous; j++){
-            int particle_update = 0;
-            int PEI = previous_encounter_index[j];        //previous_encounter_index == global[PEI].id = PEI
-            for(int k=0;k<N_encounters_previous;k++){
-                if(mini[N_active + k].id == PEI){
-                    global[PEI] = mini[N_active + k];
-                    particle_update++;
-                }
-            }
-            if(particle_update == 0){
-                fprintf(stderr,"\n\033[1mAlert!\033[0m Particle %d couldn't be found in update_global. Exiting. \n",PEI);
-                exit(0);
-            }
-        }
-    }
-    
-    //add newest test particle to mini - find where it is
-    int global_add_index, found_particle = 0;
-    for(int i=0;i<N_encounters_previous;i++){
-        if(encounter_index[i] != previous_encounter_index[i]){ //******is this right?? Don't think so...
-            global_add_index = encounter_index[i];
-            found_particle++;
-            break;
-        }
-    }
-    if(found_particle == 0) global_add_index = encounter_index[N_encounters - 1];
-    struct reb_particle pt = global[global_add_index];
-    reb_add(s,pt);
-    printf("particle %d entering Hill sphere. Added to mini sim. \n",pt.id);
-}
-
 void update_global(struct reb_simulation* const s, struct reb_simulation* r, int N_encounters_previous, int N_encounters){
     int N_active = s->N_active;
     struct reb_particle* global = r->particles;
@@ -305,13 +262,13 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
     //update massive and planetesimal particles
     for(int i=0; i<N_active; i++) global[i] = mini[i];  //massive, always in same order
     for(int j=0; j<N_encounters_previous; j++){
-        int particle_update = 0;
+        _Bool particle_update = 0;
         int PEI = previous_encounter_index[j];          //encounter index == global[EI].id
-        for(int k=0;k<N_encounters_previous;k++){
+        for(int k=0;particle_update==0 && k<N_encounters_previous;k++){
             int mini_index = N_active + k;
             if(mini[mini_index].id == PEI){
                 global[PEI] = mini[mini_index];
-                particle_update++;
+                particle_update = 1;
                 
                 /*
                 if(PEI == 371 || PEI == 498){
@@ -350,84 +307,50 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
     
 }
 
-//Make sure that one particle doesn't enter as another exits.
-int compare_indices(int N_encounters_previous, int* remove_index, int* add_index){
-    int same_particles = 1;
-    for(int i=0;i<N_encounters_previous;i++){
-        if(encounter_index[i] != previous_encounter_index[i]){
-            *remove_index = previous_encounter_index[i];
-            *add_index = encounter_index[i];
-            same_particles = 0;
+void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters, int N_encounters_previous, int dN){
+    int N_active = s->N_active;
+    struct reb_particle* mini = s->particles;
+    struct reb_particle* global = r->particles;
+    
+    //check to add particles
+    for(int i=0;i<N_encounters;i++){
+        _Bool index_found = 0;
+        int EI = encounter_index[i];
+        for(int j=0;index_found == 0 && j<N_encounters_previous;j++){
+            if(EI == previous_encounter_index[j]) index_found = 1;
+        }
+        if(index_found == 0){//couldn't find index, add particle
+            struct reb_particle pt = global[EI];
+            reb_add(s,pt);
+            N_encounters_tot++;
+            printf("particle %d added. dN == %d, N_close_encounters=%d\n",EI,dN,N_encounters);
         }
     }
-    return same_particles;
-}
-
-void compare_indices_and_subtract(struct reb_simulation* s, int N_encounters, int N_encounters_previous){
     
-    //int particle_remove = 0;
-    int N_active = s->N_active;
-    struct reb_particle* particles = s->particles;
-    int removed_particle = 0;
+    //check to remove particles
     for(int i=0;i<N_encounters_previous;i++){
-        _Bool check_next = 0;
-        int index_found = 0;
+        _Bool index_found = 0;
         int PEI = previous_encounter_index[i];
-        for(int j=0;check_next == 0 && j<N_encounters;j++){
-            if(encounter_index[j] == PEI){
-                index_found++;
-                check_next = 1;      //skip to next outer loop iteration.
-            }
+        for(int j=0;index_found == 0 && j<N_encounters;j++){
+            if(PEI == encounter_index[j]) index_found = 1;
         }
-        if(index_found == 0){
-            for(int k=0;k<N_encounters_previous;k++){
-                if(particles[k+N_active].id == PEI){
+        if(index_found == 0){//couldn't find index, find particle in sim and remove
+            int removed_particle = 0;
+            for(int k=0;removed_particle==0 && k<N_encounters_previous;k++){
+                if(mini[k+N_active].id == PEI){
                     removed_particle = reb_remove(s,k+N_active,1);    //remove particle
-                    printf("particle %d leaving\n",PEI);
-                    goto outer; //if we found our particle to remove, we're done here.
+                    printf("particle %d leaving. dN == %d, N_close_encounters=%d.\n",PEI,dN,N_encounters);
                 }
             }
         }
     }
 
-outer:
-    if(removed_particle == 0){
-        fprintf(stderr,"\n\033[1mAlert!\033[0m Particle was supposed to be removed but wasn't. Exiting. \n");
-        
-        printf("N_encounters=%d,size=%lu,",N_encounters,sizeof(encounter_index)/sizeof(encounter_index[0]));
-        for(int i=0;i<N_encounters;i++) printf("EI(%d)=%d,",i,encounter_index[i]);
-        printf("\n");
-        
-        printf("N_encounters_previous=%d,size=%lu,",N_encounters_previous,sizeof(previous_encounter_index)/sizeof(previous_encounter_index[0]));
-        for(int i=0;i<N_encounters_previous;i++) printf("PEI(%d)=%d,",i,previous_encounter_index[i]);
-        printf("\n");
-        
-        exit(0);
-    }
 
-    /*
-        if(encounter_index[i] != previous_encounter_index[i]){
-            particles[i+N_active].id = removal_id;              //mini simulation has massive + tesimals, needs N_active
-            particle_remove++;
-            printf("particle %d leaving\n",previous_encounter_index[i]);
-            //check
-            if(encounter_index[i] != previous_encounter_index[i+1]){
-                fprintf(stderr,"\n\033[1mAlert!\033[0m Something out of order, particle arrays don't match. Exiting. \n");
-                exit(0);
-            }
-            break;  //once particle to remove has been identified leave loop
-        }
-    }
-    if(particle_remove == 0){
-        particles[N_encounters+N_active].id = removal_id;
-        printf("particled %d leaving.\n",previous_encounter_index[N_encounters]);
-    }*/
 }
 
 void update_encounter_indices(double t, int* N_encounters, int* N_encounters_previous){
     
     //transfer values from encounter_index to previous_encounter_index
-    //****more efficient way to do this???******
     int size;
     if(*N_encounters == 0) size = 1; else size = *N_encounters;
     
@@ -454,6 +377,115 @@ void clock_finish(clock_t timer, int N_encounters, char* legenddir){
     fprintf(ff,"Elapsed simulation time is %f s, with %d close encounters.\n",result,N_encounters);
     printf("\n\nSimulation complete. Elapsed simulation time is %f s, with %d close encounters.\n\n",result,N_encounters);
 }
+
+/*
+ void compare_indices_and_subtract(struct reb_simulation* s, int N_encounters, int N_encounters_previous){
+ 
+ //int particle_remove = 0;
+ int N_active = s->N_active;
+ struct reb_particle* particles = s->particles;
+ int removed_particle = 0;
+ for(int i=0;i<N_encounters_previous;i++){
+ _Bool check_next = 0;
+ int index_found = 0;
+ int PEI = previous_encounter_index[i];
+ for(int j=0;check_next == 0 && j<N_encounters;j++){
+ if(encounter_index[j] == PEI){
+ index_found++;
+ check_next = 1;      //skip to next outer loop iteration.
+ }
+ }
+ if(index_found == 0){
+ for(int k=0;k<N_encounters_previous;k++){
+ if(particles[k+N_active].id == PEI){
+ removed_particle = reb_remove(s,k+N_active,1);    //remove particle
+ printf("particle %d leaving\n",PEI);
+ goto outer; //if we found our particle to remove, we're done here.
+ }
+ }
+ }
+ }
+ 
+ outer:
+ if(removed_particle == 0){
+ fprintf(stderr,"\n\033[1mAlert!\033[0m Particle was supposed to be removed but wasn't. Exiting. \n");
+ 
+ printf("N_encounters=%d,size=%lu,",N_encounters,sizeof(encounter_index)/sizeof(encounter_index[0]));
+ for(int i=0;i<N_encounters;i++) printf("EI(%d)=%d,",i,encounter_index[i]);
+ printf("\n");
+ 
+ printf("N_encounters_previous=%d,size=%lu,",N_encounters_previous,sizeof(previous_encounter_index)/sizeof(previous_encounter_index[0]));
+ for(int i=0;i<N_encounters_previous;i++) printf("PEI(%d)=%d,",i,previous_encounter_index[i]);
+ printf("\n");
+ 
+ exit(0);
+ }
+ 
+ /*
+ if(encounter_index[i] != previous_encounter_index[i]){
+ particles[i+N_active].id = removal_id;              //mini simulation has massive + tesimals, needs N_active
+ particle_remove++;
+ printf("particle %d leaving\n",previous_encounter_index[i]);
+ //check
+ if(encounter_index[i] != previous_encounter_index[i+1]){
+ fprintf(stderr,"\n\033[1mAlert!\033[0m Something out of order, particle arrays don't match. Exiting. \n");
+ exit(0);
+ }
+ break;  //once particle to remove has been identified leave loop
+ }
+ }
+ if(particle_remove == 0){
+ particles[N_encounters+N_active].id = removal_id;
+ printf("particled %d leaving.\n",previous_encounter_index[N_encounters]);
+ }
+ }
+ */
+
+/*
+ //Make sure that one particle doesn't enter as another exits.
+ int compare_indices(int N_encounters_previous, int* remove_index, int* add_index){
+ int same_particles = 1;
+ for(int i=0;i<N_encounters_previous;i++){
+ if(encounter_index[i] != previous_encounter_index[i]){
+ *remove_index = previous_encounter_index[i];
+ *add_index = encounter_index[i];
+ same_particles = 0;
+ }
+ }
+ return same_particles;
+ }
+ */
+
+/*
+ void update_and_add_mini_or_subtract(struct reb_simulation* const r, struct reb_simulation* s, int N_encounters, int N_encounters_previous){
+ int N_active = s->N_active;
+ struct reb_particle* global = r->particles;
+ struct reb_particle* mini = s->particles;
+ 
+ //If first update in a while, sync up times, update massive bodies in mini
+ if(N_encounters == 1){
+ s->t = r->t;
+ for(int i=0; i<N_active; i++) mini[i] = global[i];
+ } else {
+ //update any particles already present from last iteration that were just integrated by mini
+ for(int i=0; i<N_active; i++) global[i] = mini[i];   //massive
+    for(int j=0; j<N_encounters_previous; j++){
+    _Bool particle_update = 0;
+    int PEI = previous_encounter_index[j];        //previous_encounter_index == global[PEI].id = PEI
+    for(int k=0;particle_update == 0 && k<N_encounters_previous;k++){
+        if(mini[N_active + k].id == PEI){
+            global[PEI] = mini[N_active + k];
+            particle_update = 1;
+        }
+    }
+ if(particle_update == 0){
+ fprintf(stderr,"\n\033[1mAlert!\033[0m Particle %d couldn't be found in update_global. Exiting. \n",PEI);
+ exit(0);
+ }
+ }
+ }
+ }
+ */
 
 /*
  void update_and_subtract_mini(struct reb_simulation* const r, struct reb_simulation* s, int N_encounters_previous, int removal_id){
