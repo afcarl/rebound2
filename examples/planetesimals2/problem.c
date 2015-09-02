@@ -120,7 +120,7 @@ void heartbeat(struct reb_simulation* r){
         check_for_encounter(r, &N_encounters);
         int dN = N_encounters - N_encounters_previous;
         
-        if(N_encounter_previous == 0){
+        if(N_encounters_previous == 0){
             if(N_encounters > 0){
                 //first update in a while, only update massive bodies in mini and add any particles
                 s->t = r->t;
