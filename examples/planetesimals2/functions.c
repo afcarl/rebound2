@@ -95,11 +95,11 @@ double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double 
     return dt;
 }
 
-void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb_simulation* r){
+void calc_ELtot(double* Etot, double* Ktot, double* Utot, double* Ltot, double planetesimal_mass, struct reb_simulation* r){
     double m1,m2;
     int N_active = r->N_active, N = r->N;
     const double G = r->G;
-    double L = 0, E = 0;
+    double L = 0, U = 0, K = 0;
     struct reb_particle* const particles = r->particles;
     for(int i=0;i<N;i++){//I think it should be N?
         struct reb_particle par = particles[i];
@@ -118,7 +118,7 @@ void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb
         L += m1*sqrt ( hx*hx + hy*hy + hz*hz );
         
         //E_tot
-        E += 0.5*m1*(dvx*dvx + dvy*dvy + dvz*dvz);
+        K += 0.5*m1*(dvx*dvx + dvy*dvy + dvz*dvz);
         if(i<N_active){//ignore dE/dx = forces between planetesimals
             for(int j=i+1;j<N;j++){
                 struct reb_particle par2 = particles[j];
@@ -126,12 +126,14 @@ void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb
                 double ddx = dx - par2.x;
                 double ddy = dy - par2.y;
                 double ddz = dz - par2.z;
-                E -= G*m1*m2/sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
+                U -= G*m1*m2/sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
             }
         }
     }
         
-    *Etot = E;
+    *Etot = K + U;
+    *Ktot = K;
+    *Utot = U;
     *Ltot = L;
 }
 
@@ -311,7 +313,7 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             struct reb_particle pt = global[EI];
             reb_add(s,pt);
             N_encounters_tot++;
-            //printf("particle %d added. dN == %d, N_close_encounters=%d\n",EI,dN,N_encounters);
+            printf("particle %d added. dN == %d, N_close_encounters=%d\n",EI,dN,N_encounters);
         }
     }
     
@@ -327,7 +329,7 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             for(int k=0;removed_particle==0 && k<N_encounters_previous;k++){
                 if(mini[k+N_active].id == PEI){
                     removed_particle = reb_remove(s,k+N_active,1);    //remove particle
-                    //printf("particle %d leaving. dN == %d, N_close_encounters=%d.\n",PEI,dN,N_encounters);
+                    printf("particle %d leaving. dN == %d, N_close_encounters=%d.\n",PEI,dN,N_encounters);
                 }
             }
         }

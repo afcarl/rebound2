@@ -17,7 +17,7 @@ void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double t
 
 double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double dRHill);
 
-void calc_ELtot(double* Etot, double* Ltot, double planetesimal_mass, struct reb_simulation* r);
+void calc_ELtot(double* Etot, double* Ktot, double* Utot, double* Ltot, double planetesimal_mass, struct reb_simulation* r);
 
 void calc_ae(double* a, double* e, double* d, struct reb_simulation* r, int i);
 

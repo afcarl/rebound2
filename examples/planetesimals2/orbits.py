@@ -6,17 +6,18 @@ import math
 import matplotlib.cm as cm
 pi = math.pi
 
-names=['time (years)','Semi-Major Axis (AU)','Eccentricity','(Ei - E0) / E0','Total Ang. Mom.','planet-star distance']
+names=['time (years)','Semi-Major Axis (AU)','Eccentricity','(Ei - E0) / E0','(Ki - K0) / K0','(Ui - U0) / U0','Total Ang. Mom.','planet-star distance']
 colors=['b','g','m','r','c','y']
 
 file_name=str(sys.argv[1])
 
 #Get number of massive planets
-fos = open(file_name[0:-4]+'_Properties.txt', 'r')
-for i in xrange(0,3):
-    header = fos.readline()
-output = header.split(",")
-N_active = int(output[2]) - 1    #-1 cause of the star
+#fos = open(file_name[0:-4]+'_Properties.txt', 'r')
+#for i in xrange(0,3):
+#    header = fos.readline()
+#output = header.split(",")
+#N_active = int(output[2]) - 1    #-1 cause of the star
+N_active = 2
 
 #time, a, e, i, Omega (long. of asc. node), omega, l (mean longitude), P, f
 arg1=int(sys.argv[2])
@@ -39,7 +40,8 @@ for i in xrange(0,N_active):
         plt.yscale('log')
         break
 
-if arg2==5:
+#plt.ylim([0.,0.05])
+if arg2==7:
     plt.ylim([0.69,0.71])
     #plt.ylim([0.98,1.02])
 if arg2==1:
