@@ -222,12 +222,15 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters){
         const double dyi = p0.y - body.y;
         const double dzi = p0.z - body.z;
         const double r0i2 = dxi*dxi + dyi*dyi + dzi*dzi;
-        const double rhi = r0i2*pow((body.m/(p0.m*3.)), 2./3.); //can make this faster later
+        const double rhi = r0i2*Hill[i];
+        //const double rhi = r0i2*pow((body.m/(p0.m*3.)), 2./3.); //can make this faster later
         
         for (int j=1; j<N; j++){
-            if (i==j) continue;
-            
+            if(i==j) continue;
             struct reb_particle pj = particles[j];
+            
+            //double mp; if(j>=N_active) mp = planetesimal_mass; else mp = pj.m;
+            
             const double dx = body.x - pj.x;
             const double dy = body.y - pj.y;
             const double dz = body.z - pj.z;
@@ -236,7 +239,8 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters){
             const double dyj = p0.y - pj.y;
             const double dzj = p0.z - pj.z;
             const double r0j2 = dxj*dxj + dyj*dyj + dzj*dzj;
-            const double rhj = r0j2*pow((pj.m/(p0.m*3.)), 2./3.); //can make this faster later
+            const double rhj = r0j2*Hill[j];
+            //const double rhj2 = r0j2*pow((mp/(p0.m*3.)), 2./3.); //can make this faster later
             
             const double ratio = rij2/(rhi+rhj);
             

@@ -39,6 +39,7 @@ void clock_finish(clock_t timer, int N_encounters, char* legenddir);
 extern double planetesimal_mass;
 extern int* encounter_index;
 extern int* previous_encounter_index;
+extern double* Hill;
 extern int N_encounters_tot;
 
 

@@ -16,18 +16,17 @@
 void heartbeat(struct reb_simulation* r);
 double tmax, planetesimal_mass, CE_exit_time = 0, E_ini, K_ini, U_ini, L_ini;
 int n_output, N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON;
-int* encounter_index = NULL;
-int* previous_encounter_index = NULL;
+int* encounter_index = NULL; int* previous_encounter_index = NULL; double* Hill = NULL;
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
 struct reb_simulation* s;
 
 int main(int argc, char* argv[]){
     // System constants
-    tmax = 5000;
+    tmax = 1000;
     HYBRID_ON = 1;
     double dRHill = atof(argv[2]);      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
-    double N_planetesimals = 1;
-    double M_planetesimals = 3e-7; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
+    double N_planetesimals = 50;
+    double M_planetesimals = 3e-6; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
     
     struct reb_simulation* r = reb_create_simulation();
 	// Setup constants
@@ -73,7 +72,6 @@ int main(int argc, char* argv[]){
         printf("dt = %f \n",r->dt);
         dRHill = -1;
     } else r->dt = calc_dt(r, m1, star.m, a1, dRHill);
-            r->dt /=10; //*****NOT FOREVER!
 
     //planetesimals
     double outer = 3, inner = 15, powerlaw = 0.5;  //higher the inner number, closer to the star
@@ -82,10 +80,10 @@ int main(int argc, char* argv[]){
     planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal
     while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
-		//double a	= reb_random_powerlaw(boxsize/outer,boxsize/inner,powerlaw);
-		//double phi 	= reb_random_uniform(0,2.*M_PI);
-        double a = 0.664171;
-        double phi=0.5;
+		double a	= reb_random_powerlaw(boxsize/outer,boxsize/inner,powerlaw);
+		double phi 	= reb_random_uniform(0,2.*M_PI);
+        //double a = 0.664171;
+        //double phi=0.5;
 		pt.x 		= a*cos(phi);
 		pt.y 		= a*sin(phi);
 		pt.z 		= a*reb_random_normal(0.0001);
@@ -97,6 +95,17 @@ int main(int argc, char* argv[]){
         pt.id       = r->N;
 		reb_add(r, pt);
 	}
+    
+    //Hill Sphere (for speed in check_for_encounter)
+    Hill = calloc(sizeof(double),r->N);
+    struct reb_particle* restrict const particles = r->particles;
+    struct reb_particle p0 = particles[0];
+    for(int i=1;i<r->N;i++){
+        struct reb_particle body = particles[i];
+        double mp;
+        if(i>=r->N_active) mp = planetesimal_mass; else mp = body.m;
+        Hill[i] = pow((mp/(p0.m*3.)), 2./3.);
+    }
     
     //Initializing stuff
     legend(plntdir, lgnddir, r, tmax, planetesimal_mass, M_planetesimals, inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,HYBRID_ON);
@@ -131,15 +140,15 @@ void heartbeat(struct reb_simulation* r){
                 struct reb_particle* mini = s->particles;
                 for(int i=0; i<N_active; i++) mini[i] = global[i];
                 add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
-            }   //else N_encounters == 0, in which case do nothing.
-        } else {//integrate existing mini, update global, check for new particles.
+            }   //otherwise do nothing.
+        } else {
+            //integrate existing mini, update global, add/remove new/old particles.
             reb_integrate(s, r->t);
             update_global(s,r,N_encounters_previous, N_encounters);
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
-            reb_move_to_com(r);
         }
-        
         update_encounter_indices(r->t, &N_encounters, &N_encounters_previous);
+        //reb_move_to_com(r);
     }
     
     //output stuff
@@ -157,7 +166,7 @@ void heartbeat(struct reb_simulation* r){
         }
 		reb_output_timing(r, 0);
         
-        //temp
+        /*
         E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0;
         calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, s); //calcs Etot all in one go.
         for(int i=1;i<s->N_active;i++){
@@ -168,6 +177,6 @@ void heartbeat(struct reb_simulation* r){
             fprintf(append,"%f,%.8f,%.8f,%.16f,%.16f,%.16f,%.16f,%.8f\n",t,a_p,e_p,fabs((E_ini - E_curr)/E_ini),fabs((K_ini - K_curr)/K_ini), fabs((U_ini - U_curr)/U_ini),fabs((L_ini - L_curr)/L_ini),d_p);
             fclose(append);
             E_curr = E_ini; L_curr = L_ini;
-        }//temp
+        }*/
     }
 }
