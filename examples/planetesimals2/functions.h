@@ -19,7 +19,7 @@ double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double 
 
 void calc_ELtot(double* Etot, double* Ktot, double* Utot, double* Ltot, double planetesimal_mass, struct reb_simulation* r);
 
-void calc_ae(double* a, double* e, double* d, struct reb_simulation* r, int i);
+void calc_ae(double* a, double* e, double* d, struct reb_simulation* r, int i, double t);
 
 void planetesimal_forces(struct reb_simulation *a);
 
@@ -31,9 +31,13 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* const 
 
 void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters,int N_encounters_previous, int dN);
 
-void update_encounter_indices(double t, int* N_encounters, int* N_encounters_previous);
+void update_encounter_indices(int* N_encounters, int* N_encounters_previous);
 
 void clock_finish(clock_t timer, int N_encounters, char* legenddir);
+
+struct reb_particle get_com_with_planetesimals(struct reb_simulation* r);
+
+void move_to_com_with_planetesimals(struct reb_simulation* const r);
 
 //EXTERNAL VARIABLES******************************
 extern double planetesimal_mass;

@@ -1,8 +1,5 @@
-<<<<<<< HEAD
-=======
-examples/planetesimals/output/*
-examples/planetesimals/saved_output/*
->>>>>>> master
+examples/planetesimals2/output/*
+examples/planetesimals2/saved_output/*
 *.o
 *.so
 *.pyc

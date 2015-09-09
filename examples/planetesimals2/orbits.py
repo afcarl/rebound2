@@ -35,12 +35,12 @@ data = np.loadtxt(fos, delimiter=',')
 
 for i in xrange(0,N_active):
     p=data[i::N_active]
-    plt.plot(p[arg4:arg3,arg1], p[arg4:arg3,arg2], 'o'+colors[i], markeredgecolor='none', ms = 2, label='planet '+str(i), )
-    if arg2 == 3 or arg2==4:
+    plt.plot(p[arg4:arg3,arg1], p[arg4:arg3,arg2], 'o'+colors[i], marker='o', markersize=2,markeredgecolor='none',label='planet '+str(i), )
+    if arg2 == 3 or arg2==4 or arg2==5 or arg2==6:
         plt.yscale('log')
         break
 
-#plt.ylim([0.,0.05])
+#plt.ylim([1e-4,0.05])
 if arg2==7:
     plt.ylim([0.69,0.71])
     #plt.ylim([0.98,1.02])
@@ -48,6 +48,7 @@ if arg2==1:
     plt.ylim([0.699,0.701])
     #plt.ylim([0.998,1.002])
 plt.xlim([p[arg4,0],p[arg3,0]])
+#plt.xlim([33,45])
 plt.xlabel('' + names[arg1])
 plt.ylabel('' + names[arg2])
 plt.legend(loc='upper left',prop={'size':10})
