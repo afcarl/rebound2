@@ -150,7 +150,6 @@ void heartbeat(struct reb_simulation* r){
             reb_integrate(s, r->t);
             update_global(s,r,N_encounters_previous, N_encounters);
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
-            if(N_encounters == 0) reb_move_to_com(r);
         }
         
         //if(r->t<42)
