@@ -22,7 +22,7 @@ struct reb_simulation* s;
 
 int main(int argc, char* argv[]){
     // System constants
-    tmax = 50;
+    tmax = 5;
     HYBRID_ON = 1;
     double dRHill = atof(argv[2]);      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
     double N_planetesimals = 1;
@@ -82,8 +82,10 @@ int main(int argc, char* argv[]){
 		struct reb_particle pt = {0};
 		//double a	= reb_random_powerlaw(boxsize/outer,boxsize/inner,powerlaw);
 		//double phi 	= reb_random_uniform(0,2.*M_PI);
-        double a = 0.664171;
-        double phi=0.5;
+        //double a = 0.664171;
+        //double phi=0.5;
+        double a = 0.695;
+        double phi = 0.03;
         //double a = 0.3;
         //double phi=0.5;
         pt.x 		= a*cos(phi);
@@ -92,7 +94,7 @@ int main(int argc, char* argv[]){
 		double vkep = sqrt(r->G*star.m/a);
 		pt.vx 		= -vkep * sin(phi);
 		pt.vy 		= vkep * cos(phi);
-        pt.m 		= 0;
+        pt.m 		= planetesimal_mass;
 		pt.r 		= .3/sqrt((double)N_planetesimals);
         pt.id       = r->N;
 		reb_add(r, pt);
@@ -170,7 +172,15 @@ void heartbeat(struct reb_simulation* r){
             fclose(append);
             E_curr = E_ini; L_curr = L_ini;
         }
+        
+        FILE* output;
+        output=fopen("debug/Hybrid2.txt","a");
+        struct reb_particle* global = r->particles;
+        for(int i=0;i<r->N;i++) fprintf(output,"%f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",r->t,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz);
+        fclose(output);
+        
 		reb_output_timing(r, 0);
+        
         /*
         E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0;
         calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, s); //calcs Etot all in one go.
