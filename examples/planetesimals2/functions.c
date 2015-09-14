@@ -231,10 +231,6 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters){
             if(i==j) continue;
             struct reb_particle pj = particles[j];
             
-            const double dx = body.x - pj.x;
-            const double dy = body.y - pj.y;
-            const double dz = body.z - pj.z;
-            const double rij2 = dx*dx + dy*dy + dz*dz;
             const double dxj = p0.x - pj.x;
             const double dyj = p0.y - pj.y;
             const double dzj = p0.z - pj.z;
@@ -242,6 +238,10 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters){
             const double rhj = r0j2*Hill[j];
             //const double rhj = r0j2*pow((pj.m/(p0.m*3.)), 2./3.); //can make this faster later
             
+            const double dx = body.x - pj.x;
+            const double dy = body.y - pj.y;
+            const double dz = body.z - pj.z;
+            const double rij2 = dx*dx + dy*dy + dz*dz;
             const double ratio = rij2/(rhi+rhj);
             
             if(ratio<r->ri_hybrid.switch_ratio){
@@ -268,7 +268,7 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
     struct reb_particle* const mini = s->particles;
     
     //update massive and planetesimal particles
-    for(int i=0; i<N_active; i++) global[i] = mini[i];  //massive particles (except sun?), always in same order
+    for(int i=0; i<N_active; i++) global[i] = mini[i];  //massive particles, always in same order
     for(int j=0; j<N_encounters_previous; j++){
         _Bool particle_update = 0;
         int PEI = previous_encounter_index[j];          //encounter index == global[EI].id

@@ -11,8 +11,9 @@ pi = math.pi
 names=['time (years)','dx','dy','dz','dvx','dvy','dvz']
 colors=['b','g','m','r','c','y']
 
-file_name1 = 'Hybrid.txt'
+#file_name1 = 'Hybrid.txt'
 file_name2 = 'Hybrid2.txt'
+file_name1 = 'HYB_sept14.txt'
 
 N_active = 4
 
@@ -34,7 +35,8 @@ data2 = np.loadtxt(fos2, delimiter=',')
 for i in xrange(0,N_active):
     p=data[i::N_active]
     q=data2[i::N_active]
-    plt.plot(p[arg4:arg3,arg1], p[arg4:arg3,arg2]-q[arg4:arg3,arg2], 'o'+colors[i], marker='o', markersize=5-i,markeredgecolor='none',label='planet '+str(i)+' positive' )
+    #plt.plot(p[arg4:arg3,arg1], p[arg4:arg3,arg2] - q[arg4:arg3,arg2], 'o'+colors[i], marker='o', markersize=5-i,markeredgecolor='none',label='planet '+str(i)+' positive' )
+    plt.plot(p[arg4:arg3,arg1], p[arg4:arg3,arg2], 'o'+colors[i], marker='o', markersize=5-i,markeredgecolor='none',label='planet '+str(i)+' positive' )
 
 #plt.xlim([33,45])
 plt.xlabel('' + names[arg1])
