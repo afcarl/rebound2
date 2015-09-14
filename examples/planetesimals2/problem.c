@@ -22,10 +22,10 @@ struct reb_simulation* s;
 
 int main(int argc, char* argv[]){
     // System constants
-    tmax = 5000;
+    tmax = 500;
     HYBRID_ON = 1;
     double dRHill = atof(argv[2]);      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
-    double N_planetesimals = 1;
+    double N_planetesimals = 20;
     double M_planetesimals = 3e-6; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
     
     struct reb_simulation* r = reb_create_simulation();
@@ -53,14 +53,14 @@ int main(int argc, char* argv[]){
 
     //planet 1
     double a1=0.7, m1=5e-5, e1=0.01;
-    struct reb_particle p1 = reb_tools_init_orbit2d(r->G,star.m,m1,a1,e1,0,0);
+    struct reb_particle p1 = reb_tools_init_orbit3d(r->G, star.m, m1, a1, e1, reb_random_normal(0.0001), 0, 0, 0);
     p1.id = 1;              //1 = planet
     reb_add(r, p1);
     r->N_active++;
     
     //planet 2
     double a2=1, m2=5e-5, e2=0.01;
-    struct reb_particle p2 = reb_tools_init_orbit2d(r->G,star.m,m2,a2,e2,0,0);
+    struct reb_particle p2 = reb_tools_init_orbit3d(r->G, star.m, m2, a2, e2, reb_random_normal(0.0001), 0, 0, 0);
     p2.id = 1;              //1 = planet
     reb_add(r, p2);
     r->N_active++;
@@ -80,30 +80,28 @@ int main(int argc, char* argv[]){
     planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal
     while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
-		//double a	= reb_random_powerlaw(boxsize/outer,boxsize/inner,powerlaw);
-        //double phi 	= reb_random_uniform(0,2.*M_PI);
+		double a	= reb_random_powerlaw(boxsize/outer,boxsize/inner,powerlaw);
+        double phi 	= reb_random_uniform(0,2.*M_PI);
+        double inc = reb_random_normal(0.0001);
         //double Omega = reb_random_uniform(0,2.*M_PI);
         //double apsis = reb_random_uniform(0,2.*M_PI);
         //double a = 0.664171;
         //double phi=0.5;
         double Omega = 0;
         double apsis = 0;
-        double a = 0.695;
-        double phi = 0.03;
+        //double a = 0.695;
+        //double phi = 0.03;
         //double a = 0.3;
         //double phi=0.5;
-        //pt.x 		= a*cos(phi);
-		//pt.y 		= a*sin(phi);
-		//pt.z 		= a*reb_random_normal(0.0001);
-		//double vkep = sqrt(r->G*star.m/a);
-		//pt.vx 		= -vkep * sin(phi);
-		//pt.vy 		= vkep * cos(phi);
-        pt.m 		= 0;
-        pt = reb_tools_init_orbit3d(r->G, star.m, planetesimal_mass, a, 0, reb_random_normal(0.0001), Omega, apsis,phi);
-		pt.r 		= .3/sqrt((double)N_planetesimals);
+        pt.m 		= planetesimal_mass;
+        pt = reb_tools_init_orbit3d(r->G, star.m, planetesimal_mass, a, 0, inc, Omega, apsis,phi);
+		pt.r 		= 0.3;
         pt.id       = r->N;
 		reb_add(r, pt);
 	}
+    
+    //move to COM - before planetesimals?
+    if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
     
     //Hill Sphere (for speed in check_for_encounter)
     Hill = calloc(sizeof(double),r->N);
@@ -120,19 +118,13 @@ int main(int argc, char* argv[]){
     legend(plntdir, lgnddir, r, tmax, planetesimal_mass, M_planetesimals, inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,HYBRID_ON);
     s = reb_create_simulation();    //initialize mini simulation (IAS15)
     ini_mini(r,s);
-    if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);      //move to COM
     calc_ELtot(&E_ini, &K_ini, &U_ini, &L_ini, planetesimal_mass, r);
     clock_t timer = clock();
     encounter_index = malloc(sizeof(int));
     previous_encounter_index = malloc(sizeof(int));
     
     //Integrate!
-    if(r->integrator == REB_INTEGRATOR_IAS15){
-        double dt = r->dt;
-        r->exact_finish_time = 1;
-        int n_it = tmax/dt;
-        for(int i=0;i<n_it;i++) reb_integrate(r, dt*i + 1);
-    } else reb_integrate(r, tmax);
+    reb_integrate(r, tmax);
     
     //finish
     clock_finish(timer,N_encounters_tot,lgnddir);
@@ -142,7 +134,6 @@ int main(int argc, char* argv[]){
 
 void heartbeat(struct reb_simulation* r){
     if(HYBRID_ON == 1){
-        //if(r->t<42)
         check_for_encounter(r, &N_encounters);
         int dN = N_encounters - N_encounters_previous;
         
@@ -162,8 +153,6 @@ void heartbeat(struct reb_simulation* r){
             update_global(s,r,N_encounters_previous, N_encounters);
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
         }
-        
-        //if(r->t<42)
         update_encounter_indices(&N_encounters, &N_encounters_previous);
     }
     
@@ -185,12 +174,13 @@ void heartbeat(struct reb_simulation* r){
         
         /*
         FILE* output;
-        output=fopen("debug/IAS_sept14.txt","a");
+        output=fopen("debug/HYB_sept14_par11_massless.txt","a");
         struct reb_particle* global = r->particles;
-        for(int i=0;i<r->N;i++) fprintf(output,"%f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",r->t,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz);
+        for(int i=0;i<r->N_active;i++) fprintf(output,"%f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",r->t,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz);
+        fprintf(output,"%f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",r->t,global[11].x,global[11].y,global[11].z,global[11].vx,global[11].vy,global[11].vz);
         fclose(output);
         */
-        
+         
         /*
         E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0;
         calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, s); //calcs Etot all in one go.
