@@ -15,14 +15,14 @@
 
 void heartbeat(struct reb_simulation* r);
 double tmax, planetesimal_mass, CE_exit_time = 0, E_ini, K_ini, U_ini, L_ini, n_output;
-int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, output_counter = 0, temp = 0;
+int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, output_counter = 0;
 int* encounter_index = NULL; int* previous_encounter_index = NULL; double* Hill = NULL;
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
 struct reb_simulation* s;
 
 int main(int argc, char* argv[]){
     // System constants
-    tmax = 500;
+    tmax = 10;
     HYBRID_ON = 1;
     double dRHill = atof(argv[2]);      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
     double N_planetesimals = 20;
@@ -61,7 +61,7 @@ int main(int argc, char* argv[]){
     //planet 2
     double a2=1, m2=5e-5, e2=0.01;
     struct reb_particle p2 = reb_tools_init_orbit3d(r->G, star.m, m2, a2, e2, reb_random_normal(0.0001), 0, 0, 0);
-    p2.id = 1;              //1 = planet
+    p2.id = 1;              //2 = planet
     reb_add(r, p2);
     r->N_active++;
     
@@ -87,13 +87,15 @@ int main(int argc, char* argv[]){
         //double apsis = reb_random_uniform(0,2.*M_PI);
         //double a = 0.664171;
         //double phi=0.5;
+        
+        //double a = 0.670139;
+        //double phi = 5.480386;
+        //double inc = 0.012694;
         double Omega = 0;
         double apsis = 0;
         //double a = 0.695;
         //double phi = 0.03;
-        //double a = 0.3;
-        //double phi=0.5;
-        pt.m 		= planetesimal_mass;
+        pt.m 		= 0;
         pt = reb_tools_init_orbit3d(r->G, star.m, planetesimal_mass, a, 0, inc, Omega, apsis,phi);
 		pt.r 		= 0.3;
         pt.id       = r->N;
@@ -172,14 +174,15 @@ void heartbeat(struct reb_simulation* r){
         }
         reb_output_timing(r, 0);
         
-        /*
+        
         FILE* output;
-        output=fopen("debug/HYB_sept14_par11_massless.txt","a");
+        output=fopen("debug/HYB_sept14_par13_group.txt","a");
         struct reb_particle* global = r->particles;
         for(int i=0;i<r->N_active;i++) fprintf(output,"%f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",r->t,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz);
-        fprintf(output,"%f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",r->t,global[11].x,global[11].y,global[11].z,global[11].vx,global[11].vy,global[11].vz);
+        int index = 13;
+        fprintf(output,"%f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",r->t,global[index].x,global[index].y,global[index].z,global[index].vx,global[index].vy,global[index].vz);
         fclose(output);
-        */
+        
          
         /*
         E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0;

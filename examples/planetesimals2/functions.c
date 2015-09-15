@@ -207,7 +207,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
         reb_add(s,p);
     }
     
-    reb_move_to_com(s);         //before IAS15 simulation starts, move to COM
+    //reb_move_to_com(s);         //before IAS15 simulation starts, move to COM
     //move_to_com_with_planetesimals(s);
 }
 
@@ -275,6 +275,7 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
         for(int k=0;particle_update==0 && k<N_encounters_previous;k++){
             int mini_index = N_active + k;
             if(mini[mini_index].id == PEI){
+                //printf("mini_index=%d,id=%d, s->N_active=%d\n",mini_index,mini[mini_index].id,N_active);
                 global[PEI] = mini[mini_index];
                 particle_update = 1;
             }
@@ -288,7 +289,7 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
             printf("N_encounters_previous=%d,size=%lu,",N_encounters_previous,sizeof(previous_encounter_index)/sizeof(previous_encounter_index[0]));
             for(int i=0;i<N_encounters_previous;i++) printf("PEI(%d)=%d,",i,previous_encounter_index[i]);
             printf("\n");
-            printf("Mini");
+            printf("Mini:");
             for(int i=0;i<N_encounters_previous;i++) printf("mini[%d].id=%d,",i,mini[N_active+i].id);
             printf("\n");
             exit(0);
