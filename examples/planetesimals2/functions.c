@@ -174,9 +174,6 @@ void planetesimal_forces(struct reb_simulation *a){
     const int N_active = a->N_active;
     struct reb_particle* const particles = a->particles;
     
-    int outputt = 0;
-    if(particles[0].id == 10) outputt = 1;
-    
     const double Gm1 = G*planetesimal_mass;
     for(int i=0;i<N_active;i++){
         struct reb_particle* body = &(particles[i]);
@@ -194,20 +191,13 @@ void planetesimal_forces(struct reb_simulation *a){
             body->ay += ac*dy;
             body->az += ac*dz;
         }
-        /*
-        if(outputt ==1){
-            FILE* output;
-            output=fopen("debug/IAS_sept16_pforces_single.txt","a");
-            fprintf(output,"%f,%d,%.15f,%.15f,%.15f\n",a->t,i,fx, fy, fz);
-            fclose(output);
-        }*/
     }
 }
 
 //initialize mini-simulation for close encounters
 void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
     s->N_active = r->N_active;
-    s->integrator = REB_INTEGRATOR_IAS15;
+    s->integrator = 1;
     //s->additional_forces = planetesimal_forces;
     s->exact_finish_time = 1;
     s->dt = r->dt;
@@ -216,7 +206,6 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
     for(int k=0; k<s->N_active; k++){
         struct reb_particle p = {0};
         p = particles[k];
-        if(k==0) p.id = 10; //TEMP
         reb_add(s,p);
     }
 }
@@ -277,28 +266,8 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
     struct reb_particle* global = r->particles;
     struct reb_particle* mini = s->particles;
     
-    
-    //make sure the stars are synced, and if not, shift mini reference point to global so that they match
-    //struct reb_particle com = reb_get_com(r);
-    /*for (int i=0;i<s->N;i++){
-        struct reb_particle* pm = &(mini[i]);
-        pm->x  -= com.x;
-        pm->y  -= com.y;
-        pm->z  -= com.z;
-        pm->vx -= com.vx;
-        pm->vy -= com.vy;
-        pm->vz -= com.vz;
-    }*/
-    
-    printf("\n");
-    for(int i=0;i<r->N_active;i++) printf("after:global[%d].xyz=%.10f,%.10f,%.10f\n",i,global[i].vx,global[i].vy,global[i].vz);
-    
     //update massive and planetesimal particles
     for(int i=0; i<N_active; i++) global[i] = mini[i];  //update massive planets, always in same order
-    
-    for(int i=0;i<r->N_active;i++) printf("after:mini[%d].xyz=%.10f,%.10f,%.10f\n",i,mini[i].vx,mini[i].vy,mini[i].vz);
-    //mini[0].id = 10;    //TEMP
-    exit(0);
     
     for(int j=0; j<N_encounters_previous; j++){
         _Bool particle_update = 0;
@@ -396,46 +365,4 @@ void clock_finish(clock_t timer, int N_encounters, char* legenddir){
     double result = ((float)timer)/CLOCKS_PER_SEC;
     fprintf(ff,"Elapsed simulation time is %f s, with %d close encounters.\n",result,N_encounters);
     printf("\n\nSimulation complete. Elapsed simulation time is %f s, with %d close encounters.\n\n",result,N_encounters);
-}
-
-struct reb_particle get_com_with_planetesimals(struct reb_simulation* r){
-    struct reb_particle com = {.m=0, .x=0, .y=0, .z=0, .vx=0, .vy=0, .vz=0};
-    const int N = r->N;
-    const int N_active = r->N_active;
-    int m;
-    struct reb_particle* restrict const particles = r->particles;
-    for (int i=0;i<N;i++){
-        struct reb_particle p = particles[i];
-        if(i>=N_active) m = planetesimal_mass; else m = p.m;
-        com.x = com.x*com.m + p.x*m;
-        com.y = com.y*com.m + p.y*m;
-        com.z = com.z*com.m + p.z*m;
-        com.vx = com.vx*com.m + p.vx*m;
-        com.vy = com.vy*com.m + p.vy*m;
-        com.vz = com.vz*com.m + p.vz*m;
-        com.m += m;
-        if(com.m > 0){
-            com.x /= com.m;
-            com.y /= com.m;
-            com.z /= com.m;
-            com.vx /= com.m;
-            com.vy /= com.m;
-            com.vz /= com.m;
-        }
-    }
-    return com;
-}
-
-void move_to_com_with_planetesimals(struct reb_simulation* const r){
-    const int N = r->N;
-    struct reb_particle* restrict const particles = r->particles;
-    struct reb_particle com = get_com_with_planetesimals(r);
-    for (int i=0;i<N;i++){
-        particles[i].x  -= com.x;
-        particles[i].y  -= com.y;
-        particles[i].z  -= com.z;
-        particles[i].vx -= com.vx;
-        particles[i].vy -= com.vy;
-        particles[i].vz -= com.vz;
-    }
 }
