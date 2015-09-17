@@ -34,7 +34,7 @@ int main(int argc, char* argv[]){
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary     = REB_BOUNDARY_OPEN;
 	r->heartbeat	= heartbeat;
-    r->additional_forces = planetesimal_forces;
+    //r->additional_forces = planetesimal_forces;
     r->ri_hybrid.switch_ratio = atof(argv[1]);     //# hill radii for boundary between switch. Try 3?
     //r->usleep   = 1000; //larger the number, slower OpenGL simulation
 	
@@ -110,13 +110,11 @@ int main(int argc, char* argv[]){
     
     //double a = 0.695;
     //double phi = 0.03;
-    //double a = 0.670139;
-    //double phi = 5.480386;
+    double a = 0.670139;
+    double phi = 5.480386;
     double inc = 0.012694;
     double Omega = 0;
     double apsis = 0;
-    double a = 0.695;
-    double phi = 0.03;
     struct reb_particle pt = {0};
     pt = reb_tools_init_orbit3d(r->G, star.m, 0, a, 0, inc, Omega, apsis,phi);
     pt.r 		= 0.04;
@@ -124,6 +122,7 @@ int main(int argc, char* argv[]){
     reb_add(r, pt);
     
     a = 0.620139;
+    //a = 2.5;
     phi = 5.380386;
     inc = 0.005;
     struct reb_particle pt2 = {0};
@@ -131,7 +130,9 @@ int main(int argc, char* argv[]){
     pt2.r 		= 0.04;
     pt2.id       = r->N;
     reb_add(r, pt2);
-     
+    
+    //planetesimal_mass = 0;
+    
     //move to COM
     if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
     
@@ -178,12 +179,21 @@ void heartbeat(struct reb_simulation* r){
                 struct reb_particle* global = r->particles;
                 struct reb_particle* mini = s->particles;
                 for(int i=0; i<N_active; i++) mini[i] = global[i];
+                printf("\n");
+                for(int i=0;i<r->N_active;i++) printf("update:global[%d].xyz=%.10f,%.10f,%.10f\n",i,global[i].vx,global[i].vy,global[i].vz);
                 mini[0].id = 10;    //TEMP
                 add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
+                //double E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0, t = r->t;
+                //calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, s);
+                //E_ini = E_curr;
+                //K_ini = K_curr;
+                //U_ini = U_curr;
+                //L_ini = L_curr;
             } //otherwise do nothing.
         } else {
             //integrate existing mini, update global, add/remove new/old particles.
             reb_integrate(s, r->t);
+            struct reb_particle* global = r->particles;
             update_global(s,r,N_encounters_previous, N_encounters);
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
         }
@@ -194,7 +204,7 @@ void heartbeat(struct reb_simulation* r){
     if(r->t > output_counter*tmax/n_output){
         output_counter++;
         double E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0, t = r->t;
-        calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, s); //calcs Etot all in one go.
+        calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, r); //calcs Etot all in one go.
         if(r->t <= r->dt){
             printf("r->t=%f,E_ini replacement\n",r->t);
             E_ini = E_curr;

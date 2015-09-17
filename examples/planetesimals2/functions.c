@@ -180,9 +180,6 @@ void planetesimal_forces(struct reb_simulation *a){
     const double Gm1 = G*planetesimal_mass;
     for(int i=0;i<N_active;i++){
         struct reb_particle* body = &(particles[i]);
-        double fx = 0;
-        double fy = 0;
-        double fz = 0;
         for(int j=N_active;j<N;j++){//add planetesimal forces to massive bodies
             struct reb_particle p = particles[j];
             
@@ -192,10 +189,6 @@ void planetesimal_forces(struct reb_simulation *a){
            
             const double rijinv = 1.0/sqrt(dx*dx + dy*dy + dz*dz);
             const double ac = -Gm1*rijinv*rijinv*rijinv;  //force/mass = acceleration
-            
-            fx += ac*dx;
-            fy += ac*dy;
-            fz += ac*dz;
             
             body->ax += ac*dx;    //perturbation on planets due to planetesimals.
             body->ay += ac*dy;
@@ -215,7 +208,7 @@ void planetesimal_forces(struct reb_simulation *a){
 void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
     s->N_active = r->N_active;
     s->integrator = REB_INTEGRATOR_IAS15;
-    s->additional_forces = planetesimal_forces;
+    //s->additional_forces = planetesimal_forces;
     s->exact_finish_time = 1;
     s->dt = r->dt;
     
@@ -297,9 +290,16 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
         pm->vz -= com.vz;
     }*/
     
+    printf("\n");
+    for(int i=0;i<r->N_active;i++) printf("after:global[%d].xyz=%.10f,%.10f,%.10f\n",i,global[i].vx,global[i].vy,global[i].vz);
+    
     //update massive and planetesimal particles
     for(int i=0; i<N_active; i++) global[i] = mini[i];  //update massive planets, always in same order
-    mini[0].id = 10;    //TEMP
+    
+    for(int i=0;i<r->N_active;i++) printf("after:mini[%d].xyz=%.10f,%.10f,%.10f\n",i,mini[i].vx,mini[i].vy,mini[i].vz);
+    //mini[0].id = 10;    //TEMP
+    exit(0);
+    
     for(int j=0; j<N_encounters_previous; j++){
         _Bool particle_update = 0;
         int PEI = previous_encounter_index[j];          //encounter index == global[EI].id
@@ -326,8 +326,6 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
             exit(0);
         }
     }
-    //for(int i=0;i<r->N;i++) printf("global[%d].m = %.10f,",i,global[i].m);
-    //printf("\n");
     
 }
 
