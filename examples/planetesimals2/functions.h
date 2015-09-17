@@ -31,16 +31,13 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* const 
 
 void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters,int N_encounters_previous, int dN);
 
-void update_encounter_indices(int* N_encounters, int* N_encounters_previous);
+void update_encounter_indices(int N_encounters, int N_encounters_previous);
 
 void clock_finish(clock_t timer, int N_encounters, char* legenddir);
 
-struct reb_particle get_com_with_planetesimals(struct reb_simulation* r);
-
-void move_to_com_with_planetesimals(struct reb_simulation* const r);
-
 //EXTERNAL VARIABLES******************************
 extern double planetesimal_mass;
+//extern int encounter_index, previous_encounter_index;
 extern int* encounter_index;
 extern int* previous_encounter_index;
 extern double* Hill;

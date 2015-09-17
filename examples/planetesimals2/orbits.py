@@ -17,7 +17,7 @@ file_name=str(sys.argv[1])
 #    header = fos.readline()
 #output = header.split(",")
 #N_active = int(output[2]) - 1    #-1 cause of the star
-N_active = 2
+N_active = 4
 
 #time, a, e, i, Omega (long. of asc. node), omega, l (mean longitude), P, f
 arg1=int(sys.argv[2])
@@ -40,13 +40,6 @@ for i in xrange(0,N_active):
         plt.yscale('log')
         break
 
-#plt.ylim([1e-4,0.05])
-if arg2==7:
-    plt.ylim([0.69,0.71])
-    #plt.ylim([0.98,1.02])
-if arg2==1:
-    plt.ylim([0.699,0.701])
-    #plt.ylim([0.998,1.002])
 plt.xlim([p[arg4,0],p[arg3,0]])
 #plt.xlim([33,45])
 plt.xlabel('' + names[arg1])

@@ -197,8 +197,8 @@ void planetesimal_forces(struct reb_simulation *a){
 //initialize mini-simulation for close encounters
 void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
     s->N_active = r->N_active;
-    s->integrator = 1;
-    //s->additional_forces = planetesimal_forces;
+    s->integrator = 0; //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, WH=3, HYBRID = 5
+    s->additional_forces = planetesimal_forces;
     s->exact_finish_time = 1;
     s->dt = r->dt;
     
@@ -243,6 +243,10 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters){
             const double rij2 = dx*dx + dy*dy + dz*dz;
             const double ratio = rij2/(rhi+rhj);
             
+            //if(ratio<r->ri_hybrid.switch_ratio){
+            //    num_encounters++;
+            //    encounter_index = pj.id;
+            //}
             if(ratio<r->ri_hybrid.switch_ratio){
                 num_encounters++;
                 if(num_encounters == 1) encounter_index[0] = pj.id;
@@ -306,9 +310,9 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
     //check to add particles
     for(int i=0;i<N_encounters;i++){
         _Bool index_found = 0;
-        int EI = encounter_index[i];
+        int EI = encounter_index[0];
         for(int j=0;index_found == 0 && j<N_encounters_previous;j++){
-            if(EI == previous_encounter_index[j]) index_found = 1;
+            if(EI == previous_encounter_index[0]) index_found = 1;
         }
         if(index_found == 0){//couldn't find index, add particle
             struct reb_particle pt = global[EI];
@@ -321,9 +325,9 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
     //check to remove particles
     for(int i=0;i<N_encounters_previous;i++){
         _Bool index_found = 0;
-        int PEI = previous_encounter_index[i];
+        int PEI = previous_encounter_index[0];
         for(int j=0;index_found == 0 && j<N_encounters;j++){
-            if(PEI == encounter_index[j]) index_found = 1;
+            if(PEI == encounter_index[0]) index_found = 1;
         }
         if(index_found == 0){//couldn't find index, find particle in sim and remove
             int removed_particle = 0;
@@ -339,23 +343,20 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
 }
 
 //transfer values from encounter_index to previous_encounter_index
-void update_encounter_indices(int* N_encounters, int* N_encounters_previous){
+void update_encounter_indices(int N_encounters, int N_encounters_previous){
     int size;
-    if(*N_encounters == 0) size = 1; else size = *N_encounters;
+    if(N_encounters == 0) size = 1; else size = N_encounters;
     
     previous_encounter_index = realloc(previous_encounter_index,size*sizeof(int));
     
-    if(*N_encounters == 0) previous_encounter_index[0] = 0; else {
-        for(int i=0;i<*N_encounters;i++) previous_encounter_index[i] = encounter_index[i];
+    if(N_encounters == 0) previous_encounter_index[0] = 0; else {
+        for(int i=0;i<N_encounters;i++) previous_encounter_index[i] = encounter_index[i];
     }
     
     //reset encounter index
-    encounter_index = realloc(encounter_index,sizeof(int));   //reset to single element
+    encounter_index = realloc(encounter_index,1*sizeof(int));   //reset to single element
     encounter_index[0] = 0;
-    
-    //reset encounter counters.
-    *N_encounters_previous = *N_encounters;
-    *N_encounters = 0;
+
 }
 
 void clock_finish(clock_t timer, int N_encounters, char* legenddir){
