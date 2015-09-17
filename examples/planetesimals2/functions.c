@@ -95,12 +95,12 @@ double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double 
     return dt;
 }
 
-void calc_ELtot(double* Etot, double* Ktot, double* Utot, double* Ltot, double planetesimal_mass, struct reb_simulation* r){
+void calc_ELtot(double* Etot, double* Ktot, double* Utot, double* Ltot, double planetesimal_mass, struct reb_simulation* a){
     double m1,m2;
-    int N_active = r->N_active, N = r->N;
-    const double G = r->G;
+    int N_active = a->N_active, N = a->N;
+    const double G = a->G;
     double L = 0, U = 0, K = 0;
-    struct reb_particle* const particles = r->particles;
+    struct reb_particle* const particles = a->particles;
     for(int i=0;i<N;i++){
         struct reb_particle par = particles[i];
         if(i < N_active) m1 = par.m; else m1 = planetesimal_mass;
@@ -141,16 +141,16 @@ void calc_ELtot(double* Etot, double* Ktot, double* Utot, double* Ltot, double p
 void calc_ae(double* a, double* e, double* d_out, struct reb_simulation* r, int i, double t){
     struct reb_particle* const particles = r->particles;
     struct reb_particle com = reb_get_com(r);
-    struct reb_particle* par = &(particles[i]); //output planets only.
+    struct reb_particle par = particles[i]; //output planets only.
     const double G = r->G;
-    const double m = par->m;
+    const double m = par.m;
     const double mu = G*(com.m + m);
-    const double dvx = par->vx-com.vx;
-    const double dvy = par->vy-com.vy;
-    const double dvz = par->vz-com.vz;
-    const double dx = par->x-com.x;
-    const double dy = par->y-com.y;
-    const double dz = par->z-com.z;
+    const double dvx = par.vx-com.vx;
+    const double dvy = par.vy-com.vy;
+    const double dvz = par.vz-com.vz;
+    const double dx = par.x-com.x;
+    const double dy = par.y-com.y;
+    const double dz = par.z-com.z;
     
     const double vv = dvx*dvx + dvy*dvy + dvz*dvz;
     const double d = sqrt( dx*dx + dy*dy + dz*dz );    //distance
@@ -173,10 +173,17 @@ void planetesimal_forces(struct reb_simulation *a){
     const int N = a->N;
     const int N_active = a->N_active;
     struct reb_particle* const particles = a->particles;
+    
+    int outputt = 0;
+    if(particles[0].id == 10) outputt = 1;
+    
     const double Gm1 = G*planetesimal_mass;
     for(int i=0;i<N_active;i++){
         struct reb_particle* body = &(particles[i]);
-        for(int j=N_active;j<N;j++){//add forces to massive bodies
+        double fx = 0;
+        double fy = 0;
+        double fz = 0;
+        for(int j=N_active;j<N;j++){//add planetesimal forces to massive bodies
             struct reb_particle p = particles[j];
             
             const double dx = body->x - p.x;
@@ -184,12 +191,23 @@ void planetesimal_forces(struct reb_simulation *a){
             const double dz = body->z - p.z;
            
             const double rijinv = 1.0/sqrt(dx*dx + dy*dy + dz*dz);
-            const double ac = Gm1*rijinv*rijinv*rijinv;  //force/mass = acceleration
+            const double ac = -Gm1*rijinv*rijinv*rijinv;  //force/mass = acceleration
             
-            body->ax -= ac*dx;    //perturbation on planets due to planetesimals.
-            body->ay -= ac*dy;
-            body->az -= ac*dz;
+            fx += ac*dx;
+            fy += ac*dy;
+            fz += ac*dz;
+            
+            body->ax += ac*dx;    //perturbation on planets due to planetesimals.
+            body->ay += ac*dy;
+            body->az += ac*dz;
         }
+        /*
+        if(outputt ==1){
+            FILE* output;
+            output=fopen("debug/IAS_sept16_pforces_single.txt","a");
+            fprintf(output,"%f,%d,%.15f,%.15f,%.15f\n",a->t,i,fx, fy, fz);
+            fclose(output);
+        }*/
     }
 }
 
@@ -203,12 +221,11 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
     
     struct reb_particle* restrict const particles = r->particles;
     for(int k=0; k<s->N_active; k++){
-        struct reb_particle p = particles[k];
+        struct reb_particle p = {0};
+        p = particles[k];
+        if(k==0) p.id = 10; //TEMP
         reb_add(s,p);
     }
-    
-    //reb_move_to_com(s);         //before IAS15 simulation starts, move to COM
-    //move_to_com_with_planetesimals(s);
 }
 
 //collect the id/array number of all planetesimals involved in a close encounter
@@ -265,17 +282,31 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters){
 void update_global(struct reb_simulation* const s, struct reb_simulation* r, int N_encounters_previous, int N_encounters){
     int N_active = s->N_active;
     struct reb_particle* global = r->particles;
-    struct reb_particle* const mini = s->particles;
+    struct reb_particle* mini = s->particles;
+    
+    
+    //make sure the stars are synced, and if not, shift mini reference point to global so that they match
+    //struct reb_particle com = reb_get_com(r);
+    /*for (int i=0;i<s->N;i++){
+        struct reb_particle* pm = &(mini[i]);
+        pm->x  -= com.x;
+        pm->y  -= com.y;
+        pm->z  -= com.z;
+        pm->vx -= com.vx;
+        pm->vy -= com.vy;
+        pm->vz -= com.vz;
+    }*/
     
     //update massive and planetesimal particles
-    for(int i=0; i<N_active; i++) global[i] = mini[i];  //massive particles, always in same order
+    for(int i=0; i<N_active; i++) global[i] = mini[i];  //update massive planets, always in same order
+    mini[0].id = 10;    //TEMP
     for(int j=0; j<N_encounters_previous; j++){
         _Bool particle_update = 0;
         int PEI = previous_encounter_index[j];          //encounter index == global[EI].id
         for(int k=0;particle_update==0 && k<N_encounters_previous;k++){
             int mini_index = N_active + k;
             if(mini[mini_index].id == PEI){
-                //printf("mini_index=%d,id=%d, s->N_active=%d\n",mini_index,mini[mini_index].id,N_active);
+                //printf("mini_index=%d,id=%d, s->N_active=%d, PEI=%d\n",mini_index,mini[mini_index].id,N_active,PEI);
                 global[PEI] = mini[mini_index];
                 particle_update = 1;
             }
@@ -295,6 +326,8 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
             exit(0);
         }
     }
+    //for(int i=0;i<r->N;i++) printf("global[%d].m = %.10f,",i,global[i].m);
+    //printf("\n");
     
 }
 

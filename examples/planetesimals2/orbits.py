@@ -35,7 +35,7 @@ data = np.loadtxt(fos, delimiter=',')
 
 for i in xrange(0,N_active):
     p=data[i::N_active]
-    plt.plot(p[arg4:arg3,arg1], p[arg4:arg3,arg2], 'o'+colors[i], marker='o', markersize=2,markeredgecolor='none',label='planet '+str(i), )
+    plt.plot(p[arg4:arg3,arg1], p[arg4:arg3,arg2], 'o'+colors[i], marker='o', markersize=2,markeredgecolor='none',label='planet '+str(i))
     if arg2 == 3 or arg2==4 or arg2==5 or arg2==6:
         plt.yscale('log')
         break
