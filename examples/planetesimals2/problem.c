@@ -11,20 +11,29 @@
 #include "rebound.h"
 #include "integrator_whfast.h"
 #include "tools.h"
-#include "../examples/planetesimals2/functions.h"
 
 void heartbeat(struct reb_simulation* r);
+void calc_ELtot(double* Etot, double* Ktot, double* Utot, double* Ltot, double planetesimal_mass, struct reb_simulation* r);
+void calc_ae(double* a, double* e, double* d, struct reb_simulation* r, int i, double t);
+void planetesimal_forces(struct reb_simulation *a);
+
 double tmax, planetesimal_mass, CE_exit_time = 0, E_ini, K_ini, U_ini, L_ini, n_output;
-int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, output_counter = 0,sim_update = 0, int_go=0, print_IAS=0;
-int *encounter_index; int *previous_encounter_index; double* Hill = NULL;
+int sim_update = 0, planetesimal_1, output_counter = 0, p1_id;
+//int *encounter_index; int *previous_encounter_index; double* Hill = NULL;
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
 struct reb_simulation* s;
 
 int main(int argc, char* argv[]){
-    // System constants
-    tmax = 1000;
-    HYBRID_ON = 0;
-    double dRHill = 0.5;      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
+//********switches******************
+    planetesimal_1 = 1;     //=1 to turn on, 0=off
+    int planetesimal_2 = 1;
+    int turn_planetesimal_forces_on = 1; //=1 to turn on
+    
+//********setup values******************
+    tmax = 100;
+    double M_planetesimals = 3e-6/10;
+    int N_planetesimals = 2;
+    planetesimal_mass = M_planetesimals/N_planetesimals;
     
     struct reb_simulation* r = reb_create_simulation();
 	// Setup constants
@@ -32,7 +41,7 @@ int main(int argc, char* argv[]){
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary     = REB_BOUNDARY_OPEN;
 	r->heartbeat	= heartbeat;
-    r->additional_forces = planetesimal_forces;
+    if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces;
     r->ri_hybrid.switch_ratio = 5;     //# hill radii for boundary between switch. Try 3?
     //r->usleep   = 1000; //larger the number, slower OpenGL simulation
 	
@@ -40,8 +49,9 @@ int main(int argc, char* argv[]){
     n_output = 10000;
     double boxsize = 5;
 	reb_configure_box(r, boxsize, 1, 1, 1);
-
-	// Initial conditions
+    
+//********bodies*********************
+	//star
 	struct reb_particle star = {0};
 	star.m 		= 1;
 	star.r		= 0.01;
@@ -66,168 +76,222 @@ int main(int argc, char* argv[]){
     r->N_active++;
     
     //planetesimal
-    //double a = 0.695;
-    //double phi = 0.03;
-    double a = 0.670139;
-    double phi = 5.480386;
-    double inc = 0.012694;
-    double Omega = 0;
-    double apsis = 0;
-    struct reb_particle pt = {0};
-    pt = reb_tools_init_orbit3d(r->G, star.m, 0, a, 0, inc, Omega, apsis,phi);
-    pt.r 		= 0.04;
-    pt.id       = r->N;
-    reb_add(r, pt);
-    
-    //planetesimal
-    a = 0.5;
-     //a = 2.5;
-    phi = 5.380386;
-    inc = 0.005;
-    struct reb_particle pt2 = {0};
-    pt2 = reb_tools_init_orbit3d(r->G, star.m, 0, a, 0, inc, Omega, apsis,phi);
-    pt2.r 		= 0.04;
-    pt2.id       = r->N;
-    reb_add(r, pt2);
-    
-    //Hill Sphere (for speed in check_for_encounter)
-    Hill = calloc(sizeof(double),r->N);
-    struct reb_particle* restrict const particles = r->particles;
-    struct reb_particle p0 = particles[0];
-    for(int i=1;i<r->N;i++){
-        struct reb_particle body = particles[i];
-        double mp;
-        if(i<r->N_active) mp = body.m; else mp = planetesimal_mass;
-        Hill[i] = pow((mp/(p0.m*3.)), 2./3.);
+    if(planetesimal_1 == 1){
+        double a=0.5;
+        double phi = 5.480386;
+        double inc = 0.012694;
+        struct reb_particle pt = {0};
+        pt = reb_tools_init_orbit3d(r->G, star.m, 0, a, 0, inc, 0, 0,phi);
+        pt.r 		= 0.04;
+        p1_id       = 3;
+        pt.id       = p1_id;
+        reb_add(r, pt);
+        fprintf(stderr, "\033[1m Note!\033[0m planetesimal_1 is on!\n");
     }
     
-    //calc dt
-    r->dt = calc_dt(r, m1, star.m, a1, dRHill);
+    if(planetesimal_2 == 1){
+        double a2 = 0.4;
+        //a = 2.5;
+        double phi2 = 5.380386;
+        double inc2 = 0.005;
+        struct reb_particle pt2 = {0};
+        pt2 = reb_tools_init_orbit3d(r->G, star.m, 0, a2, 0, inc2, 0, 0,phi2);
+        pt2.r 		= 0.04;
+        pt2.id       = 4;
+        reb_add(r, pt2);
+        fprintf(stderr,"\033[1m Note!\033[0m planetesimal_2 is on!\n");
+    }
+    
+//********setup calculations and integrate!*********************
+    //dt
     r->dt = 0.004;
-    printf("dt=%f\n",r->dt);
     
     //move to COM
     if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
     
-    //Initializing stuff
-    legend(plntdir, lgnddir, r, tmax, planetesimal_mass, 0, 0,0,0, m1, a1, e1, star.m, dRHill,HYBRID_ON);
+    //Ini mini
     s = reb_create_simulation();    //initialize mini simulation (IAS15)
-    ini_mini(r,s);
-    calc_ELtot(&E_ini, &K_ini, &U_ini, &L_ini, 0, r);
-    clock_t timer = clock();
+    s->N_active = r->N_active;
+    s->integrator = 0; //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, WH=3, HYBRID = 5
+    if(turn_planetesimal_forces_on==1){
+       s->additional_forces = planetesimal_forces;
+        fprintf(stderr,"\033[1m Note!\033[0m Planetesimal_forces are on!\n");
+    }
+    s->exact_finish_time = 1;
+    s->dt = r->dt;
+    struct reb_particle* restrict const particles = r->particles;
+    for(int k=0; k<s->N_active; k++){
+        struct reb_particle p = {0};
+        p = particles[k];
+        reb_add(s,p);
+    }
     
-    encounter_index = calloc(sizeof(int),1);
-    previous_encounter_index = calloc(sizeof(int),1);
+    system("rm -v simple_test.txt");
+    printf("r->N-1=%d (input for orbits.py)\n",r->N-1);
+    //calc_ELtot(&E_ini, &K_ini, &U_ini, &L_ini, 0, r);
     
     //Integrate!
     reb_integrate(r, tmax);
-    
-    //finish
-    clock_finish(timer,N_encounters_tot,lgnddir);
-    free(encounter_index);
-    free(previous_encounter_index);
-    free(Hill);
+
+//********setup calculations and integrate!*********************
 }
 
 void heartbeat(struct reb_simulation* r){
-    //check for encounter
-    check_for_encounter(r, &N_encounters);
-    int dN = N_encounters - N_encounters_previous;
-    
-    if(N_encounters_previous == 0){
-        if(N_encounters > 0){
-            s->t = r->t;
-            int N_active = r->N_active;
-            struct reb_particle* global = r->particles;
-            struct reb_particle* mini = s->particles;
-            for(int i=0; i<N_active; i++) mini[i] = global[i];
-            printf("updating IAS,");
-            
-            //add particle
-            struct reb_particle pt = global[encounter_index[0]];
-            reb_add(s,pt);
-            printf("s->N=%d\n",s->N);
+    //Simple algorithm which starts using mini and updating global after 50 years
+    if(r->t > 50 && sim_update == 0){
+        s->t = r->t;
+        int N_active = r->N_active;
+        struct reb_particle* global = r->particles;
+        struct reb_particle* mini = s->particles;
+        for(int i=0; i<N_active; i++) mini[i] = global[i];
+        
+        fprintf(stderr,"\n\033[1m Note!\033[0m Initializing mini simulation (IAS)\n");
+        sim_update = 1;
+        
+        if(planetesimal_1 == 1){
+            for(int i=0;i<r->N;i++){
+                if(global[i].id == p1_id){
+                    struct reb_particle pt = global[3];
+                    reb_add(s,pt);
+                    fprintf(stderr,"\033[1m Note!\033[0m Added planetesimal_1 to mini simulation!\n");
+                    break;
+                }
+            }
+
         }
-    } else {
+        
+    } else if(sim_update == 1){
         reb_integrate(s, r->t);
-        update_global(s,r,N_encounters_previous,N_encounters);
-        add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
-        //if(N_encounters == 0){
-            //int removed_particle = reb_remove(s,r->N_active,1);
-            //printf("particle %d leaving. dN == %d, N_close_encounters=%d.\n",previous_encounter_index[0],dN,N_encounters);
-        //}
+        struct reb_particle* global = r->particles;
+        struct reb_particle* mini = s->particles;
+        
+        //update massive bodies and planetesimal particle
+        for(int i=0; i<s->N; i++) global[i] = mini[i];
     }
-    update_encounter_indices(N_encounters, N_encounters_previous);
-    N_encounters_previous = N_encounters;
-    N_encounters = 0;
     
     //output stuff
     if(r->t > output_counter*tmax/n_output){
         output_counter++;
         double E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0, t = r->t;
         calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, r); //calcs Etot all in one go.
-        for(int i=1;i<r->N;i++){
-            calc_ae(&a_p, &e_p, &d_p, r, i, t);
+        if(r->t <= r->dt){
+            printf("r->t=%f,E_ini replacement\n",r->t);
+            E_ini = E_curr;
+            K_ini = K_curr;
+            U_ini = U_curr;
+            L_ini = L_curr;
+        } else {
+            for(int i=1;i<r->N;i++){
+                calc_ae(&a_p, &e_p, &d_p, r, i, t);
                 
-            FILE *append;
-            append=fopen(plntdir, "a");
-            fprintf(append,"%f,%.8f,%.8f,%.16f,%.16f,%.16f,%.16f,%.16f\n",t,a_p,e_p,fabs((E_ini - E_curr)/E_ini),fabs((K_ini - K_curr)/K_ini), fabs((U_ini - U_curr)/U_ini),fabs((L_ini - L_curr)/L_ini),d_p);
-                //fprintf(append,"%f,%.8f,%.8f,%.16f,%.16f,%.16f,%.16f,%.16f\n",t,a_p,e_p,E_curr, K_curr, U_curr,L_curr,d_p);
-            fclose(append);
-            E_curr = 0;
-            L_curr = 0;
+                FILE *append;
+                append=fopen("simple_test.txt", "a");
+                fprintf(append,"%f,%.8f,%.8f,%.16f,%.16f,%.16f,%.16f,%.16f\n",t,a_p,e_p,fabs((E_ini - E_curr)/E_ini),fabs((K_ini - K_curr)/K_ini), fabs((U_ini - U_curr)/U_ini),fabs((L_ini - L_curr)/L_ini),d_p);
+                fclose(append);
+                E_curr = 0;
+                L_curr = 0;
+            }
         }
         
         reb_output_timing(r, 0);
-    
-    /*
-    if(HYBRID_ON == 1){
-        check_for_encounter(r, &N_encounters);
-        int dN = N_encounters - N_encounters_previous;
-        
-        if(N_encounters_previous == 0){
-            if(N_encounters > 0){
-                //first update in a while, only update massive bodies in mini and add any particles
-                s->t = r->t;
-                int N_active = r->N_active;
-                struct reb_particle* global = r->particles;
-                struct reb_particle* mini = s->particles;
-                for(int i=0; i<N_active; i++) mini[i] = global[i];
-                printf("\n");
-                for(int i=0;i<r->N_active;i++) printf("update:global[%d].xyz=%.10f,%.10f,%.10f\n",i,global[i].vx,global[i].vy,global[i].vz);
-                add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
-            } //otherwise do nothing.
-        } else {
-            //integrate existing mini, update global, add/remove new/old particles.
-            reb_integrate(s, r->t);
-            update_global(s,r,N_encounters_previous, N_encounters);
-            add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
-        }
-        update_encounter_indices(&N_encounters, &N_encounters_previous);
-    }*/
+    }
+}
 
+void calc_ELtot(double* Etot, double* Ktot, double* Utot, double* Ltot, double planetesimal_mass, struct reb_simulation* a){
+    double m1,m2;
+    int N_active = a->N_active, N = a->N;
+    const double G = a->G;
+    double L = 0, U = 0, K = 0;
+    struct reb_particle* const particles = a->particles;
+    for(int i=0;i<N;i++){
+        struct reb_particle par = particles[i];
+        if(i < N_active) m1 = par.m; else m1 = planetesimal_mass;
+        const double dvx = par.vx;
+        const double dvy = par.vy;
+        const double dvz = par.vz;
+        const double dx = par.x;
+        const double dy = par.y;
+        const double dz = par.z;
         
-        /*
-        FILE* output;
-        output=fopen("debug/IAS_sept16_single.txt","a");
-            int index = 3;
-        struct reb_particle* global = s->particles;
-        for(int i=0;i<r->N_active;i++) fprintf(output,"%f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",r->t,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz);
-        fprintf(output,"%f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",r->t,global[index].x,global[index].y,global[index].z,global[index].vx,global[index].vy,global[index].vz);
-        fclose(output);
-        */
-         
-        /*
-        E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0;
-        calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, s); //calcs Etot all in one go.
-        for(int i=1;i<s->N_active;i++){
-            calc_ae(&a_p, &e_p, &d_p, s, i);
+        //L_tot = m*(r x v)
+        const double hx = dy*dvz - dz*dvy;
+        const double hy = dz*dvx - dx*dvz;
+        const double hz = dx*dvy - dy*dvx;
+        L += m1*sqrt ( hx*hx + hy*hy + hz*hz );
+        
+        //E_tot
+        K += 0.5*m1*(dvx*dvx + dvy*dvy + dvz*dvz);
+        if(i<N_active){//ignore dE/dx = forces between planetesimals
+            for(int j=i+1;j<N;j++){
+                struct reb_particle par2 = particles[j];
+                if(j < N_active) m2 = par2.m; else m2 = planetesimal_mass;
+                double ddx = dx - par2.x;
+                double ddy = dy - par2.y;
+                double ddz = dz - par2.z;
+                U -= G*m1*m2/sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
+            }
+        }
+    }
+    
+    *Etot = K + U;
+    *Ktot = K;
+    *Utot = U;
+    *Ltot = L;
+}
+
+//Calculates 'a' and 'e' of planet each output.
+void calc_ae(double* a, double* e, double* d_out, struct reb_simulation* r, int i, double t){
+    struct reb_particle* const particles = r->particles;
+    struct reb_particle com = reb_get_com(r);
+    struct reb_particle par = particles[i]; //output planets only.
+    const double G = r->G;
+    const double m = par.m;
+    const double mu = G*(com.m + m);
+    const double dvx = par.vx-com.vx;
+    const double dvy = par.vy-com.vy;
+    const double dvz = par.vz-com.vz;
+    const double dx = par.x-com.x;
+    const double dy = par.y-com.y;
+    const double dz = par.z-com.z;
+    
+    const double vv = dvx*dvx + dvy*dvy + dvz*dvz;
+    const double d = sqrt( dx*dx + dy*dy + dz*dz );    //distance
+    const double dinv = 1./d;
+    const double muinv = 1./mu;
+    const double vr = (dx*dvx + dy*dvy + dz*dvz)*dinv;
+    const double term1 = vv-mu*dinv;
+    const double term2 = d*vr;
+    const double ex = muinv*( term1*dx - term2*dvx );
+    const double ey = muinv*( term1*dy - term2*dvy );
+    const double ez = muinv*( term1*dz - term2*dvz );
+    *e = sqrt(ex*ex + ey*ey + ez*ez);   // eccentricity
+    *a = -mu/( vv - 2.*mu*dinv );
+    *d_out = d;
+    
+}
+
+void planetesimal_forces(struct reb_simulation *a){
+    const double G = a->G;
+    const int N = a->N;
+    const int N_active = a->N_active;
+    struct reb_particle* const particles = a->particles;
+    
+    const double Gm1 = G*planetesimal_mass;
+    for(int i=0;i<N_active;i++){
+        struct reb_particle* body = &(particles[i]);
+        for(int j=N_active;j<N;j++){//add planetesimal forces to massive bodies
+            struct reb_particle p = particles[j];
             
-            FILE *append;
-            append=fopen("output/mini_output.txt", "a");
-            fprintf(append,"%f,%.8f,%.8f,%.16f,%.16f,%.16f,%.16f,%.8f\n",t,a_p,e_p,fabs((E_ini - E_curr)/E_ini),fabs((K_ini - K_curr)/K_ini), fabs((U_ini - U_curr)/U_ini),fabs((L_ini - L_curr)/L_ini),d_p);
-            fclose(append);
-            E_curr = E_ini; L_curr = L_ini;
-        }*/
+            const double dx = body->x - p.x;
+            const double dy = body->y - p.y;
+            const double dz = body->z - p.z;
+            
+            const double rijinv = 1.0/sqrt(dx*dx + dy*dy + dz*dz);
+            const double ac = -Gm1*rijinv*rijinv*rijinv;  //force/mass = acceleration
+            
+            body->ax += ac*dx;    //perturbation on planets due to planetesimals.
+            body->ay += ac*dy;
+            body->az += ac*dz;
+        }
     }
 }
