@@ -1,0 +1,14 @@
+-The basic setup of this problem is I simply run the simulation for 100 years, and after 50 years turn on my “mini” simulation (IAS15), integrate the mini and feed the resulting coordinates back to the global simulation. I have it hardcoded so that the bodies involved in the mini simulation are the star, massive planets, and planetesimal_1 (if it’s enabled). planetesimal_2 is never part of the mini simulation, even if planetesimal_2 = 1 and planetesimal_1 = 0.
+
+-To run this simple problem, simply compile as normal (‘make’), and run (‘./rebound’).
+
+-There are a number of switches at the very top labelled under “switches” to turn on planetesimal 1, 2, and turn on planetesimal forces.
+
+-the outputted parameters will go into “simple_test.txt”, and you can view the outputted values by running:
+python orbits.py (plot choice) (N_outputs)
+where you can see the plot options in the ‘names’ array within orbits.py. semi-major axis = 1, eccentricity = 2, energy = 3, etc. N_outputs is outputted in the terminal when you run ./rebound as “r->N-1=N_outputs (input for orbits.py)”. 
+
+Situations that lead to higher than expected error: 
+1) When planetesimal_1 = 1 and turn_planetesimal_forces_on = 0.
+2) When planetesimal_1 = 1 and planetesimal_2 = 1. If turn_planetesimal_forces_on = 0 then it’s always higher than expected, if turn_planetesimal_forces_on = 1 then it becomes higher than expected once the transition occurs.
+

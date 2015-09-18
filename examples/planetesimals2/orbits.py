@@ -12,11 +12,11 @@ colors=['b','g','m','r','c','y']
 file_name=str(sys.argv[1])
 
 #Get number of massive planets
-N_active = int(sys.argv[4])
+N_active = int(sys.argv[3])
 
 #time, a, e, i, Omega (long. of asc. node), omega, l (mean longitude), P, f
-arg1=int(sys.argv[2])
-arg2=int(sys.argv[3])
+arg1=0
+arg2=int(sys.argv[2])
 
 fos = open(''+file_name, 'r')
 data = np.loadtxt(fos, delimiter=',')

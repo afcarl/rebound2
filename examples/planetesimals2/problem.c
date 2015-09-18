@@ -18,14 +18,14 @@ void calc_ae(double* a, double* e, double* d, struct reb_simulation* r, int i, d
 void planetesimal_forces(struct reb_simulation *a);
 
 double tmax, planetesimal_mass, CE_exit_time = 0, E_ini, K_ini, U_ini, L_ini, n_output;
-int sim_update = 0, planetesimal_1, output_counter = 0, p1_id;
+int mini_on = 0, planetesimal_1, output_counter = 0, p1_id;
 //int *encounter_index; int *previous_encounter_index; double* Hill = NULL;
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
 struct reb_simulation* s;
 
 int main(int argc, char* argv[]){
 //********switches******************
-    planetesimal_1 = 1;     //=1 to turn on, 0=off
+    planetesimal_1 = 0;     //=1 to turn on, 0=off
     int planetesimal_2 = 1;
     int turn_planetesimal_forces_on = 1; //=1 to turn on
     
@@ -138,7 +138,7 @@ int main(int argc, char* argv[]){
 
 void heartbeat(struct reb_simulation* r){
     //Simple algorithm which starts using mini and updating global after 50 years
-    if(r->t > 50 && sim_update == 0){
+    if(r->t > 50 && mini_on == 0){
         s->t = r->t;
         int N_active = r->N_active;
         struct reb_particle* global = r->particles;
@@ -146,12 +146,12 @@ void heartbeat(struct reb_simulation* r){
         for(int i=0; i<N_active; i++) mini[i] = global[i];
         
         fprintf(stderr,"\n\033[1m Note!\033[0m Initializing mini simulation (IAS)\n");
-        sim_update = 1;
+        mini_on = 1;
         
         if(planetesimal_1 == 1){
             for(int i=0;i<r->N;i++){
                 if(global[i].id == p1_id){
-                    struct reb_particle pt = global[3];
+                    struct reb_particle pt = global[i];
                     reb_add(s,pt);
                     fprintf(stderr,"\033[1m Note!\033[0m Added planetesimal_1 to mini simulation!\n");
                     break;
@@ -160,7 +160,7 @@ void heartbeat(struct reb_simulation* r){
 
         }
         
-    } else if(sim_update == 1){
+    } else if(mini_on == 1){
         reb_integrate(s, r->t);
         struct reb_particle* global = r->particles;
         struct reb_particle* mini = s->particles;
