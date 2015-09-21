@@ -49,7 +49,7 @@ int main(int argc, char* argv[]){
 		reb_add(r, pt);
 	}
 
-	reb_integrate(r, INFINITY);
+	reb_integrate(r, 1000);
 }
 
 void heartbeat(struct reb_simulation* r){

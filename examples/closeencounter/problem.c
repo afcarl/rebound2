@@ -21,7 +21,7 @@ int main(int argc, char* argv[]){
 	r->dt 		= 0.01*2.*M_PI;		// initial timestep
 	r->integrator 	= REB_INTEGRATOR_IAS15;
 	r->heartbeat  	= heartbeat;
-	r->usleep	= 10000;		// Slow down integration (for visualization only)
+	//r->usleep	= 10000;		// Slow down integration (for visualization only)
 
 	// Add star
 	struct reb_particle star = {0};
@@ -40,7 +40,7 @@ int main(int argc, char* argv[]){
 		reb_add(r, planet); 
 	}
 	reb_move_to_com(r);		// This makes sure the planetary systems stays within the computational domain and doesn't drift.
-	reb_integrate(r, INFINITY);
+	reb_integrate(r, 1000);
 }
 
 void heartbeat(struct reb_simulation* r){

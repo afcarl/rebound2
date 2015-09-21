@@ -57,7 +57,7 @@
 static const char* logo[];				/**< Logo of rebound. */
 #endif // LIBREBOUND
 const char* reb_build_str = __DATE__ " " __TIME__;	// Date and time build string. 
-const char* reb_version_str = "2.5.0";			// **VERSIONLINE** This line gets updated automatically. Do not edit manually.
+const char* reb_version_str = "2.7.3";			// **VERSIONLINE** This line gets updated automatically. Do not edit manually.
 
 
 void reb_step(struct reb_simulation* const r){
@@ -169,6 +169,11 @@ static void set_dp7_null(struct reb_dp7 * dp){
 }
 
 void reb_free_simulation(struct reb_simulation* const r){
+	reb_free_pointers(r);
+	free(r);
+}
+
+void reb_free_pointers(struct reb_simulation* const r){
 	reb_tree_delete(r);
 	free(r->gravity_cs 	);
 	free(r->collisions	);
@@ -222,13 +227,18 @@ void reb_reset_function_pointers(struct reb_simulation* const r){
 }
 
 struct reb_simulation* reb_create_simulation(){
+	struct reb_simulation* r = calloc(1,sizeof(struct reb_simulation));
+	reb_init_simulation(r);
+	return r;
+}
+
+void reb_init_simulation(struct reb_simulation* r){
 #ifndef LIBREBOUND
 	int i =0;
 	while (logo[i]!=NULL){ printf("%s",logo[i++]); }
 	printf("Built: %s\n\n",reb_build_str);
 #endif // LIBREBOUND
 	reb_tools_init_srand();
-	struct reb_simulation* r = calloc(1,sizeof(struct reb_simulation));
 	reb_reset_temporary_pointers(r);
 	reb_reset_function_pointers(r);
 	r->t 		= 0; 
@@ -315,7 +325,6 @@ struct reb_simulation* reb_create_simulation(){
 #ifdef OPENMP
 	printf("Using OpenMP with %d threads per node.\n",omp_get_max_threads());
 #endif // OPENMP
-	return r;
 }
 
 int reb_check_exit(struct reb_simulation* const r, const double tmax){
@@ -331,8 +340,20 @@ int reb_check_exit(struct reb_simulation* const r, const double tmax){
 	if(tmax!=INFINITY){
 		if(r->exact_finish_time==1){
 			if ((r->t+r->dt)*dtsign>=tmax*dtsign){  // Next step would overshoot
-				if (r->status == REB_RUNNING_LAST_STEP){
+				double tscale = 1e-12*fabs(tmax);	// Find order of magnitude for time
+				if (tscale<1e-200){		// Failsafe if tmax==0.
+					tscale = 1e-12;
+				}
+				if (r->t==tmax){
 					r->status = REB_EXIT_SUCCESS;
+				}else if(r->status == REB_RUNNING_LAST_STEP){
+					if (fabs(r->t-tmax)<tscale){
+						r->status = REB_EXIT_SUCCESS;
+					}else{
+						// not there yet, do another step.
+						reb_integrator_synchronize(r);
+						r->dt = tmax-r->t;
+					}
 				}else{
 					r->status = REB_RUNNING_LAST_STEP; // Do one small step, then exit.
 					r->dt_last_done = r->dt;
