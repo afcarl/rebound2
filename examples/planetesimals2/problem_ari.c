@@ -62,7 +62,7 @@ int main(int argc, char* argv[]){
     //planet 1
     double a1=0.7, m1=5e-5, e1=0.01;
     struct reb_particle p1 = {0};
-    p1 = reb_tools_init_orbit3d(r->G, star.m, m1, a1, e1, reb_random_normal(0.0001), 0, 0, 0);
+    p1 = reb_tools_orbit_to_particle(r->G, star, m1, a1, e1, reb_random_normal(0.0001), 0., 0., 0.);
     p1.id = 1;              //1 = planet
     reb_add(r, p1);
     r->N_active++;
@@ -70,7 +70,7 @@ int main(int argc, char* argv[]){
     //planet 2
     double a2=1, m2=5e-5, e2=0.01;
     struct reb_particle p2 = {0};
-    p2 = reb_tools_init_orbit3d(r->G, star.m, m2, a2, e2, reb_random_normal(0.0001), 0, 0, 0);
+    p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, reb_random_normal(0.0001), 0., 0., 0.);
     p2.id = 1;              //2 = planet
     reb_add(r, p2);
     r->N_active++;
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]){
         double phi = 5.480386;
         double inc = 0.012694;
         struct reb_particle pt = {0};
-        pt = reb_tools_init_orbit3d(r->G, star.m, 0, a, 0, inc, 0, 0,phi);
+        pt = reb_tools_orbit_to_particle(r->G, star, 0, a, 0, inc, 0, 0,phi);
         pt.r 		= 0.04;
         p1_id       = 3;
         pt.id       = p1_id;
@@ -95,7 +95,7 @@ int main(int argc, char* argv[]){
         double phi2 = 5.380386;
         double inc2 = 0.005;
         struct reb_particle pt2 = {0};
-        pt2 = reb_tools_init_orbit3d(r->G, star.m, 0, a2, 0, inc2, 0, 0,phi2);
+        pt2 = reb_tools_orbit_to_particle(r->G, star, 0, a2, 0, inc2, 0, 0,phi2);
         pt2.r 		= 0.04;
         pt2.id       = 4;
         reb_add(r, pt2);
