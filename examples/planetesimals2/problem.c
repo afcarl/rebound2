@@ -14,28 +14,36 @@
 #include "../examples/planetesimals2/functions.h"
 
 void heartbeat(struct reb_simulation* r);
-double tmax, planetesimal_mass, CE_exit_time = 0, E_ini, K_ini, U_ini, L_ini, n_output;
+double tmax, planetesimal_mass, CE_exit_time = 0, E0, n_output;
 int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, output_counter = 0;
 int* encounter_index = NULL; int* previous_encounter_index = NULL; double* Hill = NULL;
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
-struct reb_simulation* s;
+struct reb_simulation* s; struct reb_simulation* r;
+
+int planetesimal_1, planetesimal_2, p1_id, update_index = 0;
 
 int main(int argc, char* argv[]){
+    //switches
+    int turn_planetesimal_forces_on = 1;
+    planetesimal_1 = 1;     //=1 to turn on, 0=off
+    planetesimal_2 = 1;
+    
     // System constants
     tmax = 10;
     HYBRID_ON = 1;
-    double dRHill = atof(argv[2]);      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
-    double N_planetesimals = 20;
+    double dRHill = 0.5;      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
+    double N_planetesimals = 2;
     double M_planetesimals = 3e-6; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
+    planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal
     
-    struct reb_simulation* r = reb_create_simulation();
+    r = reb_create_simulation();
 	// Setup constants
-	r->integrator	= atoi(argv[3]);    //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, WH=3, HYBRID = 5
+	r->integrator	= 1;    //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, WH=3, HYBRID = 5
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary     = REB_BOUNDARY_OPEN;
 	r->heartbeat	= heartbeat;
-    r->additional_forces = planetesimal_forces;
-    r->ri_hybrid.switch_ratio = atof(argv[1]);     //# hill radii for boundary between switch. Try 3?
+    r->ri_hybrid.switch_ratio = 5;     //# hill radii for boundary between switch. Try 3?
+    if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces;
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
 	
     // Other constants
@@ -49,21 +57,23 @@ int main(int argc, char* argv[]){
 	star.r		= 0.01;
     star.id     = 0;        // 0 = star
 	reb_add(r, star);
-    r->N_active = 1;
 
     //planet 1
     double a1=0.7, m1=5e-5, e1=0.01;
-    struct reb_particle p1 = reb_tools_init_orbit3d(r->G, star.m, m1, a1, e1, reb_random_normal(0.0001), 0, 0, 0);
+    struct reb_particle p1 = {0};
+    p1 = reb_tools_init_orbit3d(r->G, star.m, m1, a1, e1, reb_random_normal(0.0001), 0, 0, 0);
     p1.id = 1;              //1 = planet
     reb_add(r, p1);
-    r->N_active++;
     
     //planet 2
     double a2=1, m2=5e-5, e2=0.01;
-    struct reb_particle p2 = reb_tools_init_orbit3d(r->G, star.m, m2, a2, e2, reb_random_normal(0.0001), 0, 0, 0);
+    struct reb_particle p2 = {0};
+    p2 = reb_tools_init_orbit3d(r->G, star.m, m2, a2, e2, reb_random_normal(0.0001), 0, 0, 0);
     p2.id = 1;              //2 = planet
     reb_add(r, p2);
-    r->N_active++;
+    
+    //N_active
+    r->N_active = r->N;
     
     //calc dt
     if(r->integrator == REB_INTEGRATOR_IAS15){
@@ -73,11 +83,11 @@ int main(int argc, char* argv[]){
         dRHill = -1;
     } else r->dt = calc_dt(r, m1, star.m, a1, dRHill);
 
+    
     //planetesimals
     double outer = 3, inner = 15, powerlaw = 0.5;  //higher the inner number, closer to the star
-    int seed = atoi(argv[4]);          //seed was 11
+    /*int seed = 12;          //seed was 11
     srand(seed);
-    planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal
     while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
 		double a	= reb_random_powerlaw(boxsize/outer,boxsize/inner,powerlaw);
@@ -100,7 +110,42 @@ int main(int argc, char* argv[]){
 		pt.r 		= 0.3;
         pt.id       = r->N;
 		reb_add(r, pt);
-	}
+	}*/
+    
+    //planetesimal
+    if(planetesimal_1 == 1){
+        //double a = 0.670139;      //for CE
+        //double phi = 5.480386;
+        //double inc = 0.012694;
+        
+        double a=0.5;
+        double phi = 5.480386;
+        double inc = 0.012694;
+        struct reb_particle pt = {0};
+        double mp1 = (turn_planetesimal_forces_on==1?planetesimal_mass:0);
+        pt = reb_tools_init_orbit3d(r->G, star.m, mp1, a, 0, inc, 0, 0,phi);
+        //pt = reb_tools_orbit2d_to_particle(r->G, star, mp1, a, 0., 0., 0.);
+        pt.r 		= 0.04;
+        p1_id       = 3;
+        pt.id       = p1_id;
+        reb_add(r, pt);
+        fprintf(stderr, "\033[1m Note!\033[0m planetesimal_1 is on!\n");
+    }
+    
+    if(planetesimal_2 == 1){
+        double a2 = 0.4;
+        //a = 2.5;
+        double phi2 = 5.380386;
+        double inc2 = 0.005;
+        struct reb_particle pt2 = {0};
+        double mp2 = (turn_planetesimal_forces_on==1?planetesimal_mass:0);
+        pt2 = reb_tools_init_orbit3d(r->G, star.m, mp2, a2, 0, inc2, 0, 0,phi2);
+        //pt2 = reb_tools_orbit2d_to_particle(r->G, star, mp2, a2, 0., 0., 0.);
+        pt2.r 		= 0.04;
+        pt2.id       = 4;
+        reb_add(r, pt2);
+        fprintf(stderr,"\033[1m Note!\033[0m planetesimal_2 is on!\n");
+    }
     
     //move to COM - before planetesimals?
     if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
@@ -120,7 +165,7 @@ int main(int argc, char* argv[]){
     legend(plntdir, lgnddir, r, tmax, planetesimal_mass, M_planetesimals, inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,HYBRID_ON);
     s = reb_create_simulation();    //initialize mini simulation (IAS15)
     ini_mini(r,s);
-    calc_ELtot(&E_ini, &K_ini, &U_ini, &L_ini, planetesimal_mass, r);
+    E0 = calc_Etot(r);
     clock_t timer = clock();
     encounter_index = malloc(sizeof(int));
     previous_encounter_index = malloc(sizeof(int));
@@ -161,7 +206,13 @@ void heartbeat(struct reb_simulation* r){
     //output stuff
     if(r->t > output_counter*tmax/n_output){
         output_counter++;
-        double E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0, t = r->t;
+        double E1 = calc_Etot(r);
+        FILE *append;
+        append = fopen(plntdir, "a");
+        fprintf(append, "%f, %.16f\n",r->t,fabs((E1 - E0)/E0));
+        fclose(append);
+        
+        /*double E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0, t = r->t;
         calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, r); //calcs Etot all in one go.
         for(int i=1;i<r->N_active;i++){
             calc_ae(&a_p, &e_p, &d_p, r, i, t);
@@ -171,10 +222,10 @@ void heartbeat(struct reb_simulation* r){
             fprintf(append,"%f,%.8f,%.8f,%.16f,%.16f,%.16f,%.16f,%.16f\n",t,a_p,e_p,fabs((E_ini - E_curr)/E_ini),fabs((K_ini - K_curr)/K_ini), fabs((U_ini - U_curr)/U_ini),fabs((L_ini - L_curr)/L_ini),d_p);
             fclose(append);
             E_curr = E_ini; L_curr = L_ini;
-        }
+        }*/
         reb_output_timing(r, 0);
         
-        
+        /*
         FILE* output;
         output=fopen("debug/HYB_sept14_par13_group.txt","a");
         struct reb_particle* global = r->particles;
@@ -182,19 +233,6 @@ void heartbeat(struct reb_simulation* r){
         int index = 13;
         fprintf(output,"%f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",r->t,global[index].x,global[index].y,global[index].z,global[index].vx,global[index].vy,global[index].vz);
         fclose(output);
-        
-         
-        /*
-        E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0;
-        calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, s); //calcs Etot all in one go.
-        for(int i=1;i<s->N_active;i++){
-            calc_ae(&a_p, &e_p, &d_p, s, i);
-            
-            FILE *append;
-            append=fopen("output/mini_output.txt", "a");
-            fprintf(append,"%f,%.8f,%.8f,%.16f,%.16f,%.16f,%.16f,%.8f\n",t,a_p,e_p,fabs((E_ini - E_curr)/E_ini),fabs((K_ini - K_curr)/K_ini), fabs((U_ini - U_curr)/U_ini),fabs((L_ini - L_curr)/L_ini),d_p);
-            fclose(append);
-            E_curr = E_ini; L_curr = L_ini;
-        }*/
+        */
     }
 }

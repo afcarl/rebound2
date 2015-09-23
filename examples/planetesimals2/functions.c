@@ -95,6 +95,49 @@ double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double 
     return dt;
 }
 
+double calc_Etot(struct reb_simulation* a){
+    double m1,m2;
+    const int N = a->N;
+    const int N_active = a->N_active;
+    const double G = a->G;
+    double L = 0, U = 0, K = 0;
+    struct reb_particle* const particles = a->particles;
+    for(int i=0;i<N;i++){
+        struct reb_particle par = particles[i];
+        if(i < N_active) m1 = par.m; else m1 = planetesimal_mass;
+        //m1 = par.m;
+        const double dvx = par.vx;
+        const double dvy = par.vy;
+        const double dvz = par.vz;
+        const double dx = par.x;
+        const double dy = par.y;
+        const double dz = par.z;
+        
+        //L_tot = m*(r x v)
+        const double hx = dy*dvz - dz*dvy;
+        const double hy = dz*dvx - dx*dvz;
+        const double hz = dx*dvy - dy*dvx;
+        L += m1*sqrt ( hx*hx + hy*hy + hz*hz );
+        
+        //E_tot
+        K += 0.5*m1*(dvx*dvx + dvy*dvy + dvz*dvz);
+        if(i<N_active){//ignore dE/dx = forces between planetesimals
+            for(int j=i+1;j<N;j++){
+                struct reb_particle par2 = particles[j];
+                if(j < N_active) m2 = par2.m; else m2 = planetesimal_mass;
+                //m2 = par2.m;
+                double ddx = dx - par2.x;
+                double ddy = dy - par2.y;
+                double ddz = dz - par2.z;
+                U -= G*m1*m2/sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
+            }
+        }
+    }
+    
+    return K + U;
+}
+
+/*
 void calc_ELtot(double* Etot, double* Ktot, double* Utot, double* Ltot, double planetesimal_mass, struct reb_simulation* r){
     double m1,m2;
     int N_active = r->N_active, N = r->N;
@@ -135,7 +178,7 @@ void calc_ELtot(double* Etot, double* Ktot, double* Utot, double* Ltot, double p
     *Ktot = K;
     *Utot = U;
     *Ltot = L;
-}
+}*/
 
 //Calculates 'a' and 'e' of planet each output.
 void calc_ae(double* a, double* e, double* d_out, struct reb_simulation* r, int i, double t){
@@ -173,6 +216,34 @@ void planetesimal_forces(struct reb_simulation *a){
     const int N = a->N;
     const int N_active = a->N_active;
     struct reb_particle* const particles = a->particles;
+    
+    const double Gm1 = G*planetesimal_mass;
+    for(int i=0;i<N_active;i++){
+        struct reb_particle* body = &(particles[i]);
+        for(int j=N_active;j<N;j++){//add planetesimal forces to massive bodies
+            struct reb_particle p = particles[j];
+            
+            const double dx = body->x - p.x;
+            const double dy = body->y - p.y;
+            const double dz = body->z - p.z;
+            
+            const double rijinv = 1.0/sqrt(dx*dx + dy*dy + dz*dz);
+            //const double Gm1 = G*p.m;
+            const double ac = -Gm1*rijinv*rijinv*rijinv;  //force/mass = acceleration
+            
+            body->ax += ac*dx;    //perturbation on planets due to planetesimals.
+            body->ay += ac*dy;
+            body->az += ac*dz;
+        }
+    }
+}
+
+/*
+void planetesimal_forces(struct reb_simulation *a){
+    const double G = a->G;
+    const int N = a->N;
+    const int N_active = a->N_active;
+    struct reb_particle* const particles = a->particles;
     const double Gm1 = G*planetesimal_mass;
     for(int i=0;i<N_active;i++){
         struct reb_particle* body = &(particles[i]);
@@ -191,7 +262,7 @@ void planetesimal_forces(struct reb_simulation *a){
             body->az -= ac*dz;
         }
     }
-}
+}*/
 
 //initialize mini-simulation for close encounters
 void ini_mini(struct reb_simulation* const r, struct reb_simulation* s){
