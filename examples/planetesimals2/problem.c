@@ -1,7 +1,7 @@
 /**
  * A.S. This is my planetesimal disk with special integrator for close encounters.
  *      Particle id's: 0 = star, 1 = massive body, 2 = planetesimal, 3 = CLOSE ENCOUNTER
- *
+ *      EXPERIMENTING!!!!
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,7 +20,7 @@ double calc_Etot(struct reb_simulation* a);
 struct reb_simulation* s;
 struct reb_simulation* r;
 
-double e0, planetesimal_mass;
+double e0, planetesimal_mass, x_prev = 0, y_prev = 0, z_prev = 0, t_prev = 0;
 int planetesimal_1, planetesimal_2, p1_id, update_index = 0;
 
 int main(int argc, char* argv[]){
@@ -32,7 +32,7 @@ int main(int argc, char* argv[]){
     
     r = reb_create_simulation();
     // Setup constants
-    r->integrator	= REB_INTEGRATOR_WHFAST;
+    r->integrator	= REB_INTEGRATOR_IAS15;
     r->heartbeat	= heartbeat;
     r->dt           = 0.01;
     if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces;
@@ -154,6 +154,13 @@ void heartbeat(struct reb_simulation* r){
         fprintf(stderr,"\n\033[1m Note!\033[0m Initializing mini simulation (IAS)\n");
         mini_on = 1;
         
+        if(planetesimal_2 == 1){
+            x_prev = global[4].x;
+            y_prev = global[4].y;
+            z_prev = global[4].z;
+            t_prev = r->t;
+        }
+        
     } else if(mini_on == 1){
         reb_integrate(s, r->t);
         struct reb_particle* global = r->particles;
@@ -161,6 +168,14 @@ void heartbeat(struct reb_simulation* r){
         
         //update massive bodies and planetesimal particle
         for(int i=update_index; i<s->N; i++) global[i] = mini[i];
+        
+        if(planetesimal_2 == 1){
+            x_prev = global[4].x;
+            y_prev = global[4].y;
+            z_prev = global[4].z;
+            t_prev = r->t;
+        }
+        
     }
     
     FILE* f = fopen("energy.txt","a+");
@@ -272,11 +287,19 @@ void planetesimal_forces_mini(struct reb_simulation *a){
     if(planetesimal_2 == 1){
         struct reb_particle p = global[4];
         const double Gm1 = G*planetesimal_mass;
+        const double timefac = (s->t - t_prev)/(r->t - t_prev);
         for(int i=update_index;i<s->N_active;i++){
             struct reb_particle* body = &(mini[i]);
-            const double ddx = body->x - p.x;
-            const double ddy = body->y - p.y;
-            const double ddz = body->z - p.z;
+            double ix = x_prev + timefac*(p.x - x_prev); //interpolated value
+            double iy = y_prev + timefac*(p.y - y_prev); //interpolated value
+            double iz = z_prev + timefac*(p.z - z_prev); //interpolated value
+            const double ddx = body->x - ix;
+            const double ddy = body->y - iy;
+            const double ddz = body->z - iz;
+            //const double ddx = body->x - p.x;
+            //const double ddy = body->y - p.y;
+            //const double ddz = body->z - p.z;
+            
             
             const double rijinv = 1.0/sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
             //const double Gm1 = G*p.m;
