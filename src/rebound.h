@@ -343,7 +343,6 @@ struct reb_simulation {
 	int 	N;			///< Current number of particles on this node. 
 	int 	N_var;			///< Number of variational particles. Default: 0.
 	int 	N_active;		///< Number of massive particles included in force calculation. Default: N.
-    int     N_planetesimals; //A.S.!!!! # planetesimals
 	int 	allocatedN;		///< Current maximum space allocated in the particles array on this node. 
 	struct reb_particle* particles;	///< Main particle array. This contains all particles on this node.  
 	struct reb_vec3d* gravity_cs;	///< Vector containing the information for compensated gravity summation 

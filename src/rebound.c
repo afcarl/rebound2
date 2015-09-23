@@ -256,7 +256,6 @@ void reb_init_simulation(struct reb_simulation* r){
 	r->N 		= 0;	
 	r->allocatedN	= 0;	
 	r->N_active 	= -1;
-    r->N_planetesimals = 0;         //A.S.
 	r->N_var 	= 0; 	
 	r->exit_min_distance 	= 0; 	
 	r->exit_max_distance 	= 0; 	
