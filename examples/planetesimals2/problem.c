@@ -26,11 +26,11 @@ int main(int argc, char* argv[]){
     int turn_planetesimal_forces_on = 1;
     
     // System constants
-    tmax = 100;
+    tmax = 5000;
     HYBRID_ON = 1;
     double dRHill = 0.5;      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
-    double N_planetesimals = 2;
-    double M_planetesimals = 3e-7; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
+    double N_planetesimals = 100;
+    double M_planetesimals = 3e-6; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
     planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal
     
     r = reb_create_simulation();
@@ -40,10 +40,7 @@ int main(int argc, char* argv[]){
 	r->boundary     = REB_BOUNDARY_OPEN;
 	r->heartbeat	= heartbeat;
     r->ri_hybrid.switch_ratio = 5;     //# hill radii for boundary between switch. Try 3?
-    r->xf_params = malloc(sizeof(int)); //flag for mini simulation
-    *((int*)r->xf_params) = 0;
-    //if(*((int*)r->xf_params) == 1) printf("xf_param=%d\n",*((int*)r->xf_params));
-    if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces;
+    if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces_global;
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
 	
     // Other constants
@@ -61,15 +58,15 @@ int main(int argc, char* argv[]){
     //planet 1
     double a1=0.7, m1=5e-5, e1=0.01;
     struct reb_particle p1 = {0};
-    p1 = reb_tools_init_orbit3d(r->G, star.m, m1, a1, e1, reb_random_normal(0.0001), 0, 0, 0);
+    p1 = reb_tools_orbit_to_particle(r->G, star, m1, a1, e1, reb_random_normal(0.0001), 0, 0, 0);
     p1.id = 1;              //1 = planet
     reb_add(r, p1);
     
     //planet 2
     double a2=1, m2=5e-5, e2=0.01;
     struct reb_particle p2 = {0};
-    p2 = reb_tools_init_orbit3d(r->G, star.m, m2, a2, e2, reb_random_normal(0.0001), 0, 0, 0);
-    p2.id = 1;              //2 = planet
+    p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, reb_random_normal(0.0001), 0, 0, 0);
+    p2.id = 1;              //1 = planet
     reb_add(r, p2);
     
     //N_active
@@ -93,20 +90,15 @@ int main(int argc, char* argv[]){
 		double a	= reb_random_powerlaw(boxsize/outer,boxsize/inner,powerlaw);
         double phi 	= reb_random_uniform(0,2.*M_PI);
         double inc = reb_random_normal(0.0001);
-        //double Omega = reb_random_uniform(0,2.*M_PI);
-        //double apsis = reb_random_uniform(0,2.*M_PI);
-        //double a = 0.664171;
-        //double phi=0.5;
-        
-        //double a = 0.670139;
-        //double phi = 5.480386;
-        //double inc = 0.012694;
-        double Omega = 0;
-        double apsis = 0;
+        double Omega = reb_random_uniform(0,2.*M_PI);
+        double apsis = reb_random_uniform(0,2.*M_PI);
+        //double Omega = 0;
+        //double apsis = 0;
         //double a = 0.695;
         //double phi = 0.03;
-        //pt.m 		= 0;
-        pt = reb_tools_init_orbit3d(r->G, star.m, planetesimal_mass, a, 0, inc, Omega, apsis,phi);
+        //double a = 0.664171;
+        //double phi=0.5;
+        pt = reb_tools_orbit_to_particle(r->G, star, planetesimal_mass, a, 0, inc, Omega, apsis,phi);
 		pt.r 		= 0.04;
         pt.id       = r->N;
 		reb_add(r, pt);
@@ -133,7 +125,7 @@ int main(int argc, char* argv[]){
     
     //finish
     clock_finish(timer,N_encounters_tot,lgnddir);
-    free_malloc();
+    global_free();
 }
 
 void heartbeat(struct reb_simulation* r){
@@ -182,16 +174,6 @@ void heartbeat(struct reb_simulation* r){
             E_curr = E_ini; L_curr = L_ini;
         }*/
         reb_output_timing(r, 0);
-        
-        /*
-        FILE* output;
-        output=fopen("debug/HYB_sept14_par13_group.txt","a");
-        struct reb_particle* global = r->particles;
-        for(int i=0;i<r->N_active;i++) fprintf(output,"%f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",r->t,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz);
-        int index = 13;
-        fprintf(output,"%f,%.15f,%.15f,%.15f,%.15f,%.15f,%.15f\n",r->t,global[index].x,global[index].y,global[index].z,global[index].vx,global[index].vy,global[index].vz);
-        fclose(output);
-        */
     }
 }
 

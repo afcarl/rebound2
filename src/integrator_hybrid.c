@@ -70,9 +70,10 @@ static double get_min_ratio(struct reb_simulation* const r){
 		if (ratio<min_ratio){
 			min_ratio = ratio;
 		}
+    }
+        
 	}
-	}
-	return min_ratio;
+	return sqrt(min_ratio);
 }
 
 

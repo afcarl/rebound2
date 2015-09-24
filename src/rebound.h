@@ -116,16 +116,21 @@ struct reb_particle {
  * a Keplerian orbit from Cartesian coordinates. 
  */
 struct reb_orbit {
-	double a;	///< Semi-major axis
 	double r;	///< Radial distance from central object
+	double v;   ///< velocity relative to central object's velocity
 	double h;	///< Angular momentum
 	double P;	///< Orbital period
-	double l;	///< Longitude
+	double n;	///< Mean motion
+	double a;	///< Semi-major axis
 	double e;	///< Eccentricity
 	double inc;	///< Inclination
 	double Omega; 	///< Longitude of ascending node
-	double omega; 	///< Argument of perihelion
+	double omega; 	///< Argument of pericenter
+	double pomega;  ///< Longitude of pericenter
 	double f; 	///< True anomaly
+	double M;   ///< Mean anomaly
+	double l;	///< Mean Longitude
+	double theta; ///< True Longitude
 };
 
 
@@ -190,11 +195,13 @@ struct reb_simulation_integrator_ias15 {
 	double* restrict x0;			///<                      position (used for initial values at h=0) 
 	double* restrict v0;			///<                      velocity
 	double* restrict a0;			///<                      acceleration
-	double* restrict csx;			///<                      compensated summation
-	double* restrict csv;			///<                      compensated summation
+	double* restrict csx;			///<                      compensated summation for x
+	double* restrict csv;			///<                      compensated summation for v
+	double* restrict csa0;			///<                      compensated summation for a
 
 	struct reb_dp7 g;
 	struct reb_dp7 b;
+	struct reb_dp7 csb;			///< Compensated summation for b
 	struct reb_dp7 e;
 
 	// The following values are used for resetting the b and e coefficients if a timestep gets rejected
@@ -490,9 +497,9 @@ struct reb_simulation {
 	 * * @{
 	 */
 	/**
-	 * @brief Pointer to parameters for (optional) extra forces from the reboundxf library
+	 * @brief Pointer to connect additional (optional) libraries, e.g., reboundx
 	 */
-	void* xf_params;
+	void* extras;
 	/** @} */
 };
 
@@ -512,6 +519,14 @@ struct reb_simulation {
  * before any particles are added.
  */
 struct reb_simulation* reb_create_simulation();
+
+/**
+ * @brief Initialize reb_simulation structure.
+ *
+ * @details Same as reb_create_simulation() but does not allocate memory for structure itself.
+ * @param r Structure to be initialized (needs to be allocated externally).
+ */
+void reb_init_simulation(struct reb_simulation* r);
 
 /**
  * @brief Performon one integration step
@@ -560,11 +575,18 @@ void reb_integrator_reset(struct reb_simulation* r);
 void reb_configure_box(struct reb_simulation* const r, const double boxsize, const int root_nx, const int root_ny, const int root_nz);
 
 /**
- * @brief Frees up all space used by a REBOUND simulation.
+ * @brief Frees up all space used by a REBOUND simulation and the reb_simulation structure itself.
  * @details The REBOUND simulation is not usable anymore after being passed to this function.
  * @param r The rebound simulation to be freed
  */
 void reb_free_simulation(struct reb_simulation* const r);
+
+/**
+ * @brief Frees up all space used by a REBOUND simulation, but not the reb_simulation structure itself.
+ * @details The REBOUND simulation is not usable anymore after being passed to this function.
+ * @param r The rebound simulation to be freed
+ */
+void reb_free_pointers(struct reb_simulation* const r);
 
 /**
  * @cond PRIVATE
@@ -781,13 +803,85 @@ void reb_output_velocity_dispersion(struct reb_simulation* r, char* filename);
  * @{
  */
 /**
- * @brief This function calculated orbital elements for a given particle. 
- * @param G The gravitational constant
- * @param p reb_particle for which the orbit is calculated.
- * @param star Star or central object particle
- * @return Orbital parameters. 
+ * @brief returns the true anomaly for a given eccentricity and mean anomaly
+ * @param e Eccentricity
+ * @param M Mean anomaly
+ * @return True anomaly
  */
-struct reb_orbit reb_tools_p2orbit(double G, struct reb_particle p, struct reb_particle star);
+double reb_tools_M_to_f(double e, double M);
+
+/**
+ * @brief Initialize a particle on an orbit in the xy plane.
+ * @param G Gravitational constant.
+ * @param primary Particle structure for the orbit's reference body.
+ * @param m Mass of the particle.
+ * @param a Semi-major axis of the particle.
+ * @param e Eccentricity of the particle.
+ * @param omega Pericenter of the particle.
+ * @param f true anomaly of the particle.
+ * @return Returns a particle structure with the given orbital parameters. 
+ */
+struct reb_particle reb_tools_orbit2d_to_particle(double G, struct reb_particle primary, double m, double a, double e, double omega, double f);
+
+/**
+ * @brief Initialize a particle on a 3D orbit, passing an error variable to flag why particle is set to nan.  See Fig. 2.13 of Murray & Dermott Solar System Dynamics for diagram.
+ * @details Error codes:\n
+ * 1. Can't set e exactly to 1.\n
+ * 2. Eccentricity can never be less than zero.\n
+ * 3. Bound orbit (a>0) can't have e>1.\n
+ * 4. Unbound orbit (a<0) can't have e<1.\n
+ * 5. Unbound orbit can't have f set beyond the asymptotes defining the particle.
+ * @param G Gravitational constant.
+ * @param primary Particle structure for the orbit's reference body.
+ * @param m Mass of the particle.
+ * @param a Semi-major axis of the particle.
+ * @param e Eccentricity of the particle.
+ * @param i inclination of the particle to the reference plane..
+ * @param Omega Longitude of the ascending node of the particle.
+ * @param omega argument of pericenter of the particle.
+ * @param f true anomaly of the particle.
+ * @param err Pointer to error code that wil be set by this function. Used for checking why particle was set to nans.
+ * @return Returns a particle structure with the given orbital parameters. 
+ */
+struct reb_particle reb_tools_orbit_to_particle_err(double G, struct reb_particle primary, double m, double a, double e, double i, double Omega, double omega, double f, int* err);
+
+/**
+ * @brief Initialize a particle on a 3D orbit.  See Fig. 2.13 of Murray & Dermott Solar System Dynamics for diagram.
+ * @param G Gravitational constant.
+ * @param primary Particle structure for the orbit's reference body.
+ * @param m Mass of the particle.
+ * @param a Semi-major axis of the particle.
+ * @param e Eccentricity of the particle.
+ * @param i inclination of the particle to the reference plane.
+ * @param Omega Longitude of the ascending node of the particle.
+ * @param omega argument of pericenter of the particle.
+ * @param f true anomaly of the particle.
+ * @return Returns a particle structure with the given orbital parameters. 
+ */
+struct reb_particle reb_tools_orbit_to_particle(double G, struct reb_particle primary, double m, double a, double e, double i, double Omega, double omega, double f);
+
+/**
+ * @brief This function calculates orbital elements for a given particle, passing an error variable to flag why orbit is set to nan.
+ * @details Error codes:\n
+ * 1. Primary has no mass.\n
+ * 2. Particle and primary positions are the same.\n
+ * @param G The gravitational constant.
+ * @param p reb_particle for which the orbit is calculated.
+ * @param primary Particle structure for the orbit's reference body.
+ * @param err error code for checking why orbit was set to nans.
+ * @return reb_orbit struct with orbital parameters. 
+ */
+struct reb_orbit reb_tools_particle_to_orbit_err(double G, struct reb_particle p, struct reb_particle primary, int* err);
+
+/**
+ * @brief This function calculates orbital elements for a given particle. 
+ * @param G The gravitational constant.
+ * @param p reb_particle for which the orbit is calculated.
+ * @param primary Particle structure for the orbit's reference body.
+ * @return reb_orbit struct with orbital parameters. 
+ */
+struct reb_orbit reb_tools_particle_to_orbit(double G, struct reb_particle p, struct reb_particle primary);
+
 
 /**
  * @brief Reads a binary file.

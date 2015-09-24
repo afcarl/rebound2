@@ -81,7 +81,6 @@ void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double t
 }
 
 double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double dRHill){
-    
     if(dRHill > r->ri_hybrid.switch_ratio){
         printf("\033[1mWarning!\033[0m dRhill !> N_RHill. Setting dRhill = N_Rhill/2 \n");
         dRHill = 0.5*r->ri_hybrid.switch_ratio;
@@ -180,7 +179,7 @@ void calc_ae(double* a, double* e, double* d_out, struct reb_simulation* r, int 
     
 }
 
-void planetesimal_forces(struct reb_simulation *a){
+void planetesimal_forces_routine(struct reb_simulation *a){
     const double G = a->G;
     const int N = a->N;
     const int N_active = a->N_active;
@@ -206,32 +205,16 @@ void planetesimal_forces(struct reb_simulation *a){
     }
 }
 
+void planetesimal_forces_global(struct reb_simulation *a){
+    planetesimal_forces_routine(r);
+}
+
 void planetesimal_forces_mini(struct reb_simulation *a){
-    const double G = s->G;
-    const int N = s->N;
-    const int N_active = s->N_active;
-    struct reb_particle* mini = s->particles;
-    
-    const double Gm1 = G*planetesimal_mass;
-    for(int i=0;i<N_active;i++){
-        struct reb_particle* body = &(mini[i]);
-        for(int j=N_active;j<N;j++){//add planetesimal forces to massive bodies
-            struct reb_particle p = mini[j];
-            
-            const double dx = body->x - p.x;
-            const double dy = body->y - p.y;
-            const double dz = body->z - p.z;
-            
-            const double rijinv = 1.0/sqrt(dx*dx + dy*dy + dz*dz);
-            const double ac = -Gm1*rijinv*rijinv*rijinv;  //force/mass = acceleration
-            
-            body->ax += ac*dx;    //perturbation on planets due to planetesimals.
-            body->ay += ac*dy;
-            body->az += ac*dz;
-        }
-    }
+    planetesimal_forces_routine(s);
     
     //forces from global sim into mini
+    const double Gm1 = s->G*planetesimal_mass;
+    struct reb_particle* mini = s->particles;
     struct reb_particle* const global = r->particles;
     const double timefac = (s->t - t_prev)/(r->t - t_prev);
     int rN_active = r->N_active;
@@ -265,9 +248,6 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, int turn
     if(turn_planetesimal_forces_on==1)s->additional_forces = planetesimal_forces_mini;
     s->exact_finish_time = 1;
     s->dt = r->dt;
-    
-    s->xf_params = malloc(sizeof(int)); //flag for planetesimal forces - update mini with global!
-    *((int*)r->xf_params) = 1;
     
     struct reb_particle* restrict const particles = r->particles;
     for(int k=0; k<s->N_active; k++){
@@ -378,7 +358,7 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             struct reb_particle pt = global[EI];
             reb_add(s,pt);
             N_encounters_tot++;
-            printf("particle %d added. dN == %d, N_close_encounters=%d\n",EI,dN,N_encounters);
+            //printf("particle %d added. dN == %d, N_close_encounters=%d\n",EI,dN,N_encounters);
         }
     }
     
@@ -394,7 +374,7 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             for(int k=0;removed_particle==0 && k<N_encounters_previous;k++){
                 if(mini[k+N_active].id == PEI){
                     removed_particle = reb_remove(s,k+N_active,1);    //remove particle
-                    printf("particle %d leaving. dN == %d, N_close_encounters=%d.\n",PEI,dN,N_encounters);
+                    //printf("particle %d leaving. dN == %d, N_close_encounters=%d.\n",PEI,dN,N_encounters);
                 }
             }
         }
@@ -451,7 +431,7 @@ void clock_finish(clock_t timer, int N_encounters, char* legenddir){
     printf("\n\nSimulation complete. Elapsed simulation time is %f s, with %d close encounters.\n\n",result,N_encounters);
 }
 
-void free_malloc(){
+void global_free(){
     free(encounter_index);
     free(previous_encounter_index);
     free(Hill2);

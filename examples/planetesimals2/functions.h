@@ -25,7 +25,11 @@ double calc_Etot(struct reb_simulation* a);
 
 void calc_ae(double* a, double* e, double* d, struct reb_simulation* r, int i, double t);
 
-void planetesimal_forces(struct reb_simulation *a);
+void planetesimal_forces_routine();
+
+void planetesimal_forces_global(struct reb_simulation *a);
+
+void planetesimal_forces_mini(struct reb_simulation *a);
 
 void check_for_encounter(struct reb_simulation* const r, int* N_encounters);
 
@@ -41,7 +45,7 @@ void update_encounter_indices(int* N_encounters, int* N_encounters_previous);
 
 void clock_finish(clock_t timer, int N_encounters, char* legenddir);
 
-void free_malloc();
+void global_free();
 
 
 //EXTERNAL VARIABLES******************************
