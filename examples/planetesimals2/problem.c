@@ -14,26 +14,23 @@
 #include "../examples/planetesimals2/functions.h"
 
 void heartbeat(struct reb_simulation* r);
-double tmax, planetesimal_mass, CE_exit_time = 0, E0, n_output;
-int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, output_counter = 0;
-int* encounter_index = NULL; int* previous_encounter_index = NULL; double* Hill = NULL;
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
-struct reb_simulation* s; struct reb_simulation* r;
 
-int planetesimal_1, planetesimal_2, p1_id, update_index = 0;
+double tmax, planetesimal_mass, E0, n_output;
+int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, output_counter = 0;
+int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
+struct reb_simulation* s; struct reb_simulation* r;
 
 int main(int argc, char* argv[]){
     //switches
     int turn_planetesimal_forces_on = 1;
-    planetesimal_1 = 1;     //=1 to turn on, 0=off
-    planetesimal_2 = 1;
     
     // System constants
-    tmax = 10;
+    tmax = 100;
     HYBRID_ON = 1;
     double dRHill = 0.5;      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
     double N_planetesimals = 2;
-    double M_planetesimals = 3e-6; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
+    double M_planetesimals = 3e-7; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
     planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal
     
     r = reb_create_simulation();
@@ -43,6 +40,9 @@ int main(int argc, char* argv[]){
 	r->boundary     = REB_BOUNDARY_OPEN;
 	r->heartbeat	= heartbeat;
     r->ri_hybrid.switch_ratio = 5;     //# hill radii for boundary between switch. Try 3?
+    r->xf_params = malloc(sizeof(int)); //flag for mini simulation
+    *((int*)r->xf_params) = 0;
+    //if(*((int*)r->xf_params) == 1) printf("xf_param=%d\n",*((int*)r->xf_params));
     if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces;
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
 	
@@ -74,6 +74,7 @@ int main(int argc, char* argv[]){
     
     //N_active
     r->N_active = r->N;
+    if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);          //move to COM
     
     //calc dt
     if(r->integrator == REB_INTEGRATOR_IAS15){
@@ -82,11 +83,10 @@ int main(int argc, char* argv[]){
         printf("dt = %f \n",r->dt);
         dRHill = -1;
     } else r->dt = calc_dt(r, m1, star.m, a1, dRHill);
-
     
     //planetesimals
     double outer = 3, inner = 15, powerlaw = 0.5;  //higher the inner number, closer to the star
-    /*int seed = 12;          //seed was 11
+    int seed = atoi(argv[1]);          //seed was 11
     srand(seed);
     while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
@@ -105,78 +105,35 @@ int main(int argc, char* argv[]){
         double apsis = 0;
         //double a = 0.695;
         //double phi = 0.03;
-        pt.m 		= 0;
+        //pt.m 		= 0;
         pt = reb_tools_init_orbit3d(r->G, star.m, planetesimal_mass, a, 0, inc, Omega, apsis,phi);
-		pt.r 		= 0.3;
+		pt.r 		= 0.04;
         pt.id       = r->N;
 		reb_add(r, pt);
-	}*/
+	}
     
-    //planetesimal
-    if(planetesimal_1 == 1){
-        //double a = 0.670139;      //for CE
-        //double phi = 5.480386;
-        //double inc = 0.012694;
-        
-        double a=0.5;
-        double phi = 5.480386;
-        double inc = 0.012694;
-        struct reb_particle pt = {0};
-        double mp1 = (turn_planetesimal_forces_on==1?planetesimal_mass:0);
-        pt = reb_tools_init_orbit3d(r->G, star.m, mp1, a, 0, inc, 0, 0,phi);
-        //pt = reb_tools_orbit2d_to_particle(r->G, star, mp1, a, 0., 0., 0.);
-        pt.r 		= 0.04;
-        p1_id       = 3;
-        pt.id       = p1_id;
-        reb_add(r, pt);
-        fprintf(stderr, "\033[1m Note!\033[0m planetesimal_1 is on!\n");
-    }
-    
-    if(planetesimal_2 == 1){
-        double a2 = 0.4;
-        //a = 2.5;
-        double phi2 = 5.380386;
-        double inc2 = 0.005;
-        struct reb_particle pt2 = {0};
-        double mp2 = (turn_planetesimal_forces_on==1?planetesimal_mass:0);
-        pt2 = reb_tools_init_orbit3d(r->G, star.m, mp2, a2, 0, inc2, 0, 0,phi2);
-        //pt2 = reb_tools_orbit2d_to_particle(r->G, star, mp2, a2, 0., 0., 0.);
-        pt2.r 		= 0.04;
-        pt2.id       = 4;
-        reb_add(r, pt2);
-        fprintf(stderr,"\033[1m Note!\033[0m planetesimal_2 is on!\n");
-    }
-    
-    //move to COM - before planetesimals?
-    if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
-    
-    //Hill Sphere (for speed in check_for_encounter)
-    Hill = calloc(sizeof(double),r->N);
-    struct reb_particle* restrict const particles = r->particles;
-    struct reb_particle p0 = particles[0];
-    for(int i=1;i<r->N;i++){
-        struct reb_particle body = particles[i];
-        double mp;
-        if(i>=r->N_active) mp = planetesimal_mass; else mp = body.m;
-        Hill[i] = pow((mp/(p0.m*3.)), 2./3.);
-    }
+    //Ini malloc arrays
+    x_prev = calloc(sizeof(double),r->N);           //Previous global positions for interpolating
+    y_prev = calloc(sizeof(double),r->N);
+    z_prev = calloc(sizeof(double),r->N);
+    encounter_index = malloc(sizeof(int));          //encounter index
+    previous_encounter_index = malloc(sizeof(int));
+    Hill2 = calloc(sizeof(double),r->N);             //Hill radius squared for fast calc.
+    calc_Hill2(r);
     
     //Initializing stuff
     legend(plntdir, lgnddir, r, tmax, planetesimal_mass, M_planetesimals, inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,HYBRID_ON);
     s = reb_create_simulation();    //initialize mini simulation (IAS15)
-    ini_mini(r,s);
+    ini_mini(r,s,turn_planetesimal_forces_on);
     E0 = calc_Etot(r);
-    clock_t timer = clock();
-    encounter_index = malloc(sizeof(int));
-    previous_encounter_index = malloc(sizeof(int));
     
     //Integrate!
+    clock_t timer = clock();
     reb_integrate(r, tmax);
     
     //finish
     clock_finish(timer,N_encounters_tot,lgnddir);
-    free(encounter_index);
-    free(previous_encounter_index);
+    free_malloc();
 }
 
 void heartbeat(struct reb_simulation* r){
@@ -193,12 +150,13 @@ void heartbeat(struct reb_simulation* r){
                 struct reb_particle* mini = s->particles;
                 for(int i=0; i<N_active; i++) mini[i] = global[i];
                 add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
+                update_previous_global_positions(r, N_encounters);
             } //otherwise do nothing.
-        } else {
-            //integrate existing mini, update global, add/remove new/old particles.
+        } else { //integrate existing mini, update global, add/remove new/old particles.
             reb_integrate(s, r->t);
             update_global(s,r,N_encounters_previous, N_encounters);
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
+            update_previous_global_positions(r, N_encounters);
         }
         update_encounter_indices(&N_encounters, &N_encounters_previous);
     }
@@ -236,3 +194,38 @@ void heartbeat(struct reb_simulation* r){
         */
     }
 }
+
+/*
+ //planetesimal
+ if(planetesimal_1 == 1){
+ double a = 0.670139;      //for CE
+ double phi = 5.480386;
+ double inc = 0.012694;
+ //double a=0.5;
+ //double phi = 5.480386;
+ //double inc = 0.012694;
+ struct reb_particle pt = {0};
+ double mp1 = (turn_planetesimal_forces_on==1?planetesimal_mass:0);
+ pt = reb_tools_init_orbit3d(r->G, star.m, mp1, a, 0, inc, 0, 0,phi);
+ //pt = reb_tools_orbit2d_to_particle(r->G, star, mp1, a, 0., 0., 0.);
+ pt.r 		= 0.04;
+ p1_id       = 3;
+ pt.id       = p1_id;
+ reb_add(r, pt);
+ fprintf(stderr, "\033[1m Note!\033[0m planetesimal_1 is on!\n");
+ }
+ 
+ if(planetesimal_2 == 1){
+ double a2 = 0.4;
+ //a = 2.5;
+ double phi2 = 5.380386;
+ double inc2 = 0.005;
+ struct reb_particle pt2 = {0};
+ double mp2 = (turn_planetesimal_forces_on==1?planetesimal_mass:0);
+ pt2 = reb_tools_init_orbit3d(r->G, star.m, mp2, a2, 0, inc2, 0, 0,phi2);
+ //pt2 = reb_tools_orbit2d_to_particle(r->G, star, mp2, a2, 0., 0., 0.);
+ pt2.r 		= 0.04;
+ pt2.id       = 4;
+ reb_add(r, pt2);
+ fprintf(stderr,"\033[1m Note!\033[0m planetesimal_2 is on!\n");
+ }*/
