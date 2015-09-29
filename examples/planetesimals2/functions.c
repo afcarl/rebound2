@@ -16,7 +16,7 @@
 #include "../../src/rebound.h"
 #include "../../src/integrator_whfast.h"
 
-void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, int HYBRID_ON){
+void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, int N_planetesimals, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, int HYBRID_ON){
     
     int N_active = r->N_active, N = r->N;
     
@@ -30,16 +30,27 @@ void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double t
     if(r->integrator == REB_INTEGRATOR_WHFAST){
         if(HYBRID_ON == 1)intgrtr = "HYBRID"; else intgrtr = "WHFAST";
         strcat(str, intgrtr);
-        strcat(str, us);
-        int hybrid_rint = (int) r->ri_hybrid.switch_ratio;
-        char str3[15];
-        sprintf(str3, "%d", hybrid_rint);
-        strcat(str, str3);
-        strcat(str, us);
-        int drint = (int) drh;
-        char str2[15];
-        sprintf(str2, "%d", drint);
-        strcat(str, str2);
+        char* teq = "_t=";
+        strcat(str, teq);
+        char dtstr[15];
+        sprintf(dtstr, "%.0f", tmax);
+        strcat(str, dtstr); //planet directory
+        char* Neq = "_Np=";
+        char Nstr[15];
+        sprintf(Nstr, "%d", N_planetesimals);
+        strcat(str, Neq);
+        strcat(str, Nstr);
+        
+        //strcat(str, us);
+        //int hybrid_rint = (int) r->ri_hybrid.switch_ratio;
+        //char str3[15];
+        //sprintf(str3, "%d", hybrid_rint);
+        //strcat(str, str3);
+        //strcat(str, us);
+        //int drint = (int) drh;
+        //char str2[15];
+        //sprintf(str2, "%d", drint);
+        //strcat(str, str2);
         
         //char strtime[10];
         //sprintf(strtime, "%d", hybrid_rint);

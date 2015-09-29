@@ -83,7 +83,7 @@ int main(int argc, char* argv[]){
     
     //planetesimals
     double outer = 3, inner = 15, powerlaw = 0.5;  //higher the inner number, closer to the star
-    int seed = atoi(argv[1]);          //seed was 11
+    int seed = 11;          //seed was 11
     srand(seed);
     while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
@@ -114,7 +114,7 @@ int main(int argc, char* argv[]){
     calc_Hill2(r);
     
     //Initializing stuff
-    legend(plntdir, lgnddir, r, tmax, planetesimal_mass, M_planetesimals, inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,HYBRID_ON);
+    legend(plntdir, lgnddir, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,HYBRID_ON);
     s = reb_create_simulation();    //initialize mini simulation (IAS15)
     ini_mini(r,s,turn_planetesimal_forces_on);
     E0 = calc_Etot(r);
