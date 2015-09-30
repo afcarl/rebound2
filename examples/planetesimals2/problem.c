@@ -25,16 +25,16 @@ struct reb_simulation* s; struct reb_simulation* r;
 int main(int argc, char* argv[]){
     //switches
     int turn_planetesimal_forces_on = 1;
+    HYBRID_ON = 1;
     
     // System constants
     tmax = atoi(argv[1]);
-    HYBRID_ON = 1;
     double dRHill = 0.5;      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
     int N_planetesimals = atoi(argv[2]);
     double M_planetesimals = 3e-6; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
     planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal
     
-	// Setup constants
+	//Simulation Setup
     r = reb_create_simulation();
 	r->integrator	= 1;    //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, WH=3, HYBRID = 5
 	r->collision	= REB_COLLISION_NONE;
@@ -44,11 +44,11 @@ int main(int argc, char* argv[]){
     if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces_global;
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
 	
-    // Other constants
+    // Other setup stuff
     //int seed = atoi(argv[3]);          //seed was 11
     int seed = 12;
     srand(seed);
-    n_output = 10000;
+    n_output = 100000;
     double boxsize = 5;
 	reb_configure_box(r, boxsize, 1, 1, 1);
 
@@ -157,14 +157,20 @@ void heartbeat(struct reb_simulation* r){
             update_previous_global_positions(r, N_encounters);
         }
         
-        //OUTPUT stuff*******
+        update_encounter_indices(&N_encounters, &N_encounters_previous);
+    }
+    
+    //OUTPUT stuff*******
+    if(r->t > output_counter*tmax/n_output){
+        output_counter++;
+
         FILE *append;
         append = fopen(plntdir, "a");
         fprintf(append, "%.16f,%.16f, %d, %d, %.12f,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters,N_encounters_previous,min_ratio,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0));
         fclose(append);
         
         //output error stuff
-        if(fabs((E1 - E0)/E0) > 1e-4){
+        if(fabs((E1 - E0)/E0) > 1e-5){
             FILE *error_output;
             error_output = fopen(charizard, "a");
             fprintf(error_output, "%.16f,%.16f, %d, %d, %.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters,N_encounters_previous,r->dt,s->dt,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0));
@@ -176,15 +182,6 @@ void heartbeat(struct reb_simulation* r){
             
         }
         //OUTPUT stuff*******
-        
-        update_encounter_indices(&N_encounters, &N_encounters_previous);
-    }
-    
-    //output stuff - output everytime for now!!
-    if(r->t > output_counter*tmax/n_output){
-        output_counter++;
-
-        
         /*double E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0, t = r->t;
         calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, r); //calcs Etot all in one go.
         for(int i=1;i<r->N_active;i++){
