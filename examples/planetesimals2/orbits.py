@@ -22,17 +22,16 @@ file_name=str(sys.argv[1])
 #time, a, e, i, Omega (long. of asc. node), omega, l (mean longitude), P, f
 #arg1=int(sys.argv[2])
 #arg2=int(sys.argv[3])
-#arg3 = -1
-#arg4 = 0
-#if len(sys.argv) == 5:
-#    arg3 = int(sys.argv[4])
-#elif len(sys.argv) == 6:
-#    arg3 = int(sys.argv[4])
-#    arg4 = int(sys.argv[5])
+arg3 = -1
+arg4 = 0
+if len(sys.argv) >= 3:
+    arg3 = int(sys.argv[2])
+elif len(sys.argv) >= 4:
+    arg4 = int(sys.argv[3])
 
 fos = open(''+file_name, 'r')
 data = np.loadtxt(fos, delimiter=',')
-plt.plot(data[:,0],data[:,1])
+plt.plot(data[arg4:arg3,0],data[arg4:arg3,1])
 plt.yscale('log')
 
 #for i in xrange(0,N_active):

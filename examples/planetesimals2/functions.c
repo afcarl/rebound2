@@ -30,12 +30,12 @@ void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double t
     if(r->integrator == REB_INTEGRATOR_WHFAST){
         if(HYBRID_ON == 1)intgrtr = "HYBRID"; else intgrtr = "WHFAST";
         strcat(str, intgrtr);
-        char* teq = "_t=";
+        char* teq = "_t";
         strcat(str, teq);
         char dtstr[15];
         sprintf(dtstr, "%.0f", tmax);
         strcat(str, dtstr); //planet directory
-        char* Neq = "_Np=";
+        char* Neq = "_Np";
         char Nstr[15];
         sprintf(Nstr, "%d", N_planetesimals);
         strcat(str, Neq);
@@ -57,7 +57,7 @@ void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double t
         
     } else{ //pure IAS15
         intgrtr = "IAS15";
-        char* teq = "_t=";
+        char* teq = "_t";
         strcat(str, intgrtr);
         strcat(str, teq);
         char dtstr[15];
@@ -258,7 +258,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, int turn
     s->integrator = REB_INTEGRATOR_IAS15;
     if(turn_planetesimal_forces_on==1)s->additional_forces = planetesimal_forces_mini;
     s->exact_finish_time = 1;
-    s->dt = r->dt;
+    s->dt = r->dt/10.;
     
     struct reb_particle* restrict const particles = r->particles;
     for(int k=0; k<s->N_active; k++){
@@ -392,14 +392,14 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
     }
 }
 
-//If a given planetesimal is not part of the mini simulation, we want to record its position @ heartbeat for later interpolation.
+
 void update_previous_global_positions(struct reb_simulation* r, int N_encounters){
     struct reb_particle* global = r->particles;
     t_prev = r->t;
     for(int i=r->N_active;i<r->N;i++){
         int ID = global[i].id;
         _Bool found_particle = 0;
-        for(int j=0;j<N_encounters && found_particle == 0;j++){
+        for(int j=0;j<N_encounters && found_particle == 0;j++){//this can be sped up. Probs better to find the particles
             if(ID == encounter_index[j]){
                 found_particle = 1;
                 x_prev[i] = 0.;      //reset planetesimals involved in mini to 0

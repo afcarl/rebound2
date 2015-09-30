@@ -1,6 +1,7 @@
 examples/planetesimals2/output/*
 examples/planetesimals2/saved_output/*
 examples/planetesimals2/Ecomp/*
+examples/planetesimals2/debug/*
 *.o
 *.so
 *.pyc

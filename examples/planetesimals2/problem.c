@@ -26,10 +26,10 @@ int main(int argc, char* argv[]){
     int turn_planetesimal_forces_on = 1;
     
     // System constants
-    tmax = 5000;
+    tmax = atoi(argv[1]);
     HYBRID_ON = 1;
     double dRHill = 0.5;      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
-    double N_planetesimals = 100;
+    double N_planetesimals = atoi(argv[2]);
     double M_planetesimals = 3e-6; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
     planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal
     
@@ -83,7 +83,7 @@ int main(int argc, char* argv[]){
     
     //planetesimals
     double outer = 3, inner = 15, powerlaw = 0.5;  //higher the inner number, closer to the star
-    int seed = 11;          //seed was 11
+    int seed = atoi(argv[3]);          //seed was 11
     srand(seed);
     while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
