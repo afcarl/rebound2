@@ -3,7 +3,7 @@
 import multiprocessing as mp
 import os
 import sys
-import numpy as np
+#import numpy as np
 
 params=[(50000,10,10),(50000,50,11),(50000,100,12),(50000,500,13),(50000,1000,14),(50000,5000,15),(1000,100,16),(5000,100,17),(10000,100,18),(100000,100,19),(500000,100,20)]
 length = len(params)
