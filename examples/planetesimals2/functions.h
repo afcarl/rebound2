@@ -19,7 +19,7 @@ double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double 
 
 void calc_Hill2(struct reb_simulation* r);
 
-double calc_Etot(struct reb_simulation* a);
+double calc_Etot(struct reb_simulation* a, double* K1, double* U1);
 
 //void calc_ELtot(double* Etot, double* Ktot, double* Utot, double* Ltot, double planetesimal_mass, struct reb_simulation* r);
 

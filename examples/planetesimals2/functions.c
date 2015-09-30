@@ -117,7 +117,7 @@ void calc_Hill2(struct reb_simulation* r){
     }
 }
 
-double calc_Etot(struct reb_simulation* a){
+double calc_Etot(struct reb_simulation* a, double* K1, double* U1){
     double m1,m2;
     const int N = a->N;
     const int N_active = a->N_active;
@@ -156,6 +156,8 @@ double calc_Etot(struct reb_simulation* a){
         }
     }
     
+    *K1 = K;
+    *U1 = U;
     return K + U;
 }
 

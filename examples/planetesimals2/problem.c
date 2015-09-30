@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <time.h>
+#include <string.h>
 #include "rebound.h"
 #include "integrator_whfast.h"
 #include "tools.h"
@@ -16,7 +17,7 @@
 void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
 
-double tmax, planetesimal_mass, E0, n_output;
+double tmax, planetesimal_mass, E0, K0, U0, n_output;
 int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, output_counter = 0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
@@ -117,7 +118,7 @@ int main(int argc, char* argv[]){
     legend(plntdir, lgnddir, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,HYBRID_ON);
     s = reb_create_simulation();    //initialize mini simulation (IAS15)
     ini_mini(r,s,turn_planetesimal_forces_on);
-    E0 = calc_Etot(r);
+    E0 = calc_Etot(r, &K0, &U0);
     
     //Integrate!
     clock_t timer = clock();
@@ -156,11 +157,23 @@ void heartbeat(struct reb_simulation* r){
     //output stuff
     if(r->t > output_counter*tmax/n_output){
         output_counter++;
-        double E1 = calc_Etot(r);
+        double K = 0, U = 0;
+        double E1 = calc_Etot(r,&K,&U);
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%f, %.16f\n",r->t,fabs((E1 - E0)/E0));
+        fprintf(append, "%f, %.16f,%.16f,%.16f\n",r->t,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((K - K0)/K0));
         fclose(append);
+        
+        if(fabs((E1 - E0)/E0) > 1e-7){
+            char* err = "_error";
+            strcat(plntdir,err);
+            FILE *error_output;
+            error_output = fopen(plntdir, "a");
+            fprintf(error_output,"r->t=%.15f, s->t=%.15f, r->dt=%.15f, s->dt=%.15f,\n",r->t,s->t,r->dt,s->dt);
+            fclose(error_output);
+            fprintf(stderr,"\n\033[1mERROR EXCEEDED.\033[0m Exiting, check error file.\n");
+            exit(0);
+        }
         
         /*double E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0, t = r->t;
         calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, r); //calcs Etot all in one go.
