@@ -161,7 +161,7 @@ void heartbeat(struct reb_simulation* r){
         double E1 = calc_Etot(r,&K,&U);
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,r->dt,s->dt,fabs((E1 - E0)/E0),fabs((K - K_prev)/K_prev),fabs((U - U_prev)/U_prev));
+        fprintf(append, "%.16f,%.16f, %d, %d, %.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters,N_encounters_previous,r->dt,s->dt,fabs((E1 - E0)/E0),fabs((K - K_prev)/K_prev),fabs((U - U_prev)/U_prev));
         fclose(append);
         
         if(fabs((E1 - E0)/E0) > 1e-7){
