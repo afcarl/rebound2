@@ -15,7 +15,7 @@
 #include "../examples/planetesimals2/functions.h"
 
 void heartbeat(struct reb_simulation* r);
-char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_";
+char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", charizard[200]="output/planet_";
 
 double tmax, planetesimal_mass, E0, K0, U0, n_output;
 int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, output_counter = 0, err_print_msg = 0;
@@ -30,12 +30,12 @@ int main(int argc, char* argv[]){
     tmax = atoi(argv[1]);
     HYBRID_ON = 1;
     double dRHill = 0.5;      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
-    double N_planetesimals = atoi(argv[2]);
+    int N_planetesimals = atoi(argv[2]);
     double M_planetesimals = 3e-6; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
     planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal
     
-    r = reb_create_simulation();
 	// Setup constants
+    r = reb_create_simulation();
 	r->integrator	= 1;    //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, WH=3, HYBRID = 5
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary     = REB_BOUNDARY_OPEN;
@@ -45,6 +45,9 @@ int main(int argc, char* argv[]){
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
 	
     // Other constants
+    //int seed = atoi(argv[3]);          //seed was 11
+    int seed = 12;
+    srand(seed);
     n_output = 10000;
     double boxsize = 5;
 	reb_configure_box(r, boxsize, 1, 1, 1);
@@ -57,16 +60,16 @@ int main(int argc, char* argv[]){
 	reb_add(r, star);
 
     //planet 1
-    double a1=0.7, m1=5e-5, e1=0.01;
+    double a1=0.7, m1=5e-5, e1=0.01, inc1 = reb_random_normal(0.00001);
     struct reb_particle p1 = {0};
-    p1 = reb_tools_orbit_to_particle(r->G, star, m1, a1, e1, reb_random_normal(0.0001), 0, 0, 0);
+    p1 = reb_tools_orbit_to_particle(r->G, star, m1, a1, e1, inc1, 0, 0, 0);
     p1.id = 1;              //1 = planet
     reb_add(r, p1);
     
     //planet 2
-    double a2=1, m2=5e-5, e2=0.01;
+    double a2=1, m2=5e-5, e2=0.01, inc2=reb_random_normal(0.00001);
     struct reb_particle p2 = {0};
-    p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, reb_random_normal(0.0001), 0, 0, 0);
+    p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, inc2, 0, 0, 0);
     p2.id = 1;              //1 = planet
     reb_add(r, p2);
     
@@ -84,8 +87,6 @@ int main(int argc, char* argv[]){
     
     //planetesimals
     double outer = 3, inner = 15, powerlaw = 0.5;  //higher the inner number, closer to the star
-    int seed = atoi(argv[3]);          //seed was 11
-    srand(seed);
     while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
 		double a	= reb_random_powerlaw(boxsize/outer,boxsize/inner,powerlaw);
@@ -115,7 +116,7 @@ int main(int argc, char* argv[]){
     calc_Hill2(r);
     
     //Initializing stuff
-    legend(plntdir, lgnddir, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,HYBRID_ON);
+    legend(plntdir, lgnddir, charizard, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,HYBRID_ON);
     s = reb_create_simulation();    //initialize mini simulation (IAS15)
     ini_mini(r,s,turn_planetesimal_forces_on);
     E0 = calc_Etot(r, &K0, &U0);
@@ -130,8 +131,12 @@ int main(int argc, char* argv[]){
 }
 
 void heartbeat(struct reb_simulation* r){
+    double K = 0, U = 0;
+    double E1 = calc_Etot(r,&K,&U);
+    
     if(HYBRID_ON == 1){
-        check_for_encounter(r, &N_encounters);
+        double min_ratio = 0;
+        check_for_encounter(r, &N_encounters, &min_ratio);
         int dN = N_encounters - N_encounters_previous;
         
         if(N_encounters_previous == 0){
@@ -152,52 +157,33 @@ void heartbeat(struct reb_simulation* r){
             update_previous_global_positions(r, N_encounters);
         }
         
-        //output stuff
-        double K = 0, U = 0;
-        double E1 = calc_Etot(r,&K,&U);
+        //OUTPUT stuff*******
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %d, %.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters,N_encounters_previous,r->dt,s->dt,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0));
+        fprintf(append, "%.16f,%.16f, %d, %d, %.12f,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters,N_encounters_previous,min_ratio,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0));
         fclose(append);
         
-        if(fabs((E1 - E0)/E0) > 1e-5){
-            char* err = "_error";
-            strcat(plntdir,err);
+        //output error stuff
+        if(fabs((E1 - E0)/E0) > 1e-4){
             FILE *error_output;
-            error_output = fopen(plntdir, "a");
-            fprintf(error_output,"r->t=%.15f, s->t=%.15f, r->dt=%.15f, s->dt=%.15f,\n",r->t,s->t,r->dt,s->dt);
+            error_output = fopen(charizard, "a");
+            fprintf(error_output, "%.16f,%.16f, %d, %d, %.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters,N_encounters_previous,r->dt,s->dt,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0));
             fclose(error_output);
             if(err_print_msg == 0){
-                fprintf(stderr,"\n\033[1mERROR EXCEEDED.\033[0m Exiting, check error file.\n");
                 err_print_msg++;
+                fprintf(stderr,"\n\033[1mERROR EXCEEDED.\033[0m Exiting, check error file.\n");
             }
+            
         }
-        
+        //OUTPUT stuff*******
         
         update_encounter_indices(&N_encounters, &N_encounters_previous);
     }
     
-    /*
     //output stuff - output everytime for now!!
     if(r->t > output_counter*tmax/n_output){
         output_counter++;
-        double K = 0, U = 0;
-        double E1 = calc_Etot(r,&K,&U);
-        FILE *append;
-        append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %d, %.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters,N_encounters_previous,r->dt,s->dt,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0));
-        fclose(append);
-        
-        if(fabs((E1 - E0)/E0) > 1e-5){
-            char* err = "_error";
-            strcat(plntdir,err);
-            FILE *error_output;
-            error_output = fopen(plntdir, "a");
-            fprintf(error_output,"r->t=%.15f, s->t=%.15f, r->dt=%.15f, s->dt=%.15f,\n",r->t,s->t,r->dt,s->dt);
-            fclose(error_output);
-            fprintf(stderr,"\n\033[1mERROR EXCEEDED.\033[0m Exiting, check error file.\n");
-            exit(0);
-        }
+
         
         /*double E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0, t = r->t;
         calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, r); //calcs Etot all in one go.
@@ -209,9 +195,8 @@ void heartbeat(struct reb_simulation* r){
             fprintf(append,"%f,%.8f,%.8f,%.16f,%.16f,%.16f,%.16f,%.16f\n",t,a_p,e_p,fabs((E_ini - E_curr)/E_ini),fabs((K_ini - K_curr)/K_ini), fabs((U_ini - U_curr)/U_ini),fabs((L_ini - L_curr)/L_ini),d_p);
             fclose(append);
             E_curr = E_ini; L_curr = L_ini;
-         }
-        reb_output_timing(r, 0);
-    }*/
+         }*/
+    }
     reb_output_timing(r, 0);
 }
 

@@ -16,7 +16,7 @@
 #include "../../src/rebound.h"
 #include "../../src/integrator_whfast.h"
 
-void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, int N_planetesimals, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, int HYBRID_ON){
+void legend(char* planetdir, char* legenddir, char* charizard, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, int N_planetesimals, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, int HYBRID_ON){
     
     int N_active = r->N_active, N = r->N;
     
@@ -68,6 +68,12 @@ void legend(char* planetdir, char* legenddir, struct reb_simulation* r, double t
     strcat(legenddir, str);
     strcat(planetdir, str);
     strcat(planetdir, txt);
+    
+    //temp
+    strcat(charizard,str);
+    char* err = "_error";
+    strcat(charizard,err);
+    strcat(charizard,txt);
     
     char* file = "Properties.txt";
     strcat(legenddir, us);
@@ -270,12 +276,13 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, int turn
 }
 
 //collect the id/array number of all planetesimals involved in a close encounter
-void check_for_encounter(struct reb_simulation* const r, int* N_encounters){
+void check_for_encounter(struct reb_simulation* const r, int* N_encounters, double* minimum_ratio){
     const int N = r->N;
     const int N_active = r->N_active;
     struct reb_particle* restrict const particles = r->particles;
     struct reb_particle p0 = particles[0];
     int num_encounters = 0;
+    double min_ratio = 1e6;
     for (int i=1; i<N_active; i++){
         struct reb_particle body = particles[i];
         const double dxi = p0.x - body.x;
@@ -314,8 +321,11 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters){
             if(rij2 < 5e-8){
                 fprintf(stderr,"\n\033[1mAlert!\033[0m Particle/Planet collision should have happened.\n");
             }
+            
+            if(ratio < min_ratio) min_ratio = ratio;
         }
     }
+    *minimum_ratio = min_ratio;
     *N_encounters = num_encounters;
 }
 
@@ -371,7 +381,7 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             struct reb_particle pt = global[EI];
             reb_add(s,pt);
             N_encounters_tot++;
-            //printf("particle %d added. dN == %d, N_close_encounters=%d\n",EI,dN,N_encounters);
+            printf("particle %d added. dN == %d, N_close_encounters=%d\n",EI,dN,N_encounters);
         }
     }
     
@@ -387,7 +397,7 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             for(int k=0;removed_particle==0 && k<N_encounters_previous;k++){
                 if(mini[k+N_active].id == PEI){
                     removed_particle = reb_remove(s,k+N_active,1);    //remove particle
-                    //printf("particle %d leaving. dN == %d, N_close_encounters=%d.\n",PEI,dN,N_encounters);
+                    printf("particle %d leaving. dN == %d, N_close_encounters=%d.\n",PEI,dN,N_encounters);
                 }
             }
         }

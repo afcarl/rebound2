@@ -26,12 +26,18 @@ arg3 = -1
 arg4 = 0
 if len(sys.argv) >= 4:
     arg3 = int(sys.argv[3])
-elif len(sys.argv) >= 5:
+if len(sys.argv) >= 5:
     arg4 = int(sys.argv[4])
 
 fos = open(''+file_name, 'r')
 data = np.loadtxt(fos, delimiter=',')
 plt.plot(data[arg4:arg3,0],data[arg4:arg3,arg1])
+
+#plt.plot(data[arg4:arg3,0],data[arg4:arg3,4])
+#plt.plot(data[arg4:arg3,0],data[arg4:arg3,5], 'r')
+#plt.ylabel('Energy and min p-p distance')
+#plt.xlabel('time')
+
 plt.yscale('log')
 
 #for i in xrange(0,N_active):
