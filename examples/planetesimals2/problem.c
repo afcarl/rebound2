@@ -17,7 +17,7 @@
 void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", charizard[200]="output/planet_";
 
-double tmax, planetesimal_mass, E0, K0, U0, n_output;
+double tmax, planetesimal_mass, E0, K0, U0, n_output, dt_ini;
 int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
@@ -29,7 +29,6 @@ int main(int argc, char* argv[]){
     
     // System constants
     tmax = atoi(argv[1]);
-    double dRHill = 0.5;            //Number of hill radii buffer. Sets the timestep. Smaller = stricter
     int N_planetesimals = atoi(argv[2]);
     double M_planetesimals = 3e-6;  //Total Mass of all planetesimals (default = Earth mass, 3e-6)
     planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal
@@ -40,7 +39,8 @@ int main(int argc, char* argv[]){
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary     = REB_BOUNDARY_OPEN;
 	r->heartbeat	= heartbeat;
-    r->ri_hybrid.switch_ratio = 5;     //# hill radii for boundary between switch. Try 3?
+    r->ri_hybrid.switch_ratio = 10;     //# hill radii for boundary between switch. Try 3?
+    double dRHill = 0.5;            //Number of hill radii buffer. Sets the timestep. Smaller = stricter
     if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces_global;
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
 	
@@ -80,10 +80,11 @@ int main(int argc, char* argv[]){
     //calc dt
     if(r->integrator == REB_INTEGRATOR_IAS15){
         double kicksperorbit = 50.;
-        r->dt = sqrt(4.0*M_PI*pow(a1,3)/(r->G*star.m))/kicksperorbit;
-        printf("dt = %f \n",r->dt);
+        dt_ini = sqrt(4.0*M_PI*pow(a1,3)/(r->G*star.m))/kicksperorbit;
+        printf("dt = %f \n",dt_ini);
         dRHill = -1;
-    } else r->dt = calc_dt(r, m1, star.m, a1, dRHill);
+    } else dt_ini = calc_dt(r, m1, star.m, a1, dRHill);
+    r->dt = dt_ini;
     
     //planetesimals
     double outer = 3, inner = 15, powerlaw = 0.5;  //higher the inner number, closer to the star
@@ -131,16 +132,14 @@ int main(int argc, char* argv[]){
 }
 
 void heartbeat(struct reb_simulation* r){
-    double K = 0, U = 0, min_ratio = 0;
+    double K = 0, U = 0, min_r = 0, max_val = 0;
     double E1 = calc_Etot(r,&K,&U);
     
     if(HYBRID_ON == 1){
-        check_for_encounter(r, &N_encounters, &min_ratio);
+        check_for_encounter(r, s, &N_encounters, &min_r, &max_val, dt_ini);
         int dN = N_encounters - N_encounters_previous;
-        
         if(N_encounters_previous == 0){
-            if(N_encounters > 0){
-                //first update in a while, only update massive bodies in mini and add any particles
+            if(N_encounters > 0){//1st update in a while, update mini massive bodies, add particles, no int
                 s->t = r->t;
                 int N_active = s->N_active;
                 struct reb_particle* global = r->particles;
@@ -156,13 +155,14 @@ void heartbeat(struct reb_simulation* r){
             update_previous_global_positions(r, N_encounters);
         }
         update_encounter_indices(&N_encounters, &N_encounters_previous);
+        //s->dt = dt_ini;
     }
     
     //OUTPUT stuff*******
     if(reb_output_check(r,tmax/n_output)){
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %.12f,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters_previous,min_ratio,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0));
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0));
         fclose(append);
         
         //output error stuff

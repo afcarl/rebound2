@@ -281,13 +281,14 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, int turn
 }
 
 //collect the id/array number of all planetesimals involved in a close encounter
-void check_for_encounter(struct reb_simulation* const r, int* N_encounters, double* minimum_ratio){
+void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* const s, int* N_encounters, double* minimum_r, double* maximum_val, double dt_ini){
     const int N = r->N;
     const int N_active = r->N_active;
     struct reb_particle* restrict const particles = r->particles;
     struct reb_particle p0 = particles[0];
     int num_encounters = 0;
-    double min_ratio = 1e6;
+    double max_val = 1e-8;
+    double min_r = 1e8;
     for (int i=1; i<N_active; i++){
         struct reb_particle body = particles[i];
         const double dxi = p0.x - body.x;
@@ -321,16 +322,26 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters, doub
                     encounter_index = realloc(encounter_index,num_encounters*sizeof(int));
                     encounter_index[num_encounters - 1] = pj.id;
                 }
+                //Super close encounter
+                if(rij2 < 4e-7){    //(4x radius of Neptune in AU)^2
+                    fprintf(stderr,"\n\033[1mSuper Close Encounter!\033[0m Particle/Planet collision should have happened.\n");
+                    //s->dt = dt_ini/50.; //if super CE, make s->dt smaller this iteration.
+                }
             }
             
-            if(rij2 < 5e-8){
-                fprintf(stderr,"\n\033[1mAlert!\033[0m Particle/Planet collision should have happened.\n");
-            }
-            
-            if(ratio < min_ratio) min_ratio = ratio;
+            //calculate dt*(vrel/rmin)
+            double vx = body.vx - pj.vx;
+            double vy = body.vy - pj.vy;
+            double vz = body.vz - pj.vz;
+            double vrel = sqrt(vx*vx + vy*vy + vz*vz);
+            double rr = sqrt(rij2);
+            double val = r->dt*vrel/rr;
+            if(rr < min_r) min_r = rr;
+            if(val > max_val) max_val = val;
         }
     }
-    *minimum_ratio = min_ratio;
+    *minimum_r = min_r;
+    *maximum_val = max_val;
     *N_encounters = num_encounters;
 }
 

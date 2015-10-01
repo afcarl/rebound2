@@ -6,18 +6,11 @@ import math
 import matplotlib.cm as cm
 pi = math.pi
 
-names=['time (years)','Semi-Major Axis (AU)','Eccentricity','(Ei - E0) / E0','(Ki - K0) / K0','(Ui - U0) / U0','Total Ang. Mom.','planet-star distance']
+#names=['time (years)','Semi-Major Axis (AU)','Eccentricity','(Ei - E0) / E0','(Ki - K0) / K0','(Ui - U0) / U0','Total Ang. Mom.','planet-star distance']
+names=['time (years)','time (mini, years)','N_encounter_previous', 'r_min','(dt*v_rel/r)_max', 'Energy','Kinetic','Potential','Energy and min p-p distance']
 colors=['b','g','m','r','c','y']
 
 file_name=str(sys.argv[1])
-
-#Get number of massive planets
-#fos = open(file_name[0:-4]+'_Properties.txt', 'r')
-#for i in xrange(0,3):
-#    header = fos.readline()
-#output = header.split(",")
-#N_active = int(output[2]) - 1    #-1 cause of the star
-#N_active = 2
 
 #time, a, e, i, Omega (long. of asc. node), omega, l (mean longitude), P, f
 arg1=int(sys.argv[2])
@@ -31,14 +24,24 @@ if len(sys.argv) >= 5:
 
 fos = open(''+file_name, 'r')
 data = np.loadtxt(fos, delimiter=',')
-plt.plot(data[arg4:arg3,0],data[arg4:arg3,arg1])
+if arg1 == 7:
+    plt.plot(data[arg4:arg3,0],data[arg4:arg3,4])
+    plt.plot(data[arg4:arg3,0],data[arg4:arg3,3], 'r')
+else:
+    plt.plot(data[arg4:arg3,0],data[arg4:arg3,arg1])
 
-#plt.plot(data[arg4:arg3,0],data[arg4:arg3,4])
-#plt.plot(data[arg4:arg3,0],data[arg4:arg3,5], 'r')
-#plt.ylabel('Energy and min p-p distance')
-#plt.xlabel('time')
-
+plt.ylabel(names[arg1])
+plt.xlabel('time (years)')
 plt.yscale('log')
+plt.show()
+
+#Get number of massive planets
+#fos = open(file_name[0:-4]+'_Properties.txt', 'r')
+#for i in xrange(0,3):
+#    header = fos.readline()
+#output = header.split(",")
+#N_active = int(output[2]) - 1    #-1 cause of the star
+#N_active = 2
 
 #for i in xrange(0,N_active):
 #    p=data[i::N_active]
@@ -59,4 +62,3 @@ plt.yscale('log')
 #plt.xlabel('' + names[arg1])
 #plt.ylabel('' + names[arg2])
 #plt.legend(loc='upper left',prop={'size':10})
-plt.show()
