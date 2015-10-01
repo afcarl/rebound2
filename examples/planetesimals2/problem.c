@@ -46,7 +46,7 @@ int main(int argc, char* argv[]){
 	
     // Other setup stuff
     //int seed = atoi(argv[3]);          //seed was 11
-    int seed = 12;
+    int seed = atoi(argv[3]);
     srand(seed);
     n_output = 100000;
     double boxsize = 5;
