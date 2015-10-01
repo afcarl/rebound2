@@ -18,7 +18,7 @@ void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", charizard[200]="output/planet_";
 
 double tmax, planetesimal_mass, E0, K0, U0, n_output;
-int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, output_counter = 0, err_print_msg = 0;
+int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
 
@@ -29,9 +29,9 @@ int main(int argc, char* argv[]){
     
     // System constants
     tmax = atoi(argv[1]);
-    double dRHill = 0.5;      //Number of hill radii buffer. Sets the timestep. Smaller = stricter
+    double dRHill = 0.5;            //Number of hill radii buffer. Sets the timestep. Smaller = stricter
     int N_planetesimals = atoi(argv[2]);
-    double M_planetesimals = 3e-6; //Total Mass of all planetesimals (default = Earth mass, 3e-6)
+    double M_planetesimals = 3e-6;  //Total Mass of all planetesimals (default = Earth mass, 3e-6)
     planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal
     
 	//Simulation Setup
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]){
     calc_Hill2(r);
     
     //Initializing stuff
-    legend(plntdir, lgnddir, charizard, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,HYBRID_ON);
+    legend(plntdir, lgnddir, charizard, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,seed,HYBRID_ON);
     s = reb_create_simulation();    //initialize mini simulation (IAS15)
     ini_mini(r,s,turn_planetesimal_forces_on);
     E0 = calc_Etot(r, &K0, &U0);
@@ -131,11 +131,10 @@ int main(int argc, char* argv[]){
 }
 
 void heartbeat(struct reb_simulation* r){
-    double K = 0, U = 0;
+    double K = 0, U = 0, min_ratio = 0;
     double E1 = calc_Etot(r,&K,&U);
     
     if(HYBRID_ON == 1){
-        double min_ratio = 0;
         check_for_encounter(r, &N_encounters, &min_ratio);
         int dN = N_encounters - N_encounters_previous;
         
@@ -156,46 +155,51 @@ void heartbeat(struct reb_simulation* r){
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN);
             update_previous_global_positions(r, N_encounters);
         }
-        
         update_encounter_indices(&N_encounters, &N_encounters_previous);
     }
     
     //OUTPUT stuff*******
-    if(r->t > output_counter*tmax/n_output){
-        output_counter++;
-
+    if(reb_output_check(r,tmax/n_output)){
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %d, %.12f,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters,N_encounters_previous,min_ratio,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0));
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters_previous,min_ratio,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0));
         fclose(append);
         
         //output error stuff
-        if(fabs((E1 - E0)/E0) > 1e-5){
-            FILE *error_output;
-            error_output = fopen(charizard, "a");
-            fprintf(error_output, "%.16f,%.16f, %d, %d, %.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters,N_encounters_previous,r->dt,s->dt,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0));
-            fclose(error_output);
-            if(err_print_msg == 0){
-                err_print_msg++;
-                fprintf(stderr,"\n\033[1mERROR EXCEEDED.\033[0m Exiting, check error file.\n");
-            }
-            
+        if(fabs((E1 - E0)/E0) > 1e-5 && err_print_msg == 0){
+            err_print_msg++;
+            fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s.\033[0m.\n",plntdir);
         }
-        //OUTPUT stuff*******
-        /*double E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0, t = r->t;
-        calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, r); //calcs Etot all in one go.
-        for(int i=1;i<r->N_active;i++){
-            calc_ae(&a_p, &e_p, &d_p, r, i, t);
-            
-            FILE *append;
-            append=fopen(plntdir, "a");
-            fprintf(append,"%f,%.8f,%.8f,%.16f,%.16f,%.16f,%.16f,%.16f\n",t,a_p,e_p,fabs((E_ini - E_curr)/E_ini),fabs((K_ini - K_curr)/K_ini), fabs((U_ini - U_curr)/U_ini),fabs((L_ini - L_curr)/L_ini),d_p);
-            fclose(append);
-            E_curr = E_ini; L_curr = L_ini;
-         }*/
+        reb_output_timing(r, 0);
     }
-    reb_output_timing(r, 0);
+    
+    if(reb_output_check(r,tmax/100)){
+        FILE *xyz_output;
+        xyz_output = fopen(charizard, "a");
+        struct reb_particle* global = r->particles;
+        fprintf(xyz_output, "%.16f\n",r->t);
+        for(int i=0;i<r->N;i++){
+            fprintf(xyz_output, "%d,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
+        }
+        fclose(xyz_output);
+    }
 }
+
+
+//OUTPUT stuff*******
+/*double E_curr = 0, K_curr = 0, U_curr = 0, L_curr = 0, a_p = 0, d_p = 0, e_p = 0, t = r->t;
+ calc_ELtot(&E_curr, &K_curr, &U_curr, &L_curr, planetesimal_mass, r); //calcs Etot all in one go.
+ for(int i=1;i<r->N_active;i++){
+ calc_ae(&a_p, &e_p, &d_p, r, i, t);
+ 
+ FILE *append;
+ append=fopen(plntdir, "a");
+ fprintf(append,"%f,%.8f,%.8f,%.16f,%.16f,%.16f,%.16f,%.16f\n",t,a_p,e_p,fabs((E_ini - E_curr)/E_ini),fabs((K_ini - K_curr)/K_ini), fabs((U_ini - U_curr)/U_ini),fabs((L_ini - L_curr)/L_ini),d_p);
+ fclose(append);
+ E_curr = E_ini; L_curr = L_ini;
+ }*/
+
+
 
 /*
  //planetesimal

@@ -16,11 +16,11 @@
 #include "../../src/rebound.h"
 #include "../../src/integrator_whfast.h"
 
-void legend(char* planetdir, char* legenddir, char* charizard, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, int N_planetesimals, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, int HYBRID_ON){
+void legend(char* planetdir, char* legenddir, char* charizard, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, int N_planetesimals, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, int seed, int HYBRID_ON){
     
     int N_active = r->N_active, N = r->N;
     
-    system("rm -v output/orbit*.txt");
+    //system("rm -v output/orbit*.txt");
     
     char* us = "_";
     char* txt = ".txt";
@@ -71,7 +71,7 @@ void legend(char* planetdir, char* legenddir, char* charizard, struct reb_simula
     
     //temp
     strcat(charizard,str);
-    char* err = "_error";
+    char* err = "_xyz";
     strcat(charizard,err);
     strcat(charizard,txt);
     
@@ -80,8 +80,8 @@ void legend(char* planetdir, char* legenddir, char* charizard, struct reb_simula
     strcat(legenddir, file);
     FILE *ff;
     ff=fopen(legenddir, "w");
-    fprintf(ff,"General:\ndt, tmax, N_active, N_Rhill (ri_hybrid.switch_ratio), dRHill, Integrator\n");
-    fprintf(ff,"%f,%.1f,%d,%f,%f,%s \n\n",r->dt,tmax,N_active,r->ri_hybrid.switch_ratio,drh,intgrtr);
+    fprintf(ff,"General:\ndt, tmax, N_active, N_Rhill (ri_hybrid.switch_ratio), dRHill, Seed, Integrator\n");
+    fprintf(ff,"%f,%.1f,%d,%f,%f,%d,%s \n\n",r->dt,tmax,N_active,r->ri_hybrid.switch_ratio,drh,seed,intgrtr);
     fprintf(ff,"Planet/Star:\nplanet mass, semi-major axis, e_initial, Stellar Mass\n");
     fprintf(ff,"%f,%f,%f,%f\n\n",mp,a,e,Ms);
     fprintf(ff,"Planetesimal:\nN_planetesimals, Mtot_planetsimal, m_planetesimal, planetesimal boundary conditions: inner/outer edge, powerlaw\n");
@@ -94,6 +94,11 @@ void legend(char* planetdir, char* legenddir, char* charizard, struct reb_simula
     strcat(rmv, rm_v);
     strcat(rmv, planetdir);
     system(rmv);
+    
+    char rmv2[100] = {0};
+    strcat(rmv2, rm_v);
+    strcat(rmv2, charizard);
+    system(rmv2);
     
 }
 
@@ -381,7 +386,7 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             struct reb_particle pt = global[EI];
             reb_add(s,pt);
             N_encounters_tot++;
-            printf("particle %d added. dN == %d, N_close_encounters=%d\n",EI,dN,N_encounters);
+            //printf("particle %d added. dN == %d, N_close_encounters=%d\n",EI,dN,N_encounters);
         }
     }
     
@@ -397,7 +402,7 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             for(int k=0;removed_particle==0 && k<N_encounters_previous;k++){
                 if(mini[k+N_active].id == PEI){
                     removed_particle = reb_remove(s,k+N_active,1);    //remove particle
-                    printf("particle %d leaving. dN == %d, N_close_encounters=%d.\n",PEI,dN,N_encounters);
+                    //printf("particle %d leaving. dN == %d, N_close_encounters=%d.\n",PEI,dN,N_encounters);
                 }
             }
         }
