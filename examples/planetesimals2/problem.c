@@ -49,7 +49,7 @@ int main(int argc, char* argv[]){
     int seed = atoi(argv[3]);
     srand(seed);
     n_output = 100000;
-    double boxsize = 5;
+    double boxsize = 15;
 	reb_configure_box(r, boxsize, 1, 1, 1);
 
 	// Initial conditions
