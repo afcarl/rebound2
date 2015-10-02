@@ -325,7 +325,7 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
                 //Super close encounter
                 if(rij2 < 4e-7){    //(4x radius of Neptune in AU)^2
                     fprintf(stderr,"\n\033[1mSuper Close Encounter!\033[0m Particle/Planet collision should have happened.\n");
-                    //s->dt = dt_ini/50.; //if super CE, make s->dt smaller this iteration.
+                    //s->dt = dt_ini/5.; //if super CE, make s->dt smaller this iteration.
                 }
             }
             

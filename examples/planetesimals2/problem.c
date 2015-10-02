@@ -39,10 +39,10 @@ int main(int argc, char* argv[]){
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary     = REB_BOUNDARY_OPEN;
 	r->heartbeat	= heartbeat;
-    r->ri_hybrid.switch_ratio = 10;     //# hill radii for boundary between switch. Try 3?
+    r->ri_hybrid.switch_ratio = 5;     //# hill radii for boundary between switch. Try 3?
     double dRHill = 0.5;            //Number of hill radii buffer. Sets the timestep. Smaller = stricter
     if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces_global;
-    //r->usleep   = 5000; //larger the number, slower OpenGL simulation
+    r->usleep   = 5000; //larger the number, slower OpenGL simulation
 	
     // Other setup stuff
     //int seed = atoi(argv[3]);          //seed was 11
@@ -63,6 +63,7 @@ int main(int argc, char* argv[]){
     double a1=0.7, m1=5e-5, e1=0.01, inc1 = reb_random_normal(0.00001);
     struct reb_particle p1 = {0};
     p1 = reb_tools_orbit_to_particle(r->G, star, m1, a1, e1, inc1, 0, 0, 0);
+    p1.r = 0.1;
     p1.id = 1;              //1 = planet
     reb_add(r, p1);
     
@@ -70,6 +71,7 @@ int main(int argc, char* argv[]){
     double a2=1, m2=5e-5, e2=0.01, inc2=reb_random_normal(0.00001);
     struct reb_particle p2 = {0};
     p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, inc2, 0, 0, 0);
+    p2.r = 0.1;
     p2.id = 1;              //1 = planet
     reb_add(r, p2);
     
@@ -87,10 +89,10 @@ int main(int argc, char* argv[]){
     r->dt = dt_ini;
     
     //planetesimals
-    double outer = 3, inner = 15, powerlaw = 0.5;  //higher the inner number, closer to the star
+    double inner = a1 - 0.3, outer = a2 + 0.5, powerlaw = 0.5;
     while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
-		double a	= reb_random_powerlaw(boxsize/outer,boxsize/inner,powerlaw);
+		double a	= reb_random_powerlaw(inner,outer,powerlaw);
         double phi 	= reb_random_uniform(0,2.*M_PI);
         double inc = reb_random_normal(0.0001);
         double Omega = reb_random_uniform(0,2.*M_PI);
@@ -102,7 +104,7 @@ int main(int argc, char* argv[]){
         //double a = 0.664171;
         //double phi=0.5;
         pt = reb_tools_orbit_to_particle(r->G, star, planetesimal_mass, a, 0, inc, Omega, apsis,phi);
-		pt.r 		= 0.04;
+		pt.r 		= 0.01;
         pt.id       = r->N;
 		reb_add(r, pt);
 	}
@@ -155,7 +157,6 @@ void heartbeat(struct reb_simulation* r){
             update_previous_global_positions(r, N_encounters);
         }
         update_encounter_indices(&N_encounters, &N_encounters_previous);
-        //s->dt = dt_ini;
     }
     
     //OUTPUT stuff*******
