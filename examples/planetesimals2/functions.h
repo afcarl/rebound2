@@ -13,7 +13,7 @@
 #include "../../src/rebound.h"
 
 //FUNCTIONS******************************
-void legend(char* planetdir, char* legenddir, char* charizard, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, int N_planetesimals, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, int seed, int HYBRID_ON);
+void legend(char* planetdir, char* legenddir, char* xyz_print, char* CEprint, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, int N_planetesimals, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, int seed, int HYBRID_ON);
 
 double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double dRHill);
 
@@ -37,7 +37,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, int turn
 
 void update_global(struct reb_simulation* const s, struct reb_simulation* const r, int N_encounters_previous, int N_encounters);
 
-void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters,int N_encounters_previous, int dN);
+void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters,int N_encounters_previous, int dN, char* CEprint);
 
 void update_previous_global_positions(struct reb_simulation* r, int N_encounters);
 

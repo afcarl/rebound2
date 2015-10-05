@@ -16,7 +16,7 @@
 #include "../../src/rebound.h"
 #include "../../src/integrator_whfast.h"
 
-void legend(char* planetdir, char* legenddir, char* charizard, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, int N_planetesimals, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, int seed, int HYBRID_ON){
+void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, int N_planetesimals, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, int seed, int HYBRID_ON){
     
     int N_active = r->N_active, N = r->N;
     
@@ -69,11 +69,17 @@ void legend(char* planetdir, char* legenddir, char* charizard, struct reb_simula
     strcat(planetdir, str);
     strcat(planetdir, txt);
     
-    //temp
-    strcat(charizard,str);
+    //xyz_check
+    strcat(xyz_check,str);
     char* err = "_xyz";
-    strcat(charizard,err);
-    strcat(charizard,txt);
+    strcat(xyz_check,err);
+    strcat(xyz_check,txt);
+    
+    //CE print
+    strcat(CEprint,str);
+    char* CEs = "_CEs";
+    strcat(CEprint,CEs);
+    strcat(CEprint,txt);
     
     char* file = "Properties.txt";
     strcat(legenddir, us);
@@ -97,8 +103,13 @@ void legend(char* planetdir, char* legenddir, char* charizard, struct reb_simula
     
     char rmv2[100] = {0};
     strcat(rmv2, rm_v);
-    strcat(rmv2, charizard);
+    strcat(rmv2, xyz_check);
     system(rmv2);
+    
+    char rmv3[100] = {0};
+    strcat(rmv3, rm_v);
+    strcat(rmv3, CEprint);
+    system(rmv3);
     
 }
 
@@ -381,7 +392,7 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
     
 }
 
-void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters, int N_encounters_previous, int dN){
+void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters, int N_encounters_previous, int dN, char* CEprint){
     int N_active = s->N_active;
     struct reb_particle* mini = s->particles;
     struct reb_particle* global = r->particles;
@@ -397,7 +408,10 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             struct reb_particle pt = global[EI];
             reb_add(s,pt);
             N_encounters_tot++;
-            //printf("particle %d added. dN == %d, N_close_encounters=%d\n",EI,dN,N_encounters);
+            FILE *output;
+            output = fopen(CEprint, "a");
+            fprintf(output,"t=%f particle %d added. dN == %d, N_close_encounters=%d\n",r->t,EI,dN,N_encounters);
+            fclose(output);
         }
     }
     
@@ -413,7 +427,10 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             for(int k=0;removed_particle==0 && k<N_encounters_previous;k++){
                 if(mini[k+N_active].id == PEI){
                     removed_particle = reb_remove(s,k+N_active,1);    //remove particle
-                    //printf("particle %d leaving. dN == %d, N_close_encounters=%d.\n",PEI,dN,N_encounters);
+                    FILE *output;
+                    output = fopen(CEprint, "a");
+                    fprintf(output,"t=%f particle %d leaving. dN == %d, N_close_encounters=%d.\n",r->t,PEI,dN,N_encounters);
+                    fclose(output);
                 }
             }
         }
