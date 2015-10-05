@@ -323,7 +323,7 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
                     encounter_index[num_encounters - 1] = pj.id;
                 }
                 //Super close encounter
-                if(rij2 < 4e-7){    //(4x radius of Neptune in AU)^2
+                if(rij2 < 1e-7){    //(4x radius of Neptune in AU)^2
                     fprintf(stderr,"\n\033[1mSuper Close Encounter!\033[0m Particle/Planet collision should have happened.\n");
                     //s->dt = dt_ini/5.; //if super CE, make s->dt smaller this iteration.
                 }
@@ -461,6 +461,32 @@ void update_encounter_indices(int* N_encounters, int* N_encounters_previous){
     *N_encounters = 0;
 }
 
+time_t clock_start(){
+    char buf[64];
+    time_t t_ini = time(NULL);
+    struct tm *tmp = gmtime(&t_ini);
+    strftime(buf, sizeof(buf), "%j:%H:%M:%S\n", tmp);
+    printf("start time: %s\n",buf);
+    
+    return t_ini;
+}
+
+void clock_finish(clock_t t_ini, int N_encounters, char* legenddir){
+    char buf[64];
+    time_t t_fini = time(NULL);
+    struct tm *tmp = gmtime(&t_fini);
+    strftime(buf, sizeof(buf), "%j:%H:%M:%S\n", tmp);
+    printf("\nfinish time: %s\n",buf);
+    
+    double time = t_fini - t_ini;
+    
+    FILE *ff;
+    ff=fopen(legenddir, "a");
+    fprintf(ff,"Elapsed simulation time is %.2f s, with %d close encounters.\n",time,N_encounters);
+    printf("\nSimulation complete. Elapsed simulation time is %.2f s, with %d close encounters.\n\n",time,N_encounters);
+}
+
+/*
 void clock_finish(clock_t timer, int N_encounters, char* legenddir){
     timer = clock() - timer;
     FILE *ff;
@@ -468,7 +494,7 @@ void clock_finish(clock_t timer, int N_encounters, char* legenddir){
     double result = ((float)timer)/CLOCKS_PER_SEC;
     fprintf(ff,"Elapsed simulation time is %f s, with %d close encounters.\n",result,N_encounters);
     printf("\n\nSimulation complete. Elapsed simulation time is %f s, with %d close encounters.\n\n",result,N_encounters);
-}
+}*/
 
 void global_free(){
     free(encounter_index);

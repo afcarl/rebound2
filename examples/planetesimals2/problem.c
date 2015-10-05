@@ -39,10 +39,10 @@ int main(int argc, char* argv[]){
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary     = REB_BOUNDARY_OPEN;
 	r->heartbeat	= heartbeat;
-    r->ri_hybrid.switch_ratio = 5;     //# hill radii for boundary between switch. Try 3?
-    double dRHill = 0.5;            //Number of hill radii buffer. Sets the timestep. Smaller = stricter
+    r->ri_hybrid.switch_ratio = 10;     //# hill radii for boundary between switch. Try 3?
+    double dRHill = 0.25;            //Number of hill radii buffer. Sets the timestep. Smaller = stricter
     if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces_global;
-    r->usleep   = 5000; //larger the number, slower OpenGL simulation
+    //r->usleep   = 5000; //larger the number, slower OpenGL simulation
 	
     // Other setup stuff
     //int seed = atoi(argv[3]);          //seed was 11
@@ -125,11 +125,12 @@ int main(int argc, char* argv[]){
     E0 = calc_Etot(r, &K0, &U0);
     
     //Integrate!
-    clock_t timer = clock();
+    clock_t t_ini = clock_start();
+    
     reb_integrate(r, tmax);
     
     //finish
-    clock_finish(timer,N_encounters_tot,lgnddir);
+    clock_finish(t_ini,N_encounters_tot,lgnddir);
     global_free();
 }
 

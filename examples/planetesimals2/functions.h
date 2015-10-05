@@ -43,7 +43,9 @@ void update_previous_global_positions(struct reb_simulation* r, int N_encounters
 
 void update_encounter_indices(int* N_encounters, int* N_encounters_previous);
 
-void clock_finish(clock_t timer, int N_encounters, char* legenddir);
+time_t clock_start();
+
+void clock_finish(clock_t t_ini, int N_encounters, char* legenddir);
 
 void global_free();
 
