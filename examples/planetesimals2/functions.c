@@ -271,7 +271,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, int turn
     s->integrator = REB_INTEGRATOR_IAS15;
     if(turn_planetesimal_forces_on==1)s->additional_forces = planetesimal_forces_mini;
     s->exact_finish_time = 1;
-    s->dt = r->dt/10.;
+    s->dt = r->dt;
     
     struct reb_particle* restrict const particles = r->particles;
     for(int k=0; k<s->N_active; k++){
@@ -466,7 +466,7 @@ time_t clock_start(){
     time_t t_ini = time(NULL);
     struct tm *tmp = gmtime(&t_ini);
     strftime(buf, sizeof(buf), "%j:%H:%M:%S\n", tmp);
-    printf("start time: %s\n",buf);
+    printf("start time (GMT): %s\n",buf);
     
     return t_ini;
 }
@@ -476,7 +476,7 @@ void clock_finish(clock_t t_ini, int N_encounters, char* legenddir){
     time_t t_fini = time(NULL);
     struct tm *tmp = gmtime(&t_fini);
     strftime(buf, sizeof(buf), "%j:%H:%M:%S\n", tmp);
-    printf("\nfinish time: %s\n",buf);
+    printf("\nfinish time (GMT): %s\n",buf);
     
     double time = t_fini - t_ini;
     

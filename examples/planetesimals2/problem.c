@@ -45,7 +45,6 @@ int main(int argc, char* argv[]){
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
 	
     // Other setup stuff
-    //int seed = atoi(argv[3]);          //seed was 11
     int seed = atoi(argv[3]);
     srand(seed);
     n_output = 100000;
@@ -75,9 +74,9 @@ int main(int argc, char* argv[]){
     p2.id = 1;              //1 = planet
     reb_add(r, p2);
     
-    //N_active
+    //N_active and move to COM
     r->N_active = r->N;
-    if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);          //move to COM
+    if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
     
     //calc dt
     if(r->integrator == REB_INTEGRATOR_IAS15){
@@ -89,7 +88,8 @@ int main(int argc, char* argv[]){
     r->dt = dt_ini;
     
     //planetesimals
-    double inner = a1 - 0.3, outer = a2 + 0.5, powerlaw = 0.5;
+    //double inner = a1 - 0.3, outer = a2 + 0.5, powerlaw = 0.5;
+    double inner = a1 - 0.5, outer = a2 + 1.5, powerlaw = 0.5;
     while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
 		double a	= reb_random_powerlaw(inner,outer,powerlaw);
@@ -126,7 +126,6 @@ int main(int argc, char* argv[]){
     
     //Integrate!
     clock_t t_ini = clock_start();
-    
     reb_integrate(r, tmax);
     
     //finish
