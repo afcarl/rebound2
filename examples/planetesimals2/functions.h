@@ -33,7 +33,7 @@ void planetesimal_forces_mini(struct reb_simulation *a);
 
 void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* const s, int* N_encounters, double* minimum_r, double* maximum_val, double dt_ini);
 
-void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, int turn_planetesimal_forces_on);
+void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double ias_epsilon, int turn_planetesimal_forces_on);
 
 void update_global(struct reb_simulation* const s, struct reb_simulation* const r, int N_encounters_previous, int N_encounters);
 

@@ -15,7 +15,7 @@ all: $(SOURCES) librebound.so
 librebound.so: $(OBJECTS)
 	@echo ""        
 	@echo "Linking share library $@ ..."
-	$(CC) $(OPT) -shared $(OBJECTS) $(LIB) -o $@ 
+	$(CC) $(OPT) -shared $(OBJECTS) $(LIB) -o $@
 	
 	@echo ""        
 	@echo "The shared library $< has been created successfully."
