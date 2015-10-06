@@ -25,7 +25,7 @@ struct reb_simulation* s; struct reb_simulation* r;
 int main(int argc, char* argv[]){
     //switches
     int turn_planetesimal_forces_on = 1;
-    HYBRID_ON = 0;
+    HYBRID_ON = 1;
     
     // System constants
     tmax = atoi(argv[1]);
