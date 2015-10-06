@@ -25,7 +25,7 @@ struct reb_simulation* s; struct reb_simulation* r;
 int main(int argc, char* argv[]){
     //switches
     int turn_planetesimal_forces_on = 1;
-    HYBRID_ON = 1;
+    HYBRID_ON = 0;
     
     // System constants
     tmax = atoi(argv[1]);
@@ -39,17 +39,17 @@ int main(int argc, char* argv[]){
 	r->collision	= REB_COLLISION_NONE;
 	r->boundary     = REB_BOUNDARY_OPEN;
 	r->heartbeat	= heartbeat;
-    r->ri_hybrid.switch_ratio = 5;     //# hill radii for boundary between switch. Try 3?
-    double dRHill = 0.25;            //Number of hill radii buffer. Sets the timestep. Smaller = stricter
+    r->ri_hybrid.switch_ratio = 7;     //# hill radii for boundary between switch. Try 3?
+    double dRHill = 0.5;            //Number of hill radii buffer. Sets the timestep. Smaller = stricter
     if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces_global;
-    //r->usleep   = 5000; //larger the number, slower OpenGL simulation
+    r->usleep   = 5000; //larger the number, slower OpenGL simulation
 	
     // Other setup stuff
     int seed = atoi(argv[3]);
     srand(seed);
     n_output = 100000;
-    double boxsize = 15;
-	reb_configure_box(r, boxsize, 1, 1, 1);
+    double boxsize = 20;
+	reb_configure_box(r, boxsize, 3, 3, 1);
 
 	// Initial conditions
 	struct reb_particle star = {0};
