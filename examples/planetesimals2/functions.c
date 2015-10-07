@@ -230,10 +230,10 @@ void planetesimal_forces_routine(struct reb_simulation *a){
             const double dy = body->y - p.y;
             const double dz = body->z - p.z;
             
-            const double rijinv = 1.0/sqrt(dx*dx + dy*dy + dz*dz);
-            const double ac = -Gm1*rijinv*rijinv*rijinv;  //force/mass = acceleration
+            const double rijinv2 = 1.0/(dx*dx + dy*dy + dz*dz);
+            const double ac = -Gm1*rijinv2*sqrt(rijinv2);
             
-            body->ax += ac*dx;    //perturbation on planets due to planetesimals.
+            body->ax += ac*dx;      //perturbation on planets due to planetesimals.
             body->ay += ac*dy;
             body->az += ac*dz;
         }
@@ -247,32 +247,31 @@ void planetesimal_forces_global(struct reb_simulation *a){
 void planetesimal_forces_mini(struct reb_simulation *a){
     planetesimal_forces_routine(s);
     
-    //forces from global sim into mini
+    //forces from global into mini
     const double Gm1 = s->G*planetesimal_mass;
     struct reb_particle* mini = s->particles;
     struct reb_particle* const global = r->particles;
     const double timefac = (s->t - t_prev)/(r->t - t_prev);
     int rN_active = r->N_active;
-    for(int i=rN_active;i<r->N;i++){//planetesimals
-        if(x_prev[i] != 0){//find planetesimals with !=0 values, i.e. part of global but not mini
+    for(int i=rN_active;i<r->N;i++){    //planetesimals
+        if(x_prev[i] != 0){             //find planetesimals with !=0 values, i.e. part of global but not mini
+            const double ix = x_prev[i] + timefac*(global[i].x - x_prev[i]); //interpolated values
+            const double iy = y_prev[i] + timefac*(global[i].y - y_prev[i]);
+            const double iz = z_prev[i] + timefac*(global[i].z - z_prev[i]);
             for(int j=0;j<rN_active;j++){//massive bodies
                 struct reb_particle* body = &(mini[j]);
-                const double ix = x_prev[i] + timefac*(global[i].x - x_prev[i]); //interpolated value
-                const double iy = y_prev[i] + timefac*(global[i].y - y_prev[i]); //interpolated value
-                const double iz = z_prev[i] + timefac*(global[i].z - z_prev[i]); //interpolated value
                 const double ddx = body->x - ix;
                 const double ddy = body->y - iy;
                 const double ddz = body->z - iz;
                 
-                const double rijinv = 1.0/sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
-                const double ac = -Gm1*rijinv*rijinv*rijinv;  //force/mass = acceleration
+                const double rijinv2 = 1.0/(ddx*ddx + ddy*ddy + ddz*ddz);
+                const double ac = -Gm1*rijinv2*sqrt(rijinv2);
                 
-                body->ax += ac*ddx;    //perturbation on planets due to planetesimals.
+                body->ax += ac*ddx;     //perturbation on planets due to planetesimals.
                 body->ay += ac*ddy;
                 body->az += ac*ddz;
             }
         }
-        
     }
 }
 

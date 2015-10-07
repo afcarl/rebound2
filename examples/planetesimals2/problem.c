@@ -32,7 +32,7 @@ int main(int argc, char* argv[]){
     int N_planetesimals = atoi(argv[2]);
     double M_planetesimals = 3e-6;  //Total Mass of all planetesimals (default = Earth mass, 3e-6)
     planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal
-    double ias_epsilon = 1e-5;
+    double ias_epsilon = 1e-9;
     
 	//Simulation Setup
     r = reb_create_simulation();
