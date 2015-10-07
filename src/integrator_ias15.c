@@ -264,7 +264,12 @@ static int reb_integrator_ias15_step(struct reb_simulation* r) {
 			const int integrator_iterations_warning = 10;
 			if (r->ri_ias15.iterations_max_exceeded==integrator_iterations_warning ){
 				//reb_warning("At least 10 predictor corrector loops in IAS15 did not converge. This is typically an indication of the timestep being too large.");
+                
                 fprintf(stderr,"\n\033[1mWarning!\033[0m At least 10 predictor corrector loops in IAS15 did not converge. This is typically an indication of the timestep being too large. Mini_sim: s->t=%f,s->epsilon=%.e,s->N=%d\n",r->t,r->ri_ias15.epsilon,r->N);  //A.S.
+                FILE* recordias = fopen("output/ias_error.txt", "a");
+                fprintf(recordias,"10 predictor corrector loops didn't converge. Mini_sim: s->t=%f,s->epsilon=%.e,s->N=%d\n",r->t,r->ri_ias15.epsilon,r->N);
+                fclose(recordias);
+                
 			}
 			break;								// Quit predictor corrector loop
 		}

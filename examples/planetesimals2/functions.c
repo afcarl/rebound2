@@ -287,7 +287,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
     if(turn_planetesimal_forces_on==1)s->additional_forces = planetesimal_forces_mini;
     s->exact_finish_time = 1;
     s->ri_ias15.epsilon = ias_epsilon;
-    s->dt = r->dt/5.;
+    s->dt = r->dt;
     
     struct reb_particle* restrict const particles = r->particles;
     for(int k=0; k<s->N_active; k++){
