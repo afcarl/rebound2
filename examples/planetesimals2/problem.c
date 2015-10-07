@@ -166,6 +166,7 @@ void heartbeat(struct reb_simulation* r){
             err_print_msg++;
             fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s.\033[0m.\n",plntdir);
         }
+        reb_output_timing(r, 0);    //output only when outputting values. Saves some time
     }
     
     if(reb_output_check(r,tmax/100)){
@@ -178,8 +179,6 @@ void heartbeat(struct reb_simulation* r){
         }
         fclose(xyz_output);
     }
-    
-    reb_output_timing(r, 0);    //output everytime for now.
 }
 
 
