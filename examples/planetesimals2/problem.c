@@ -32,25 +32,25 @@ int main(int argc, char* argv[]){
     int N_planetesimals = atoi(argv[2]);
     double M_planetesimals = 3e-6;  //Total Mass of all planetesimals (default = Earth mass, 3e-6)
     planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal
-    double ias_epsilon = 1e-9;
+    double ias_epsilon = atof(argv[3]);      //sets precision of ias15
+    double dRHill = 0.5;            //Number of hill radii buffer. Sets the timestep. Smaller = stricter
     
 	//Simulation Setup
     r = reb_create_simulation();
 	r->integrator	= 1;    //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, WH=3, HYBRID = 5
 	r->collision	= REB_COLLISION_NONE;
-	r->boundary     = REB_BOUNDARY_OPEN;
 	r->heartbeat	= heartbeat;
     r->ri_hybrid.switch_ratio = 7;     //# hill radii for boundary between switch. Try 3?
-    double dRHill = 0.5;            //Number of hill radii buffer. Sets the timestep. Smaller = stricter
     if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces_global;
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
 	
     // Other setup stuff
-    int seed = atoi(argv[3]);
+    int seed = atoi(argv[4]);
     srand(seed);
     n_output = 100000;
-    double boxsize = 20;
-	reb_configure_box(r, boxsize, 3, 3, 1);
+    //r->boundary     = REB_BOUNDARY_OPEN;
+    //double boxsize = 20;
+	//reb_configure_box(r, boxsize, 3, 3, 1);
 
 	// Initial conditions
 	struct reb_particle star = {0};
@@ -98,12 +98,6 @@ int main(int argc, char* argv[]){
         double inc = reb_random_normal(0.0001);
         double Omega = reb_random_uniform(0,2.*M_PI);
         double apsis = reb_random_uniform(0,2.*M_PI);
-        //double Omega = 0;
-        //double apsis = 0;
-        //double a = 0.695;
-        //double phi = 0.03;
-        //double a = 0.664171;
-        //double phi=0.5;
         pt = reb_tools_orbit_to_particle(r->G, star, planetesimal_mass, a, 0, inc, Omega, apsis,phi);
 		pt.r 		= 0.01;
         pt.id       = r->N;
@@ -120,7 +114,7 @@ int main(int argc, char* argv[]){
     calc_Hill2(r);
     
     //Initializing stuff
-    legend(plntdir, lgnddir, xyz_check, CEprint, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,seed,HYBRID_ON);
+    legend(plntdir, lgnddir, xyz_check, CEprint, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,ias_epsilon,seed,HYBRID_ON);
     s = reb_create_simulation();    //initialize mini simulation (IAS15)
     ini_mini(r,s,ias_epsilon,turn_planetesimal_forces_on);
     E0 = calc_Etot(r, &K0, &U0);
@@ -172,7 +166,6 @@ void heartbeat(struct reb_simulation* r){
             err_print_msg++;
             fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s.\033[0m.\n",plntdir);
         }
-        reb_output_timing(r, 0);
     }
     
     if(reb_output_check(r,tmax/100)){
@@ -185,6 +178,8 @@ void heartbeat(struct reb_simulation* r){
         }
         fclose(xyz_output);
     }
+    
+    reb_output_timing(r, 0);    //output everytime for now.
 }
 
 

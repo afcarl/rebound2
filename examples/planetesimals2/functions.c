@@ -16,7 +16,7 @@
 #include "../../src/rebound.h"
 #include "../../src/integrator_whfast.h"
 
-void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, int N_planetesimals, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, int seed, int HYBRID_ON){
+void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, int N_planetesimals, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, double epsilon, int seed, int HYBRID_ON){
     
     int N_active = r->N_active, N = r->N;
     
@@ -26,7 +26,7 @@ void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, st
     char* txt = ".txt";
     char* intgrtr;
     
-    char str[100] = {0};
+    char str[110] = {0};
     if(r->integrator == REB_INTEGRATOR_WHFAST){
         if(HYBRID_ON == 1)intgrtr = "HYBRID"; else intgrtr = "WHFAST";
         strcat(str, intgrtr);
@@ -40,6 +40,11 @@ void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, st
         sprintf(Nstr, "%d", N_planetesimals);
         strcat(str, Neq);
         strcat(str, Nstr);
+        char* epsln = "_Ep";
+        char eps[15];
+        sprintf(eps,"%.0e",epsilon);
+        strcat(str, epsln);
+        strcat(str, eps);
         
         //strcat(str, us);
         //int hybrid_rint = (int) r->ri_hybrid.switch_ratio;
@@ -282,7 +287,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
     if(turn_planetesimal_forces_on==1)s->additional_forces = planetesimal_forces_mini;
     s->exact_finish_time = 1;
     s->ri_ias15.epsilon = ias_epsilon;
-    s->dt = r->dt;
+    s->dt = r->dt/5.;
     
     struct reb_particle* restrict const particles = r->particles;
     for(int k=0; k<s->N_active; k++){
