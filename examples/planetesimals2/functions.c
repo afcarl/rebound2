@@ -40,22 +40,20 @@ void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, st
         sprintf(Nstr, "%d", N_planetesimals);
         strcat(str, Neq);
         strcat(str, Nstr);
-        char* epsln = "_Ep";
-        char eps[15];
-        sprintf(eps,"%.0e",epsilon);
-        strcat(str, epsln);
-        strcat(str, eps);
+        //char* epsln = "_Ep";
+        //char eps[15];
+        //sprintf(eps,"%.0e",epsilon);
+        //strcat(str, epsln);
+        //strcat(str, eps);
         
-        //strcat(str, us);
-        //int hybrid_rint = (int) r->ri_hybrid.switch_ratio;
-        //char str3[15];
-        //sprintf(str3, "%d", hybrid_rint);
-        //strcat(str, str3);
-        //strcat(str, us);
-        //int drint = (int) drh;
-        //char str2[15];
-        //sprintf(str2, "%d", drint);
-        //strcat(str, str2);
+        strcat(str, us);
+        char str3[15];
+        sprintf(str3, "%.0f", r->ri_hybrid.switch_ratio);
+        strcat(str, str3);
+        strcat(str, us);
+        char str2[15];
+        sprintf(str2, "%.2f", drh);
+        strcat(str, str2);
         
         //char strtime[10];
         //sprintf(strtime, "%d", hybrid_rint);
