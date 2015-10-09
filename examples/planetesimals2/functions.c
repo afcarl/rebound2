@@ -91,8 +91,8 @@ void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, st
     strcat(legenddir, file);
     FILE *ff;
     ff=fopen(legenddir, "w");
-    fprintf(ff,"General:\ndt, tmax, N_active, N_Rhill (ri_hybrid.switch_ratio), dRHill, Seed, Integrator\n");
-    fprintf(ff,"%f,%.1f,%d,%f,%f,%d,%s \n\n",r->dt,tmax,N_active,r->ri_hybrid.switch_ratio,drh,seed,intgrtr);
+    fprintf(ff,"General:\ndt, tmax, N_active, ri_hybrid.switch_ratio, dRHill, ias_epsilon, Seed, Integrator\n");
+    fprintf(ff,"%f,%.1f,%d,%f,%f,%f,%d,%s \n\n",r->dt,tmax,N_active,r->ri_hybrid.switch_ratio,drh,epsilon,seed,intgrtr);
     fprintf(ff,"Planet/Star:\nplanet mass, semi-major axis, e_initial, Stellar Mass\n");
     fprintf(ff,"%f,%f,%f,%f\n\n",mp,a,e,Ms);
     fprintf(ff,"Planetesimal:\nN_planetesimals, Mtot_planetsimal, m_planetesimal, planetesimal boundary conditions: inner/outer edge, powerlaw\n");
@@ -125,7 +125,7 @@ double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double 
     }
     double e_max = 0.3;  //max hypothesized eccentricity that the planet/esimals could have
     double Hill = a*(1 - e_max)*pow(mp/(3*Ms),1./3.);
-    double vmax = sqrt(r->G*(Ms + mp)*(1 + e_max)/(a*(1 - e_max)));   //peri speed
+    double vmax = sqrt(r->G*(Ms + mp)*(1 + e_max)/(a*(1 - e_max)));   //perihelion speed
     double dt = dRHill*Hill/vmax;
     printf("timesetep is dt = %f, ri_hybrid.switch_ratio=%f \n",dt,r->ri_hybrid.switch_ratio);
     
@@ -287,7 +287,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
     if(turn_planetesimal_forces_on==1)s->additional_forces = planetesimal_forces_mini;
     s->exact_finish_time = 1;
     s->ri_ias15.epsilon = ias_epsilon;
-    s->dt = r->dt;
+    s->dt = r->dt/5.;
     
     struct reb_particle* restrict const particles = r->particles;
     for(int k=0; k<s->N_active; k++){

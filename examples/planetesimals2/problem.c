@@ -27,25 +27,27 @@ int main(int argc, char* argv[]){
     int turn_planetesimal_forces_on = 1;
     HYBRID_ON = 1;
     
-    // System constants
+    //System constants
     tmax = atoi(argv[1]);
     int N_planetesimals = atoi(argv[2]);
-    double M_planetesimals = 3e-6;  //Total Mass of all planetesimals (default = Earth mass, 3e-6)
-    planetesimal_mass = M_planetesimals / N_planetesimals;  //mass of each planetesimal
-    double ias_epsilon = atof(argv[3]);      //sets precision of ias15
-    double dRHill = 0.5;            //Number of hill radii buffer. Sets the timestep. Smaller = stricter
+    double M_planetesimals = 3e-6;                        //Total Mass of all planetesimals (default = Earth mass, 3e-6)
+    planetesimal_mass = M_planetesimals/N_planetesimals;  //mass of each planetesimal
+    double ias_epsilon = 1e-7;                            //sets precision of ias15
+    double HSR2 = atof(argv[3]);                          //Transition boundary between WHFAST and IAS15. Units of Hill^2
+    double dRHill = atof(argv[4]);                        //Sets the timestep - max # Hill radii/timestep. Smaller=stricter
+    int seed = atoi(argv[5]);
     
 	//Simulation Setup
     r = reb_create_simulation();
-	r->integrator	= 1;    //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, WH=3, HYBRID = 5
+	r->integrator	= 1;                                  //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, WH=3, HYBRID = 5
 	r->collision	= REB_COLLISION_NONE;
 	r->heartbeat	= heartbeat;
-    r->ri_hybrid.switch_ratio = 7;     //# hill radii for boundary between switch. Try 3?
+    r->ri_hybrid.switch_ratio = HSR2;
     if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces_global;
+    //r->ri_whfast.corrector 	= 11;
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
 	
     // Other setup stuff
-    int seed = atoi(argv[4]);
     srand(seed);
     n_output = 100000;
     //r->boundary     = REB_BOUNDARY_OPEN;
@@ -80,17 +82,19 @@ int main(int argc, char* argv[]){
     if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
     
     //calc dt
+    dt_ini = calc_dt(r, m1, star.m, a1, dRHill);
     if(r->integrator == REB_INTEGRATOR_IAS15){
-        double kicksperorbit = 50.;
-        dt_ini = sqrt(4.0*M_PI*pow(a1,3)/(r->G*star.m))/kicksperorbit;
+        //double kicksperorbit = 50.;
+        //dt_ini = sqrt(4.0*M_PI*pow(a1,3)/(r->G*star.m))/kicksperorbit;
+        dt_ini /= 3.;
         printf("dt = %f \n",dt_ini);
         dRHill = -1;
-    } else dt_ini = calc_dt(r, m1, star.m, a1, dRHill);
+    }
     r->dt = dt_ini;
     
     //planetesimals
-    double inner = a1 - 0.5, outer = a2 + 1, powerlaw = 0.5;
-    //double inner = a1 - 0.5, outer = a2 + 1.5, powerlaw = 0.5;
+    double planetesimal_buffer = 0.1;   //Chatterjee & Ford use 0.01
+    double inner = a1 - planetesimal_buffer, outer = a2 + planetesimal_buffer, powerlaw = 0.5;
     while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
 		double a	= reb_random_powerlaw(inner,outer,powerlaw);
@@ -99,7 +103,7 @@ int main(int argc, char* argv[]){
         double Omega = reb_random_uniform(0,2.*M_PI);
         double apsis = reb_random_uniform(0,2.*M_PI);
         pt = reb_tools_orbit_to_particle(r->G, star, planetesimal_mass, a, 0, inc, Omega, apsis,phi);
-		pt.r 		= 0.01;
+		pt.r 		= 0.005;
         pt.id       = r->N;
 		reb_add(r, pt);
 	}
@@ -168,7 +172,7 @@ void heartbeat(struct reb_simulation* r){
         }
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
     }
-    
+    /*
     if(reb_output_check(r,tmax/100)){
         FILE *xyz_output;
         xyz_output = fopen(xyz_check, "a");
@@ -178,7 +182,7 @@ void heartbeat(struct reb_simulation* r){
             fprintf(xyz_output, "%d,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
         }
         fclose(xyz_output);
-    }
+    }*/
 }
 
 
