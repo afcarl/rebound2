@@ -22,16 +22,17 @@ if len(sys.argv) >= 4:
 if len(sys.argv) >= 5:
     arg4 = int(sys.argv[4])
 
+msval = 3
 fos = open(''+file_name, 'r')
 data = np.loadtxt(fos, delimiter=',')
 if arg1 == 8:
-    plt.plot(data[arg4:arg3,0],data[arg4:arg3,5])
-    plt.plot(data[arg4:arg3,0],data[arg4:arg3,3], 'r')
+    plt.plot(data[arg4:arg3,0],data[arg4:arg3,5], 'o', ms=msval, markeredgecolor='none')
+    plt.plot(data[arg4:arg3,0],data[arg4:arg3,3], 'or', ms=msval, markeredgecolor='none')
 elif arg1 == 9:
-    plt.plot(data[arg4:arg3,0],data[arg4:arg3,5])
-    plt.plot(data[arg4:arg3,0],data[arg4:arg3,4], 'r')
+    plt.plot(data[arg4:arg3,0],data[arg4:arg3,5], 'o', ms=msval, markeredgecolor='none')
+    plt.plot(data[arg4:arg3,0],data[arg4:arg3,4],  'or', ms=msval, markeredgecolor='none')
 else:
-    plt.plot(data[arg4:arg3,0],data[arg4:arg3,arg1])
+    plt.plot(data[arg4:arg3,0],data[arg4:arg3,arg1], 'o', ms=msval, markeredgecolor='none')
 
 plt.ylabel(names[arg1])
 plt.xlabel('time (years)')

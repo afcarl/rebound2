@@ -285,7 +285,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
     if(turn_planetesimal_forces_on==1)s->additional_forces = planetesimal_forces_mini;
     s->exact_finish_time = 1;
     s->ri_ias15.epsilon = ias_epsilon;
-    s->dt = r->dt/5.;
+    s->dt = r->dt/3.;
     
     struct reb_particle* restrict const particles = r->particles;
     for(int k=0; k<s->N_active; k++){
@@ -337,9 +337,8 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
                     encounter_index[num_encounters - 1] = pj.id;
                 }
                 //Super close encounter
-                if(rij2 < 1e-7){    //(4x radius of Neptune in AU)^2
+                if(rij2 < 2.5e-8){    //(radius of Neptune in AU)^2
                     fprintf(stderr,"\n\033[1mSuper Close Encounter!\033[0m Particle/Planet collision should have happened.\n");
-                    //s->dt = dt_ini/5.; //if super CE, make s->dt smaller this iteration.
                 }
             }
             
@@ -414,6 +413,7 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             FILE *output;
             output = fopen(CEprint, "a");
             fprintf(output,"t=%f particle %d added. dN == %d, N_close_encounters=%d\n",r->t,EI,dN,N_encounters);
+            printf("t=%f particle %d added. dN == %d, N_close_encounters=%d\n",r->t,EI,dN,N_encounters);
             fclose(output);
         }
     }
@@ -433,6 +433,7 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
                     FILE *output;
                     output = fopen(CEprint, "a");
                     fprintf(output,"t=%f particle %d leaving. dN == %d, N_close_encounters=%d.\n",r->t,PEI,dN,N_encounters);
+                    printf("t=%f particle %d leaving. dN == %d, N_close_encounters=%d.\n",r->t,PEI,dN,N_encounters);
                     fclose(output);
                 }
             }
@@ -447,15 +448,15 @@ void update_previous_global_positions(struct reb_simulation* r, int N_encounters
     for(int i=r->N_active;i<r->N;i++){
         int ID = global[i].id;
         _Bool found_particle = 0;
-        for(int j=0;j<N_encounters && found_particle == 0;j++){//this can be sped up. Probs better to find the particles
+        for(int j=0;j<N_encounters && found_particle == 0;j++){
             if(ID == encounter_index[j]){
                 found_particle = 1;
-                x_prev[i] = 0.;      //reset planetesimals involved in mini to 0
+                x_prev[i] = 0.;         //reset planetesimals involved in mini to 0
                 y_prev[i] = 0.;
                 z_prev[i] = 0.;
             }
         }
-        if(found_particle == 0){    //planetesimal not involved in mini, update position for later interp.
+        if(found_particle == 0){        //planetesimal not involved in mini, update position for later interp.
             x_prev[i] = global[i].x;
             y_prev[i] = global[i].y;
             z_prev[i] = global[i].z;

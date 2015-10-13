@@ -17,8 +17,8 @@
 void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", xyz_check[200]="output/planet_", CEprint[200]="output/planet_";
 
-double tmax, planetesimal_mass, E0, K0, U0, n_output, dt_ini;
-int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0;
+double tmax, planetesimal_mass, E0, K0, U0, n_output, dt_ini, t_output, t_log_output;
+int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
 
@@ -28,14 +28,15 @@ int main(int argc, char* argv[]){
     HYBRID_ON = 1;
     
     //System constants
-    tmax = atoi(argv[1]);
+    tmax = atof(argv[1]);
     int N_planetesimals = atoi(argv[2]);
     double M_planetesimals = 3e-6;                        //Total Mass of all planetesimals (default = Earth mass, 3e-6)
     planetesimal_mass = M_planetesimals/N_planetesimals;  //mass of each planetesimal
-    double ias_epsilon = 1e-7;                            //sets precision of ias15
+    double ias_epsilon = 1e-9;                            //sets precision of ias15
     double HSR2 = atof(argv[3]);                          //Transition boundary between WHFAST and IAS15. Units of Hill^2
     double dRHill = atof(argv[4]);                        //Sets the timestep - max # Hill radii/timestep. Smaller=stricter
     int seed = atoi(argv[5]);
+    srand(seed);
     
 	//Simulation Setup
     r = reb_create_simulation();
@@ -46,36 +47,35 @@ int main(int argc, char* argv[]){
     if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces_global;
     //r->ri_whfast.corrector 	= 11;
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
-	
-    // Other setup stuff
-    srand(seed);
-    n_output = 100000;
+
+    //Boundary stuff
     //r->boundary     = REB_BOUNDARY_OPEN;
     //double boxsize = 20;
-	//reb_configure_box(r, boxsize, 3, 3, 1);
-
+    //reb_configure_box(r, boxsize, 3, 3, 1);
+    
 	// Initial conditions
 	struct reb_particle star = {0};
 	star.m 		= 1;
-	star.r		= 0.01;
-    star.id     = 0;        // 0 = star
+	star.r		= 0.005;        //I think radius of particle is in AU!
+    star.id     = 0;            // 0 = star
 	reb_add(r, star);
 
     //planet 1
-    double a1=0.7, m1=5e-5, e1=0.01, inc1 = reb_random_normal(0.00001);
+    //double a1=0.7, m1=5e-5, e1=0, inc1 = reb_random_normal(0.00001);
+    double a1=0.7, m1=5e-4, e1=0, inc1 = reb_random_normal(0.00001);
     struct reb_particle p1 = {0};
     p1 = reb_tools_orbit_to_particle(r->G, star, m1, a1, e1, inc1, 0, 0, 0);
-    p1.r = 0.1;
-    p1.id = 1;              //1 = planet
+    p1.r = 1.6e-4;              //I think radius of particle is in AU!
+    p1.id = 1;                  //1 = planet
     reb_add(r, p1);
     
     //planet 2
-    double a2=1, m2=5e-5, e2=0.01, inc2=reb_random_normal(0.00001);
-    struct reb_particle p2 = {0};
-    p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, inc2, 0, 0, 0);
-    p2.r = 0.1;
-    p2.id = 1;              //1 = planet
-    reb_add(r, p2);
+    //double a2=1, m2=5e-5, e2=0.01, inc2=reb_random_normal(0.00001);
+    //struct reb_particle p2 = {0};
+    //p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, inc2, 0, 0, 0);
+    //p2.r = 0.1;
+    //p2.id = 1;              //1 = planet
+    //reb_add(r, p2);
     
     //N_active and move to COM
     r->N_active = r->N;
@@ -84,18 +84,31 @@ int main(int argc, char* argv[]){
     //calc dt
     dt_ini = calc_dt(r, m1, star.m, a1, dRHill);
     if(r->integrator == REB_INTEGRATOR_IAS15){
-        //double kicksperorbit = 50.;
-        //dt_ini = sqrt(4.0*M_PI*pow(a1,3)/(r->G*star.m))/kicksperorbit;
         dt_ini /= 3.;
         printf("dt = %f \n",dt_ini);
         dRHill = -1;
     }
     r->dt = dt_ini;
     
+    // Other setup stuff
+    n_output = 5000;    //true output ~2x n_output for some reason.
+    t_log_output = pow(tmax + 1, 1./(n_output - 1));
+    t_output = dt_ini;
+    
+    //orbiting planetesimal
+    double x=0.005;
+    struct reb_particle pt = {0};
+    pt = reb_tools_orbit_to_particle(r->G, p1, planetesimal_mass, x, 0, 0, 0, 0, 0);
+    pt.y += p1.y;
+    pt.r = 4e-5;            //I think radius of particle is in AU!
+    pt.id = 2;              //1 = planet
+    reb_add(r, pt);
+    
     //planetesimals
-    double planetesimal_buffer = 0.1;   //Chatterjee & Ford use 0.01
-    double inner = a1 - planetesimal_buffer, outer = a2 + planetesimal_buffer, powerlaw = 0.5;
-    while(r->N<N_planetesimals + r->N_active){
+    //double planetesimal_buffer = 0.1;   //Chatterjee & Ford use 0.01
+    //double inner = a1 - planetesimal_buffer, outer = a2 + planetesimal_buffer, powerlaw = 0.5;
+    double inner = 1, outer = 2, powerlaw = 0.5;
+    /*while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
 		double a	= reb_random_powerlaw(inner,outer,powerlaw);
         double phi 	= reb_random_uniform(0,2.*M_PI);
@@ -106,7 +119,7 @@ int main(int argc, char* argv[]){
 		pt.r 		= 0.005;
         pt.id       = r->N;
 		reb_add(r, pt);
-	}
+	}*/
     
     //Ini malloc arrays
     x_prev = calloc(sizeof(double),r->N);           //Previous global positions for interpolating
@@ -129,13 +142,12 @@ int main(int argc, char* argv[]){
     
     //finish
     clock_finish(t_ini,N_encounters_tot,lgnddir);
+    printf("N_outputs total=%d\n",n_o);
     global_free();
 }
 
 void heartbeat(struct reb_simulation* r){
     double K = 0, U = 0, min_r = 0, max_val = 0;
-    double E1 = calc_Etot(r,&K,&U);
-    
     if(HYBRID_ON == 1){
         check_for_encounter(r, s, &N_encounters, &min_r, &max_val, dt_ini);
         int dN = N_encounters - N_encounters_previous;
@@ -159,10 +171,11 @@ void heartbeat(struct reb_simulation* r){
     }
     
     //OUTPUT stuff*******
-    if(reb_output_check(r,tmax/n_output)){
+    if(r->t > t_output || r->t <= r->dt){
+        double E1 = calc_Etot(r,&K,&U);
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0));
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%d\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0), s->N);
         fclose(append);
         
         //output error stuff
@@ -171,18 +184,9 @@ void heartbeat(struct reb_simulation* r){
             fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s.\033[0m.\n",plntdir);
         }
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
+        t_output *= t_log_output;
+        n_o++;
     }
-    /*
-    if(reb_output_check(r,tmax/100)){
-        FILE *xyz_output;
-        xyz_output = fopen(xyz_check, "a");
-        struct reb_particle* global = r->particles;
-        fprintf(xyz_output, "%.16f\n",r->t);
-        for(int i=0;i<r->N;i++){
-            fprintf(xyz_output, "%d,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
-        }
-        fclose(xyz_output);
-    }*/
 }
 
 
@@ -197,4 +201,16 @@ void heartbeat(struct reb_simulation* r){
  fprintf(append,"%f,%.8f,%.8f,%.16f,%.16f,%.16f,%.16f,%.16f\n",t,a_p,e_p,fabs((E_ini - E_curr)/E_ini),fabs((K_ini - K_curr)/K_ini), fabs((U_ini - U_curr)/U_ini),fabs((L_ini - L_curr)/L_ini),d_p);
  fclose(append);
  E_curr = E_ini; L_curr = L_ini;
+ }*/
+
+/*
+ if(reb_output_check(r,tmax/100)){
+ FILE *xyz_output;
+ xyz_output = fopen(xyz_check, "a");
+ struct reb_particle* global = r->particles;
+ fprintf(xyz_output, "%.16f\n",r->t);
+ for(int i=0;i<r->N;i++){
+ fprintf(xyz_output, "%d,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
+ }
+ fclose(xyz_output);
  }*/
