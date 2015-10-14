@@ -25,6 +25,7 @@ struct reb_simulation* s; struct reb_simulation* r;
 int main(int argc, char* argv[]){
     //switches
     int turn_planetesimal_forces_on = 1;
+    int p1_satellite_on = 0;
     HYBRID_ON = 1;
     
     //System constants
@@ -70,12 +71,12 @@ int main(int argc, char* argv[]){
     reb_add(r, p1);
     
     //planet 2
-    //double a2=1, m2=5e-5, e2=0.01, inc2=reb_random_normal(0.00001);
-    //struct reb_particle p2 = {0};
-    //p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, inc2, 0, 0, 0);
-    //p2.r = 0.1;
-    //p2.id = 1;              //1 = planet
-    //reb_add(r, p2);
+    double a2=1, m2=5e-5, e2=0.01, inc2=reb_random_normal(0.00001);
+    struct reb_particle p2 = {0};
+    p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, inc2, 0, 0, 0);
+    p2.r = 0.1;
+    p2.id = 1;              //1 = planet
+    reb_add(r, p2);
     
     //N_active and move to COM
     r->N_active = r->N;
@@ -95,20 +96,21 @@ int main(int argc, char* argv[]){
     t_log_output = pow(tmax + 1, 1./(n_output - 1));
     t_output = dt_ini;
     
-    //orbiting planetesimal
-    double x=0.005;
-    struct reb_particle pt = {0};
-    pt = reb_tools_orbit_to_particle(r->G, p1, planetesimal_mass, x, 0, 0, 0, 0, 0);
-    pt.y += p1.y;
-    pt.r = 4e-5;            //I think radius of particle is in AU!
-    pt.id = 2;              //1 = planet
-    reb_add(r, pt);
+    //orbiting planetesimal/satellite
+    if(p1_satellite_on == 1){
+        double x=0.005;
+        struct reb_particle pt = {0};
+        pt = reb_tools_orbit_to_particle(r->G, p1, planetesimal_mass, x, 0, 0, 0, 0, 0);
+        pt.y += p1.y;
+        pt.r = 4e-5;            //I think radius of particle is in AU!
+        pt.id = r->N;              //1 = planet
+        reb_add(r, pt);
+    }
     
     //planetesimals
-    //double planetesimal_buffer = 0.1;   //Chatterjee & Ford use 0.01
-    //double inner = a1 - planetesimal_buffer, outer = a2 + planetesimal_buffer, powerlaw = 0.5;
-    double inner = 1, outer = 2, powerlaw = 0.5;
-    /*while(r->N<N_planetesimals + r->N_active){
+    double planetesimal_buffer = 0.1;   //Chatterjee & Ford use 0.01
+    double inner = a1 - planetesimal_buffer, outer = a2 + planetesimal_buffer, powerlaw = 0.5;
+    while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
 		double a	= reb_random_powerlaw(inner,outer,powerlaw);
         double phi 	= reb_random_uniform(0,2.*M_PI);
@@ -116,10 +118,10 @@ int main(int argc, char* argv[]){
         double Omega = reb_random_uniform(0,2.*M_PI);
         double apsis = reb_random_uniform(0,2.*M_PI);
         pt = reb_tools_orbit_to_particle(r->G, star, planetesimal_mass, a, 0, inc, Omega, apsis,phi);
-		pt.r 		= 0.005;
+		pt.r 		= 4e-5;
         pt.id       = r->N;
 		reb_add(r, pt);
-	}*/
+	}
     
     //Ini malloc arrays
     x_prev = calloc(sizeof(double),r->N);           //Previous global positions for interpolating
@@ -175,8 +177,19 @@ void heartbeat(struct reb_simulation* r){
         double E1 = calc_Etot(r,&K,&U);
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%d\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0), s->N);
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%d,%d\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0), r->N,s->N);
         fclose(append);
+        
+         if(reb_output_check(r,tmax/100)){
+             FILE *xyz_output;
+             xyz_output = fopen(xyz_check, "a");
+             struct reb_particle* global = r->particles;
+             fprintf(xyz_output, "%.16f\n",r->t);
+             for(int i=0;i<r->N;i++){
+                 fprintf(xyz_output, "%d,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
+             }
+             fclose(xyz_output);
+         }
         
         //output error stuff
         if(fabs((E1 - E0)/E0) > 1e-5 && err_print_msg == 0){
@@ -203,14 +216,3 @@ void heartbeat(struct reb_simulation* r){
  E_curr = E_ini; L_curr = L_ini;
  }*/
 
-/*
- if(reb_output_check(r,tmax/100)){
- FILE *xyz_output;
- xyz_output = fopen(xyz_check, "a");
- struct reb_particle* global = r->particles;
- fprintf(xyz_output, "%.16f\n",r->t);
- for(int i=0;i<r->N;i++){
- fprintf(xyz_output, "%d,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
- }
- fclose(xyz_output);
- }*/
