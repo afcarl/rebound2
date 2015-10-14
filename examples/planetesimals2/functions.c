@@ -243,11 +243,11 @@ void planetesimal_forces_routine(struct reb_simulation *a){
     }
 }
 
-void planetesimal_forces_global(struct reb_simulation *a){
+void planetesimal_forces_global(struct reb_simulation *r){
     planetesimal_forces_routine(r);
 }
 
-void planetesimal_forces_mini(struct reb_simulation *a){
+void planetesimal_forces_mini(struct reb_simulation *s){
     planetesimal_forces_routine(s);
     
     //forces from global into mini
@@ -413,6 +413,10 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             FILE *output;
             output = fopen(CEprint, "a");
             fprintf(output,"t=%f particle %d added. dN == %d, N_close_encounters=%d\n",r->t,EI,dN,N_encounters);
+            for(int i=0;i<N_encounters;i++)fprintf(output,"EI[%d]=%d,",i,encounter_index[i]);
+            fprintf(output,"\n");
+            for(int i=0;i<N_encounters_previous;i++)fprintf(output,"PEI[%d]=%d,",i,previous_encounter_index[i]);
+            fprintf(output,"\n");
             fclose(output);
         }
     }
@@ -432,6 +436,10 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
                     FILE *output;
                     output = fopen(CEprint, "a");
                     fprintf(output,"t=%f particle %d leaving. dN == %d, N_close_encounters=%d.\n",r->t,PEI,dN,N_encounters);
+                    for(int i=0;i<N_encounters;i++)fprintf(output,"EI[%d]=%d,",i,encounter_index[i]);
+                    fprintf(output,"\n");
+                    for(int i=0;i<N_encounters_previous;i++)fprintf(output,"PEI[%d]=%d,",i,previous_encounter_index[i]);
+                    fprintf(output,"\n");
                     fclose(output);
                 }
             }

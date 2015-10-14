@@ -31,13 +31,12 @@ int main(int argc, char* argv[]){
     //System constants
     tmax = atof(argv[1]);
     int N_planetesimals = atoi(argv[2]);
-    double M_planetesimals = 3e-6;                        //Total Mass of all planetesimals (default = Earth mass, 3e-6)
+    double M_planetesimals = 3e-6;                        //Tot. Mass of all planetesimals (Earth mass, 3e-6)
     planetesimal_mass = M_planetesimals/N_planetesimals;  //mass of each planetesimal
     double ias_epsilon = 1e-9;                            //sets precision of ias15
-    double HSR2 = atof(argv[3]);                          //Transition boundary between WHFAST and IAS15. Units of Hill^2
-    double dRHill = atof(argv[4]);                        //Sets the timestep - max # Hill radii/timestep. Smaller=stricter
+    double HSR2 = atof(argv[3]);                          //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
+    double dRHill = atof(argv[4]);                        //Sets the timestep - max # Hill radii/timestep.
     int seed = atoi(argv[5]);
-    srand(seed);
     
 	//Simulation Setup
     r = reb_create_simulation();
@@ -54,6 +53,8 @@ int main(int argc, char* argv[]){
     //double boxsize = 20;
     //reb_configure_box(r, boxsize, 3, 3, 1);
     
+    srand(seed);        //This needs to be here, just before rand() is called
+    
 	// Initial conditions
 	struct reb_particle star = {0};
 	star.m 		= 1;
@@ -62,7 +63,6 @@ int main(int argc, char* argv[]){
 	reb_add(r, star);
 
     //planet 1
-    //double a1=0.7, m1=5e-5, e1=0, inc1 = reb_random_normal(0.00001);
     double a1=0.7, m1=5e-4, e1=0, inc1 = reb_random_normal(0.00001);
     struct reb_particle p1 = {0};
     p1 = reb_tools_orbit_to_particle(r->G, star, m1, a1, e1, inc1, 0, 0, 0);
@@ -172,9 +172,15 @@ void heartbeat(struct reb_simulation* r){
         update_encounter_indices(&N_encounters, &N_encounters_previous);
     }
     
+    double E1 = calc_Etot(r,&K,&U);
+    //output error stuff - every iteration
+    if(fabs((E1 - E0)/E0) > 1e-7 && err_print_msg == 0){
+        err_print_msg++;
+        fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s\033[0m, t=%f.\n",plntdir,r->t);
+    }
+    
     //OUTPUT stuff*******
     if(r->t > t_output || r->t <= r->dt){
-        double E1 = calc_Etot(r,&K,&U);
         FILE *append;
         append = fopen(plntdir, "a");
         fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%d,%d\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0), r->N,s->N);
@@ -191,15 +197,11 @@ void heartbeat(struct reb_simulation* r){
              fclose(xyz_output);
          }
         
-        //output error stuff
-        if(fabs((E1 - E0)/E0) > 1e-5 && err_print_msg == 0){
-            err_print_msg++;
-            fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s.\033[0m.\n",plntdir);
-        }
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
         t_output *= t_log_output;
         n_o++;
     }
+    
 }
 
 

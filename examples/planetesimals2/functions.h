@@ -56,10 +56,10 @@ extern int* encounter_index;
 extern int* previous_encounter_index;
 extern double* Hill2;
 extern double* x_prev; extern double* y_prev; extern double* z_prev;
-extern double t_prev;
+extern double t_prev; 
 extern int N_encounters_tot;
+extern int N_tot;
 extern struct reb_simulation* r;
-extern struct reb_simulation* s;
 
 
 #endif /* defined(____functions__) */
