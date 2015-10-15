@@ -17,6 +17,7 @@
 void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", xyz_check[200]="output/planet_", CEprint[200]="output/planet_";
 
+double dxold1=0,dyold1=0,dzold1=0,dxold2=0,dyold2=0,dzold2=0;
 double tmax, planetesimal_mass, E0, K0, U0, n_output, dt_ini, t_output, t_log_output;
 int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
@@ -67,7 +68,7 @@ int main(int argc, char* argv[]){
     struct reb_particle p1 = {0};
     p1 = reb_tools_orbit_to_particle(r->G, star, m1, a1, e1, inc1, 0, 0, 0);
     p1.r = 1.6e-4;              //I think radius of particle is in AU!
-    p1.id = 1;                  //1 = planet
+    p1.id = r->N;
     reb_add(r, p1);
     
     //planet 2
@@ -75,7 +76,7 @@ int main(int argc, char* argv[]){
     struct reb_particle p2 = {0};
     p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, inc2, 0, 0, 0);
     p2.r = 0.1;
-    p2.id = 1;              //1 = planet
+    p2.id = r->N;
     reb_add(r, p2);
     
     //N_active and move to COM
@@ -179,6 +180,25 @@ void heartbeat(struct reb_simulation* r){
         fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s\033[0m, t=%f.\n",plntdir,r->t);
     }
     
+    if(r->t > 115){
+        FILE *xyz_output;
+        xyz_output = fopen(xyz_check, "a");
+        struct reb_particle* global = r->particles;
+        //fprintf(xyz_output, "%.16f,rmin=%.16f,vmax/rmin=%.16f\n",r->t,min_r,max_val);
+        int i = 42;
+        int j=1;
+        //fprintf(xyz_output, "particle %d,x=%.16f,y=%.16f,z=%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
+        fprintf(xyz_output, "%.16f,%.16f,%.16f,%.16f\n",r->t,fabs(global[i].x-dxold1),fabs(global[i].y-dyold1),fabs(global[i].z-dzold1));
+        //fprintf(xyz_output, "planet %d,x=%.16f,y=%.16f,z=%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",j,global[j].x,global[j].y,global[j].z,global[j].vx,global[j].vy,global[j].vz,global[j].ax,global[j].ay,global[j].az);
+        fprintf(xyz_output, "%.16f,%.16f,%.16f,%.16f\n",r->t,fabs(global[j].x-dxold2),fabs(global[j].y-dyold2),fabs(global[j].z-dzold2));
+        dxold1 = global[i].x; dyold1 = global[i].y; dzold1 = global[i].z;
+        dxold2 = global[j].x; dyold2 = global[j].y; dzold2 = global[j].z;
+        //for(int i=0;i<r->N;i++){
+        //    fprintf(xyz_output, "%d,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
+        //}
+        fclose(xyz_output);
+    }
+    
     //OUTPUT stuff*******
     if(r->t > t_output || r->t <= r->dt){
         FILE *append;
@@ -186,6 +206,7 @@ void heartbeat(struct reb_simulation* r){
         fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%d,%d\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0), r->N,s->N);
         fclose(append);
         
+        /*
          if(reb_output_check(r,tmax/100)){
              FILE *xyz_output;
              xyz_output = fopen(xyz_check, "a");
@@ -195,7 +216,7 @@ void heartbeat(struct reb_simulation* r){
                  fprintf(xyz_output, "%d,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
              }
              fclose(xyz_output);
-         }
+         }*/
         
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
         t_output *= t_log_output;

@@ -327,7 +327,11 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
             const double dy = body.y - pj.y;
             const double dz = body.z - pj.z;
             const double rij2 = dx*dx + dy*dy + dz*dz;
-            const double ratio = rij2/(rhi+rhj);
+            const double ratio = rij2/(rhi+rhj);    //(p-p distance/Hill radii)^2
+            
+            //int CE_yes = 0;
+            //if(ratio<r->ri_hybrid.switch_ratio) CE_yes = 1;
+            //if(r->t > 123 && r->t<123.6 && pj.id==42 and pi.id==1) printf("t=%f: CE particle %d with planet %d, r=%f,ratio=%f,rhi=%f,rhj=%f,CE=%d\n",r->t,pj.id,body.id,sqrt(rij2),ratio,rhi,rhj,CE_yes);
             
             if(ratio<r->ri_hybrid.switch_ratio){
                 num_encounters++;
@@ -337,7 +341,7 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
                     encounter_index[num_encounters - 1] = pj.id;
                 }
                 //Super close encounter
-                if(rij2 < 2.5e-8){    //(radius of Neptune in AU)^2
+                if(rij2 < 1e-7){    //(2*radius of Neptune in AU)^2
                     fprintf(stderr,"\n\033[1mSuper Close Encounter!\033[0m Particle/Planet collision should have happened.\n");
                 }
             }
@@ -349,8 +353,8 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
             double vrel = sqrt(vx*vx + vy*vy + vz*vz);
             double rr = sqrt(rij2);
             double val = r->dt*vrel/rr;
-            if(rr < min_r) min_r = rr;
-            if(val > max_val) max_val = val;
+            if(rr < min_r && pj.id == 42) min_r = rr;
+            if(val > max_val && pj.id == 42) max_val = val;
         }
     }
     *minimum_r = min_r;
@@ -403,21 +407,24 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
     for(int i=0;i<N_encounters;i++){
         _Bool index_found = 0;
         int EI = encounter_index[i];
-        for(int j=0;index_found == 0 && j<N_encounters_previous;j++){
-            if(EI == previous_encounter_index[j]) index_found = 1;
-        }
-        if(index_found == 0){//couldn't find index, add particle
-            struct reb_particle pt = global[EI];
-            reb_add(s,pt);
-            N_encounters_tot++;
-            FILE *output;
-            output = fopen(CEprint, "a");
-            fprintf(output,"t=%f particle %d added. dN == %d, N_close_encounters=%d\n",r->t,EI,dN,N_encounters);
-            for(int i=0;i<N_encounters;i++)fprintf(output,"EI[%d]=%d,",i,encounter_index[i]);
-            fprintf(output,"\n");
-            for(int i=0;i<N_encounters_previous;i++)fprintf(output,"PEI[%d]=%d,",i,previous_encounter_index[i]);
-            fprintf(output,"\n");
-            fclose(output);
+        if(EI >= N_active){//don't want to add/remove massive bodies. Already in mini
+            for(int j=0;index_found == 0 && j<N_encounters_previous;j++){
+                if(EI == previous_encounter_index[j]) index_found = 1;
+            }
+            if(index_found == 0){//couldn't find index
+                struct reb_particle pt = global[EI];
+                reb_add(s,pt);
+                N_encounters_tot++;
+                
+                FILE *output;
+                output = fopen(CEprint, "a");
+                fprintf(output,"t=%f,%f particle %d added. dN == %d, N_close_encounters=%d\n",r->t,s->t,EI,dN,N_encounters);
+                for(int i=0;i<N_encounters;i++)fprintf(output,"EI[%d]=%d,",i,encounter_index[i]);
+                fprintf(output,"\n");
+                for(int i=0;i<N_encounters_previous;i++)fprintf(output,"PEI[%d]=%d,",i,previous_encounter_index[i]);
+                fprintf(output,"\n");
+                fclose(output);
+            }
         }
     }
     
@@ -425,22 +432,25 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
     for(int i=0;i<N_encounters_previous;i++){
         _Bool index_found = 0;
         int PEI = previous_encounter_index[i];
-        for(int j=0;index_found == 0 && j<N_encounters;j++){
-            if(PEI == encounter_index[j]) index_found = 1;
-        }
-        if(index_found == 0){//couldn't find index, find particle in sim and remove
-            int removed_particle = 0;
-            for(int k=0;removed_particle==0 && k<N_encounters_previous;k++){
-                if(mini[k+N_active].id == PEI){
-                    removed_particle = reb_remove(s,k+N_active,1);    //remove particle
-                    FILE *output;
-                    output = fopen(CEprint, "a");
-                    fprintf(output,"t=%f particle %d leaving. dN == %d, N_close_encounters=%d.\n",r->t,PEI,dN,N_encounters);
-                    for(int i=0;i<N_encounters;i++)fprintf(output,"EI[%d]=%d,",i,encounter_index[i]);
-                    fprintf(output,"\n");
-                    for(int i=0;i<N_encounters_previous;i++)fprintf(output,"PEI[%d]=%d,",i,previous_encounter_index[i]);
-                    fprintf(output,"\n");
-                    fclose(output);
+        if(PEI >= N_active){//don't want to add/remove massive bodies. Already in mini
+            for(int j=0;index_found == 0 && j<N_encounters;j++){
+                if(PEI == encounter_index[j]) index_found = 1;
+            }
+            if(index_found == 0){//couldn't find index, remove particle
+                int removed_particle = 0;
+                for(int k=0;removed_particle==0 && k<N_encounters_previous;k++){
+                    if(mini[k+N_active].id == PEI){
+                        removed_particle = reb_remove(s,k+N_active,1);    //remove particle
+                        
+                        FILE *output;
+                        output = fopen(CEprint, "a");
+                        fprintf(output,"t=%f,%f particle %d leaving. dN == %d, N_close_encounters=%d.\n",r->t,s->t,PEI,dN,N_encounters);
+                        for(int i=0;i<N_encounters;i++)fprintf(output,"EI[%d]=%d,",i,encounter_index[i]);
+                        fprintf(output,"\n");
+                        for(int i=0;i<N_encounters_previous;i++)fprintf(output,"PEI[%d]=%d,",i,previous_encounter_index[i]);
+                        fprintf(output,"\n");
+                        fclose(output);
+                    }
                 }
             }
         }
