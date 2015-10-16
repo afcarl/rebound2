@@ -62,7 +62,7 @@ int main(int argc, char* argv[]){
 	star.r		= 0.005;        //I think radius of particle is in AU!
     star.id     = 0;            // 0 = star
 	reb_add(r, star);
-
+    
     //planet 1
     double a1=0.7, m1=5e-4, e1=0, inc1 = reb_random_normal(0.00001);
     struct reb_particle p1 = {0};
@@ -70,6 +70,7 @@ int main(int argc, char* argv[]){
     p1.r = 1.6e-4;              //I think radius of particle is in AU!
     p1.id = r->N;
     reb_add(r, p1);
+    dt_ini = calc_dt(r, m1, star.m, a1, dRHill, 1);
     
     //planet 2
     double a2=1, m2=5e-5, e2=0.01, inc2=reb_random_normal(0.00001);
@@ -78,18 +79,19 @@ int main(int argc, char* argv[]){
     p2.r = 0.1;
     p2.id = r->N;
     reb_add(r, p2);
+    dt_ini = calc_dt(r, m2, star.m, a2, dRHill, dt_ini);
     
     //N_active and move to COM
     r->N_active = r->N;
     if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
     
     //calc dt
-    dt_ini = calc_dt(r, m1, star.m, a1, dRHill);
     if(r->integrator == REB_INTEGRATOR_IAS15){
         dt_ini /= 3.;
         printf("dt = %f \n",dt_ini);
         dRHill = -1;
     }
+    printf("timesetep is dt = %f, ri_hybrid.switch_ratio=%f \n",dt_ini,r->ri_hybrid.switch_ratio);
     r->dt = dt_ini;
     
     // Other setup stuff

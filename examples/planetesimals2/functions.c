@@ -116,16 +116,17 @@ void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, st
     
 }
 
-double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double dRHill){
+double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double dRHill, double dt_prev){
     if(dRHill > r->ri_hybrid.switch_ratio){
         printf("\033[1mWarning!\033[0m dRhill !> N_RHill. Setting dRhill = N_Rhill/2 \n");
         dRHill = 0.5*r->ri_hybrid.switch_ratio;
     }
     double e_max = 0.3;  //max hypothesized eccentricity that the planet/esimals could have
-    double Hill = a*(1 - e_max)*pow(mp/(3*Ms),1./3.);
-    double vmax = sqrt(r->G*(Ms + mp)*(1 + e_max)/(a*(1 - e_max)));   //perihelion speed
+    double Hill = a*(1 - e_max)*pow(mp/(3*Ms),1./3.);   //Hill radius of massive body
+    double vmax = sqrt(r->G*(Ms + planetesimal_mass)*(1 + e_max)/(a*(1 - e_max)));   //perihelion speed of planetesimal
     double dt = dRHill*Hill/vmax;
-    printf("timesetep is dt = %f, ri_hybrid.switch_ratio=%f \n",dt,r->ri_hybrid.switch_ratio);
+    
+    if(dt_prev < dt) dt = dt_prev;  //make sure I'm taking the smallest dt.
     
     return dt;
 }
@@ -312,8 +313,7 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
         const double rhi = r0i2*Hill2[i];
         //const double rhi = r0i2*pow((body.m/(p0.m*3.)), 2./3.); //can make this faster later
         
-        for (int j=1; j<N; j++){
-            if(i==j) continue;
+        for (int j=i+1; j<N; j++){
             struct reb_particle pj = particles[j];
             
             const double dxj = p0.x - pj.x;
@@ -329,10 +329,12 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
             const double rij2 = dx*dx + dy*dy + dz*dz;
             const double ratio = rij2/(rhi+rhj);    //(p-p distance/Hill radii)^2
             
-            //int CE_yes = 0;
-            //if(ratio<r->ri_hybrid.switch_ratio) CE_yes = 1;
-            //if(r->t > 123 && r->t<123.6 && pj.id==42 and pi.id==1) printf("t=%f: CE particle %d with planet %d, r=%f,ratio=%f,rhi=%f,rhj=%f,CE=%d\n",r->t,pj.id,body.id,sqrt(rij2),ratio,rhi,rhj,CE_yes);
-            
+            /*
+            int CE_yes = 0;
+            if(ratio<r->ri_hybrid.switch_ratio) CE_yes = 1;
+            if(r->t > 123 && r->t<123.6 && pj.id==2 && body.id==1) printf("t=%f: CE particle %d with planet %d, r=%f,ratio=%f,rhi=%f,rhj=%f,CE=%d\n",r->t,pj.id,body.id,sqrt(rij2),ratio,rhi,rhj,CE_yes);
+            */
+             
             if(ratio<r->ri_hybrid.switch_ratio){
                 num_encounters++;
                 if(num_encounters == 1) encounter_index[0] = pj.id;
