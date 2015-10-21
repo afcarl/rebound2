@@ -25,8 +25,6 @@ double calc_Etot(struct reb_simulation* a, double* K1, double* U1);
 
 void calc_ae(double* a, double* e, double* d, struct reb_simulation* r, int i, double t);
 
-void planetesimal_forces_routine();
-
 void planetesimal_forces_global(struct reb_simulation *a);
 
 void planetesimal_forces_mini(struct reb_simulation *a);
@@ -57,11 +55,9 @@ extern int* previous_encounter_index;
 extern double* Hill2;
 extern double* x_prev; extern double* y_prev; extern double* z_prev;
 extern double t_prev; 
-extern int N_encounters_tot;
+extern int N_encounters_tot; extern int N_encounters_previous;
 extern int N_tot;
 extern struct reb_simulation* r;
 
-//temp
-extern double* K0arr; extern double* E0arr;
 
 #endif /* defined(____functions__) */

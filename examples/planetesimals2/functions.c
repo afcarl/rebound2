@@ -219,17 +219,53 @@ void calc_ae(double* a, double* e, double* d_out, struct reb_simulation* r, int 
     
 }
 
-void planetesimal_forces_routine(struct reb_simulation *a){
-    const double G = a->G;
-    const int N = a->N;
-    const int N_active = a->N_active;
-    struct reb_particle* const particles = a->particles;
+void planetesimal_forces_global(struct reb_simulation *r){
+    const double G = r->G;
+    const int N = r->N;
+    const int N_active = r->N_active;
+    struct reb_particle* const particles = r->particles;
     
     const double Gm1 = G*planetesimal_mass;
     for(int i=0;i<N_active;i++){
         struct reb_particle* body = &(particles[i]);
         for(int j=N_active;j<N;j++){//add planetesimal forces to massive bodies
             struct reb_particle p = particles[j];
+            
+            _Bool skip = 0;
+            for(int k=0;k<N_encounters_previous && skip == 0;k++){
+                if(p.id == previous_encounter_index[k]){
+                    skip++;
+                    //printf("t=%.16f,no global forces for particle %d\n",r->t,p.id);
+                }
+            }
+            
+            if(skip == 0){//If CE don't calculate planetesimal forces in global
+                const double dx = body->x - p.x;
+                const double dy = body->y - p.y;
+                const double dz = body->z - p.z;
+                
+                const double rijinv2 = 1.0/(dx*dx + dy*dy + dz*dz);
+                const double ac = -Gm1*rijinv2*sqrt(rijinv2);
+                
+                body->ax += ac*dx;      //perturbation on planets due to planetesimals.
+                body->ay += ac*dy;
+                body->az += ac*dz;
+            }
+        }
+    }
+}
+
+void planetesimal_forces_mini(struct reb_simulation *s){
+    const double G = s->G;
+    const int N = s->N;
+    const int N_active = s->N_active;
+    struct reb_particle* mini = s->particles;
+    
+    const double Gm1 = G*planetesimal_mass;
+    for(int i=0;i<N_active;i++){
+        struct reb_particle* body = &(mini[i]);
+        for(int j=N_active;j<N;j++){//add planetesimal forces to massive bodies
+            struct reb_particle p = mini[j];
             
             const double dx = body->x - p.x;
             const double dy = body->y - p.y;
@@ -243,18 +279,8 @@ void planetesimal_forces_routine(struct reb_simulation *a){
             body->az += ac*dz;
         }
     }
-}
-
-void planetesimal_forces_global(struct reb_simulation *r){
-    planetesimal_forces_routine(r);
-}
-
-void planetesimal_forces_mini(struct reb_simulation *s){
-    planetesimal_forces_routine(s);
     
     //forces from global into mini
-    const double Gm1 = s->G*planetesimal_mass;
-    struct reb_particle* mini = s->particles;
     struct reb_particle* const global = r->particles;
     const double timefac = (s->t - t_prev)/(r->t - t_prev);
     int rN_active = r->N_active;
@@ -332,9 +358,15 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
             
             int par_id = 20;
             
+            if(fabs(pj.ax) + fabs(pj.ay) + fabs(pj.az) > 1000) printf("\nlarge acceleration at t=%f for par %d: ax=%f,ay=%f,az=%f",r->t,pj.id,pj.ax,pj.ay,pj.az);
+
+            
             int CE_yes = 0;
             if(ratio<r->ri_hybrid.switch_ratio) CE_yes = 1;
-            //if(r->t > 74.86 && r->t<75.1 && pj.id==par_id && body.id==1) printf("t=%f: CE par %d + pl %d, r=%f,ax=%f,ay=%f,az=%f,dxj=%f,dyj=%f,dzj=%f,CE=%d\n",r->t,pj.id,body.id,sqrt(rij2),pj.ax,pj.ay,pj.az,pj.x,pj.y,pj.z,CE_yes);//printf("t=%f: CE par %d + pl %d, r=%f,ratio=%f,rhi=%f,rhj=%f,dxj=%f,dyj=%f,dzj=%f,CE=%d\n",r->t,pj.id,body.id,sqrt(rij2),ratio,rhi,rhj,pj.x,pj.y,pj.z,CE_yes);
+            if(r->t > 39.9 && r->t<40.2 && pj.id==par_id && body.id==1){
+                //printf("t=%f: CE par %d + pl %d, r=%f,ax=%f,ay=%f,az=%f,dxj=%f,dyj=%f,dzj=%f,CE=%d\n",r->t,pj.id,body.id,sqrt(rij2),pj.ax,pj.ay,pj.az,pj.x,pj.y,pj.z,CE_yes);
+                //printf("t=%f: CE par %d + pl %d, r=%f,ratio=%f,rhi=%f,rhj=%f,dxj=%f,dyj=%f,dzj=%f,CE=%d\n",r->t,pj.id,body.id,sqrt(rij2),ratio,rhi,rhj,pj.x,pj.y,pj.z,CE_yes);
+            }
             
             if(ratio<r->ri_hybrid.switch_ratio){
                 num_encounters++;
@@ -356,8 +388,8 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
             double vrel = sqrt(vx*vx + vy*vy + vz*vz);
             double rr = sqrt(rij2);
             double val = r->dt*vrel/rr;
-            if(rr < min_r && pj.id) min_r = rr;
-            if(val > max_val && pj.id) max_val = val;
+            if(rr < min_r && pj.id==par_id) min_r = rr;
+            if(val > max_val && pj.id==par_id) max_val = val;
         }
     }
     *minimum_r = min_r;

@@ -214,6 +214,17 @@ void heartbeat(struct reb_simulation* r){
         fclose(append);
         
         /*
+        for(int i=0;i<r->N;i++){
+            if(fabs(global[i].ax) + fabs(global[i].ay) + fabs(global[i].az) > 100){
+                for(int j=0;j<N_encounters_previous;j++){
+                    if(global[i].id == previous_encounter_index[j]){
+                        printf("mini integrated large acc, par %d: ax=%f,ay=%f,az=%f\n",global[i].id,global[i].ax,global[i].ay,global[i].az);
+                    }
+                }
+            }
+        }*/
+        
+        /*
          if(reb_output_check(r,tmax/100)){
              FILE *xyz_output;
              xyz_output = fopen(xyz_check, "a");
