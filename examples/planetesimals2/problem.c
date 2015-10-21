@@ -101,10 +101,11 @@ int main(int argc, char* argv[]){
     
     //orbiting planetesimal/satellite
     if(p1_satellite_on == 1){
-        double x=0.005;
+        double x=0.01;
         struct reb_particle pt = {0};
-        pt = reb_tools_orbit_to_particle(r->G, p1, planetesimal_mass, x, 0, 0, 0, 0, 0);
-        pt.y += p1.y;
+        //pt = reb_tools_orbit_to_particle(r->G, p1, planetesimal_mass, x, 0, 0, 0, 0, 0);
+        //pt.y += p1.y;
+        pt = reb_tools_orbit_to_particle(r->G, star, planetesimal_mass, x + a1, 0, 0, 0, 0, 0);
         pt.r = 4e-5;            //I think radius of particle is in AU!
         pt.id = r->N;              //1 = planet
         reb_add(r, pt);
@@ -182,17 +183,17 @@ void heartbeat(struct reb_simulation* r){
         fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s\033[0m, t=%f.\n",plntdir,r->t);
     }
     
-    if(r->t > 115){
+    if(r->t > 74.5){
         FILE *xyz_output;
         xyz_output = fopen(xyz_check, "a");
         struct reb_particle* global = r->particles;
         //fprintf(xyz_output, "%.16f,rmin=%.16f,vmax/rmin=%.16f\n",r->t,min_r,max_val);
-        int i = 42;
+        int i = 20;
         int j=1;
         //fprintf(xyz_output, "particle %d,x=%.16f,y=%.16f,z=%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
-        fprintf(xyz_output, "%.16f,%.16f,%.16f,%.16f\n",r->t,fabs(global[i].x-dxold1),fabs(global[i].y-dyold1),fabs(global[i].z-dzold1));
+        //fprintf(xyz_output, "%.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,fabs(global[i].x-dxold1),fabs(global[i].y-dyold1),fabs(global[i].z-dzold1));
         //fprintf(xyz_output, "planet %d,x=%.16f,y=%.16f,z=%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",j,global[j].x,global[j].y,global[j].z,global[j].vx,global[j].vy,global[j].vz,global[j].ax,global[j].ay,global[j].az);
-        fprintf(xyz_output, "%.16f,%.16f,%.16f,%.16f\n",r->t,fabs(global[j].x-dxold2),fabs(global[j].y-dyold2),fabs(global[j].z-dzold2));
+        fprintf(xyz_output, "%.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,fabs(global[j].x-dxold2),fabs(global[j].y-dyold2),fabs(global[j].z-dzold2));
         dxold1 = global[i].x; dyold1 = global[i].y; dzold1 = global[i].z;
         dxold2 = global[j].x; dyold2 = global[j].y; dzold2 = global[j].z;
         //for(int i=0;i<r->N;i++){
@@ -202,10 +203,14 @@ void heartbeat(struct reb_simulation* r){
     }
     
     //OUTPUT stuff*******
-    if(r->t > t_output || r->t <= r->dt){
+    //if(r->t > t_output || r->t <= r->dt){
+    if(HYBRID_ON){
+        
+        struct reb_particle* global = r->particles;
+        int par_id = 20;
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%d,%d\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0), r->N,s->N);
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%d,%d,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0), r->N,s->N, global[par_id].ax,global[par_id].ay,global[par_id].az);
         fclose(append);
         
         /*

@@ -7,7 +7,7 @@ import matplotlib.cm as cm
 pi = math.pi
 
 #names=['time (years)','Semi-Major Axis (AU)','Eccentricity','(Ei - E0) / E0','(Ki - K0) / K0','(Ui - U0) / U0','Total Ang. Mom.','planet-star distance']
-names=['time (years)','time (mini, years)','N_encounter_previous', 'r_min','(dt*v_rel/r)_max', 'Energy','Kinetic','Potential','Energy and r_min','Energy and (dt*v_rel/r)_max', 'Energy and N_CE']
+names=['time (years)','time (mini, years)','Energy and N_CE', 'r_min','(dt*v_rel/r)_max', 'Energy','Kinetic','Potential','Energy and r_min','Energy and (dt*v_rel/r)_max', 'ax','ay','az','par20CE']
 colors=['b','g','m','r','c','y']
 
 file_name=str(sys.argv[1])
@@ -31,12 +31,12 @@ if arg1 == 8:
 elif arg1 == 9:
     plt.plot(data[arg4:arg3,0],data[arg4:arg3,5], 'o', ms=msval, markeredgecolor='none')
     plt.plot(data[arg4:arg3,0],data[arg4:arg3,4],  'or', ms=msval, markeredgecolor='none')
-elif arg1 == 10:
+elif arg1 == 2:
     fig, axes = plt.subplots(nrows=2, ncols=1)
     axes[1].plot(data[arg4:arg3,0],data[arg4:arg3,5], 'o', ms=msval, markeredgecolor='none')
     axes[1].set_xscale('log')
     axes[0].plot(data[arg4:arg3,0],data[arg4:arg3,9],  'or', ms=msval, markeredgecolor='none')
-    axes[0].set_xscale('log')
+    #axes[0].set_xscale('log')
     axes[0].set_ylabel('N_CE')
 else:
     plt.plot(data[arg4:arg3,0],data[arg4:arg3,arg1], 'o', ms=msval, markeredgecolor='none')
@@ -48,7 +48,7 @@ if arg1 == 5:
 plt.ylabel(names[arg1])
 plt.xlabel('time (years)')
 plt.yscale('log')
-plt.xscale('log')
+#plt.xscale('log')
 plt.show()
 
 #Get number of massive planets

@@ -169,6 +169,7 @@ double calc_Etot(struct reb_simulation* a, double* K1, double* U1){
         
         //E_tot
         K += 0.5*m1*(dvx*dvx + dvy*dvy + dvz*dvz);
+        
         if(i<N_active){//ignore dE/dx = forces between planetesimals
             for(int j=i+1;j<N;j++){
                 struct reb_particle par2 = particles[j];
@@ -329,12 +330,12 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
             const double rij2 = dx*dx + dy*dy + dz*dz;
             const double ratio = rij2/(rhi+rhj);    //(p-p distance/Hill radii)^2
             
-            /*
+            int par_id = 20;
+            
             int CE_yes = 0;
             if(ratio<r->ri_hybrid.switch_ratio) CE_yes = 1;
-            if(r->t > 123 && r->t<123.6 && pj.id==2 && body.id==1) printf("t=%f: CE particle %d with planet %d, r=%f,ratio=%f,rhi=%f,rhj=%f,CE=%d\n",r->t,pj.id,body.id,sqrt(rij2),ratio,rhi,rhj,CE_yes);
-            */
-             
+            //if(r->t > 74.86 && r->t<75.1 && pj.id==par_id && body.id==1) printf("t=%f: CE par %d + pl %d, r=%f,ax=%f,ay=%f,az=%f,dxj=%f,dyj=%f,dzj=%f,CE=%d\n",r->t,pj.id,body.id,sqrt(rij2),pj.ax,pj.ay,pj.az,pj.x,pj.y,pj.z,CE_yes);//printf("t=%f: CE par %d + pl %d, r=%f,ratio=%f,rhi=%f,rhj=%f,dxj=%f,dyj=%f,dzj=%f,CE=%d\n",r->t,pj.id,body.id,sqrt(rij2),ratio,rhi,rhj,pj.x,pj.y,pj.z,CE_yes);
+            
             if(ratio<r->ri_hybrid.switch_ratio){
                 num_encounters++;
                 if(num_encounters == 1) encounter_index[0] = pj.id;
@@ -355,8 +356,8 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
             double vrel = sqrt(vx*vx + vy*vy + vz*vz);
             double rr = sqrt(rij2);
             double val = r->dt*vrel/rr;
-            if(rr < min_r && pj.id == 42) min_r = rr;
-            if(val > max_val && pj.id == 42) max_val = val;
+            if(rr < min_r && pj.id) min_r = rr;
+            if(val > max_val && pj.id) max_val = val;
         }
     }
     *minimum_r = min_r;

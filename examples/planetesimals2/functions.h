@@ -61,5 +61,7 @@ extern int N_encounters_tot;
 extern int N_tot;
 extern struct reb_simulation* r;
 
+//temp
+extern double* K0arr; extern double* E0arr;
 
 #endif /* defined(____functions__) */
