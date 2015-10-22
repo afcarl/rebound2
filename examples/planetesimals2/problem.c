@@ -34,11 +34,13 @@ int main(int argc, char* argv[]){
     //System constants
     tmax = atof(argv[1]);
     int N_planetesimals = atoi(argv[2]);
-    double M_planetesimals = 3e-6;                        //Tot. Mass of all planetesimals (Earth mass, 3e-6)
-    planetesimal_mass = M_planetesimals/N_planetesimals;  //mass of each planetesimal
-    double ias_epsilon = 1e-8;                            //sets precision of ias15
+    //double M_planetesimals = 3e-6;                        //Tot. Mass of all planetesimals (Earth mass, 3e-6)
+    //planetesimal_mass = M_planetesimals/N_planetesimals;  //mass of each planetesimal
+    planetesimal_mass = 3e-8;                               //each is a moon
+    double M_planetesimals = planetesimal_mass*N_planetesimals;
+    double ias_epsilon = 1e-9;                            //sets precision of ias15
     double HSR2 = 5;                                      //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
-    double dRHill = 0.5;                                  //Sets the timestep - max # Hill radii/timestep.
+    double dRHill = 0.25;                                  //Sets the timestep - max # Hill radii/timestep.
     int seed = atoi(argv[3]);
     
 	//Simulation Setup
@@ -50,11 +52,6 @@ int main(int argc, char* argv[]){
     if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces_global;
     //r->ri_whfast.corrector 	= 11;
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
-
-    //Outputting points
-    n_output = 50000;    //true output ~2x n_output for some reason.
-    t_log_output = pow(tmax + 1, 1./(n_output - 1));
-    t_output = dt_ini;
     
     //Boundary stuff
     //r->boundary     = REB_BOUNDARY_OPEN;
@@ -100,6 +97,11 @@ int main(int argc, char* argv[]){
     //N_active and move to COM
     r->N_active = r->N;
     if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
+    
+    //Outputting points
+    n_output = 50000;    //true output ~2x n_output for some reason.
+    t_log_output = pow(tmax + 1, 1./(n_output - 1));
+    t_output = dt_ini;
     
     //orbiting planetesimal/satellite
     if(p1_satellite_on == 1){
@@ -191,17 +193,15 @@ void heartbeat(struct reb_simulation* r){
     
     //OUTPUT stuff*******
     if(r->t > t_output || r->t <= r->dt){
-        struct reb_particle* global = r->particles;
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%d,%d,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0), r->N,s->N);
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%d,%d\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0), r->N,s->N);
         fclose(append);
         
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
-        t_output *= t_log_output;
+        t_output = r->t*t_log_output;
         n_o++;
     }
-    
 }
 
 /*
