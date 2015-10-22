@@ -307,13 +307,13 @@ void planetesimal_forces_mini(struct reb_simulation *s){
 }
 
 //initialize mini-simulation for close encounters
-void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double ias_epsilon, int turn_planetesimal_forces_on){
+void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double ias_epsilon, int turn_planetesimal_forces_on, double ias_timestep){
     s->N_active = r->N_active;
     s->integrator = REB_INTEGRATOR_IAS15;
     if(turn_planetesimal_forces_on==1)s->additional_forces = planetesimal_forces_mini;
     s->exact_finish_time = 1;
     s->ri_ias15.epsilon = ias_epsilon;
-    s->dt = r->dt/3.;
+    s->dt = ias_timestep;
     
     struct reb_particle* restrict const particles = r->particles;
     for(int k=0; k<s->N_active; k++){
@@ -322,8 +322,9 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
     }
 }
 
+
 //collect the id/array number of all planetesimals involved in a close encounter
-void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* const s, int* N_encounters, double* minimum_r, double* maximum_val, double dt_ini){
+void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* const s, int* N_encounters, double* minimum_r, double* maximum_val, double ias_timestep){
     const int N = r->N;
     const int N_active = r->N_active;
     struct reb_particle* restrict const particles = r->particles;
@@ -356,11 +357,9 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
             const double rij2 = dx*dx + dy*dy + dz*dz;
             const double ratio = rij2/(rhi+rhj);    //(p-p distance/Hill radii)^2
             
-            int par_id = 20;
-            
             if(fabs(pj.ax) + fabs(pj.ay) + fabs(pj.az) > 1000) printf("\nlarge acceleration at t=%f for par %d: ax=%f,ay=%f,az=%f",r->t,pj.id,pj.ax,pj.ay,pj.az);
 
-            
+            int par_id = 20;
             int CE_yes = 0;
             if(ratio<r->ri_hybrid.switch_ratio) CE_yes = 1;
             if(r->t > 39.9 && r->t<40.2 && pj.id==par_id && body.id==1){
@@ -375,9 +374,10 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
                     encounter_index = realloc(encounter_index,num_encounters*sizeof(int));
                     encounter_index[num_encounters - 1] = pj.id;
                 }
+                
                 //Super close encounter
                 if(rij2 < 1e-7){    //(2*radius of Neptune in AU)^2
-                    fprintf(stderr,"\n\033[1mSuper Close Encounter!\033[0m Particle/Planet collision should have happened.\n");
+                    fprintf(stderr,"\n\033[1mSuper Close Encounter at t=%f!\033[0m Particle %d and Planet %d collision should have happened, r=%f.\n",r->t,pj.id,body.id,sqrt(rij2));
                 }
             }
             
@@ -388,8 +388,8 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
             double vrel = sqrt(vx*vx + vy*vy + vz*vz);
             double rr = sqrt(rij2);
             double val = r->dt*vrel/rr;
-            if(rr < min_r && pj.id==par_id) min_r = rr;
-            if(val > max_val && pj.id==par_id) max_val = val;
+            if(rr < min_r) min_r = rr;
+            if(val > max_val) max_val = val;
         }
     }
     *minimum_r = min_r;

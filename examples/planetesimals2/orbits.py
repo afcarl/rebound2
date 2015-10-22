@@ -42,7 +42,7 @@ else:
     plt.plot(data[arg4:arg3,0],data[arg4:arg3,arg1], 'o', ms=msval, markeredgecolor='none')
 
 if arg1 == 5:
-    plt.plot(data[arg4:arg3,0],0.5e-10*data[arg4:arg3,0]**(0.5),color='black',label='t^1/2 growth')
+    plt.plot(data[arg4:arg3,0],0.8e-10*data[arg4:arg3,0]**(0.5),color='black',label='t^1/2 growth')
     plt.legend(loc='upper left',prop={'size':10})
 
 plt.ylabel(names[arg1])

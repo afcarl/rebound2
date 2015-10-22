@@ -17,11 +17,13 @@
 void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", xyz_check[200]="output/planet_", CEprint[200]="output/planet_";
 
-double dxold1=0,dyold1=0,dzold1=0,dxold2=0,dyold2=0,dzold2=0;
-double tmax, planetesimal_mass, E0, K0, U0, n_output, dt_ini, t_output, t_log_output;
+double tmax, planetesimal_mass, E0, K0, U0, n_output, dt_ini, t_output, t_log_output, ias_timestep;
 int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
+
+//temp
+double dxold1=0,dyold1=0,dzold1=0,dxold2=0,dyold2=0,dzold2=0;
 
 int main(int argc, char* argv[]){
     //switches
@@ -34,7 +36,7 @@ int main(int argc, char* argv[]){
     int N_planetesimals = atoi(argv[2]);
     double M_planetesimals = 3e-6;                        //Tot. Mass of all planetesimals (Earth mass, 3e-6)
     planetesimal_mass = M_planetesimals/N_planetesimals;  //mass of each planetesimal
-    double ias_epsilon = 1e-9;                            //sets precision of ias15
+    double ias_epsilon = 1e-8;                            //sets precision of ias15
     double HSR2 = atof(argv[3]);                          //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
     double dRHill = atof(argv[4]);                        //Sets the timestep - max # Hill radii/timestep.
     int seed = atoi(argv[5]);
@@ -94,7 +96,7 @@ int main(int argc, char* argv[]){
     printf("timesetep is dt = %f, ri_hybrid.switch_ratio=%f \n",dt_ini,r->ri_hybrid.switch_ratio);
     r->dt = dt_ini;
     
-    // Other setup stuff
+    //Outputting points
     n_output = 5000;    //true output ~2x n_output for some reason.
     t_log_output = pow(tmax + 1, 1./(n_output - 1));
     t_output = dt_ini;
@@ -105,7 +107,7 @@ int main(int argc, char* argv[]){
         struct reb_particle pt = {0};
         //pt = reb_tools_orbit_to_particle(r->G, p1, planetesimal_mass, x, 0, 0, 0, 0, 0);
         //pt.y += p1.y;
-        pt = reb_tools_orbit_to_particle(r->G, star, planetesimal_mass, x + a1, 0, 0, 0, 0, 0);
+        pt = reb_tools_orbit_to_particle(r->G, star, 0, x + a1, 0, 0, 0, 0, 0); //m=planetesimal_mass?
         pt.r = 4e-5;            //I think radius of particle is in AU!
         pt.id = r->N;              //1 = planet
         reb_add(r, pt);
@@ -138,9 +140,13 @@ int main(int argc, char* argv[]){
     
     //Initializing stuff
     legend(plntdir, lgnddir, xyz_check, CEprint, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,ias_epsilon,seed,HYBRID_ON);
-    s = reb_create_simulation();    //initialize mini simulation (IAS15)
-    ini_mini(r,s,ias_epsilon,turn_planetesimal_forces_on);
     E0 = calc_Etot(r, &K0, &U0);
+    
+    //Ini mini
+    s = reb_create_simulation();    //initialize mini simulation (IAS15)
+    double ias_subtime = 3.;        //how much smaller is the ias timestep vs. global?
+    ias_timestep = r->dt/ias_subtime;
+    ini_mini(r,s,ias_epsilon,turn_planetesimal_forces_on,ias_timestep);
     
     //Integrate!
     clock_t t_ini = clock_start();
@@ -155,7 +161,7 @@ int main(int argc, char* argv[]){
 void heartbeat(struct reb_simulation* r){
     double K = 0, U = 0, min_r = 0, max_val = 0;
     if(HYBRID_ON == 1){
-        check_for_encounter(r, s, &N_encounters, &min_r, &max_val, dt_ini);
+        check_for_encounter(r, s, &N_encounters, &min_r, &max_val, ias_timestep);
         int dN = N_encounters - N_encounters_previous;
         if(N_encounters_previous == 0){
             if(N_encounters > 0){//1st update in a while, update mini massive bodies, add particles, no int
@@ -178,11 +184,12 @@ void heartbeat(struct reb_simulation* r){
     
     double E1 = calc_Etot(r,&K,&U);
     //output error stuff - every iteration
-    if(fabs((E1 - E0)/E0) > 1e-7 && err_print_msg == 0){
+    if(fabs((E1 - E0)/E0) > 1e-8 && err_print_msg == 0){
         err_print_msg++;
         fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s\033[0m, t=%f.\n",plntdir,r->t);
     }
     
+    /*
     if(r->t > 74.5){
         FILE *xyz_output;
         xyz_output = fopen(xyz_check, "a");
@@ -200,18 +207,20 @@ void heartbeat(struct reb_simulation* r){
         //    fprintf(xyz_output, "%d,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
         //}
         fclose(xyz_output);
-    }
+    }*/
     
     //OUTPUT stuff*******
-    //if(r->t > t_output || r->t <= r->dt){
-    if(HYBRID_ON){
-        
+    if(r->t > t_output || r->t <= r->dt){
         struct reb_particle* global = r->particles;
         int par_id = 20;
         FILE *append;
         append = fopen(plntdir, "a");
         fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%d,%d,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0), r->N,s->N, global[par_id].ax,global[par_id].ay,global[par_id].az);
         fclose(append);
+        
+        reb_output_timing(r, 0);    //output only when outputting values. Saves some time
+        t_output *= t_log_output;
+        n_o++;
         
         /*
         for(int i=0;i<r->N;i++){
@@ -236,9 +245,6 @@ void heartbeat(struct reb_simulation* r){
              fclose(xyz_output);
          }*/
         
-        reb_output_timing(r, 0);    //output only when outputting values. Saves some time
-        t_output *= t_log_output;
-        n_o++;
     }
     
 }
