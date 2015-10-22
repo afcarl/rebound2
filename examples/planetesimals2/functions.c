@@ -232,7 +232,6 @@ void planetesimal_forces_global(struct reb_simulation *r){
         for(int k=0;k<N_encounters_previous && skip == 0;k++){
             if(p.id == previous_encounter_index[k]){
                 skip++;
-                if(r->t >= 133.35 && r->t < 133.5)printf("t=%.16f,no global forces for particle %d, PEI[%d]=%d\n",r->t,p.id,k,previous_encounter_index[k]);
             }
         }
             
@@ -324,15 +323,17 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
 
 //collect the id/array number of all planetesimals involved in a close encounter
 void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* const s, int* N_encounters, double* minimum_r, double* maximum_val, double ias_timestep){
-    const int N = r->N;
-    const int N_active = r->N_active;
-    struct reb_particle* restrict const global = r->particles;
-    struct reb_particle* restrict const mini = r->particles;
+    const int rN = r->N;
+    const int rN_active = r->N_active;
+    const int sN = s->N;
+    const int sN_active = s->N_active;
+    struct reb_particle* const global = r->particles;
+    struct reb_particle* const mini = s->particles;
     struct reb_particle p0 = global[0];
     int num_encounters = 0;
     double max_val = 1e-8;
     double min_r = 1e8;
-    for (int i=1; i<N_active; i++){
+    for (int i=1; i<rN_active; i++){
         struct reb_particle body = global[i];
         const double dxi = p0.x - body.x;
         const double dyi = p0.y - body.y;
@@ -341,8 +342,15 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
         const double rhi = r0i2*Hill2[i];
         //const double rhi = r0i2*pow((body.m/(p0.m*3.)), 2./3.); //can make this faster later
         
-        for (int j=i+1; j<N; j++){
+        for (int j=i+1; j<rN; j++){
             struct reb_particle pj = global[j];
+            
+            _Bool found_in_mini = 0;
+            for(int k=sN_active; k<sN && found_in_mini == 0; k++){
+                if(global[j].id == mini[k].id){
+                    pj = mini[k];
+                }
+            }
             
             const double dxj = p0.x - pj.x;
             const double dyj = p0.y - pj.y;
@@ -357,7 +365,7 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
             const double rij2 = dx*dx + dy*dy + dz*dz;
             const double ratio = rij2/(rhi+rhj);    //(p-p distance/Hill radii)^2
             
-            if(fabs(pj.ax) + fabs(pj.ay) + fabs(pj.az) > 1000) printf("\nlarge acceleration at t=%f for par %d: ax=%f,ay=%f,az=%f",r->t,pj.id,pj.ax,pj.ay,pj.az);
+            //if(fabs(pj.ax) + fabs(pj.ay) + fabs(pj.az) > 1000) printf("\nlarge acceleration at t=%f for par %d: ax=%f,ay=%f,az=%f",r->t,pj.id,pj.ax,pj.ay,pj.az);
 
             int par_id = 20;
             int CE_yes = 0;
@@ -450,9 +458,6 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
                 struct reb_particle pt = global[EI];
                 reb_add(s,pt);
                 N_encounters_tot++;
-                
-                //remove particle from global
-                
                 
                 FILE *output;
                 output = fopen(CEprint, "a");

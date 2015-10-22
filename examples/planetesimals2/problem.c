@@ -243,7 +243,6 @@ void heartbeat(struct reb_simulation* r){
              }
              fclose(xyz_output);
          }*/
-        
     }
     
 }
