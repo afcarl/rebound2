@@ -83,10 +83,6 @@ int main(int argc, char* argv[]){
     reb_add(r, p2);
     dt_ini = calc_dt(r, m2, star.m, a2, dRHill, dt_ini);
     
-    //N_active and move to COM
-    r->N_active = r->N;
-    if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
-    
     //calc dt
     if(r->integrator == REB_INTEGRATOR_IAS15){
         dt_ini /= 3.;
@@ -96,6 +92,9 @@ int main(int argc, char* argv[]){
     printf("timesetep is dt = %f, ri_hybrid.switch_ratio=%f \n",dt_ini,r->ri_hybrid.switch_ratio);
     r->dt = dt_ini;
     
+    //N_active and move to COM
+    r->N_active = r->N;
+    if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
     //Outputting points
     n_output = 5000;    //true output ~2x n_output for some reason.
     t_log_output = pow(tmax + 1, 1./(n_output - 1));
@@ -123,7 +122,7 @@ int main(int argc, char* argv[]){
         double inc = reb_random_normal(0.0001);
         double Omega = reb_random_uniform(0,2.*M_PI);
         double apsis = reb_random_uniform(0,2.*M_PI);
-        pt = reb_tools_orbit_to_particle(r->G, star, planetesimal_mass, a, 0, inc, Omega, apsis,phi);
+        pt = reb_tools_orbit_to_particle(r->G, star, 0, a, 0, inc, Omega, apsis,phi);
 		pt.r 		= 4e-5;
         pt.id       = r->N;
 		reb_add(r, pt);

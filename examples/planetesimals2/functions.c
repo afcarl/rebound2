@@ -224,22 +224,21 @@ void planetesimal_forces_global(struct reb_simulation *r){
     const int N = r->N;
     const int N_active = r->N_active;
     struct reb_particle* const particles = r->particles;
-    
     const double Gm1 = G*planetesimal_mass;
-    for(int i=0;i<N_active;i++){
-        struct reb_particle* body = &(particles[i]);
-        for(int j=N_active;j<N;j++){//add planetesimal forces to massive bodies
-            struct reb_particle p = particles[j];
-            
-            _Bool skip = 0;
-            for(int k=0;k<N_encounters_previous && skip == 0;k++){
-                if(p.id == previous_encounter_index[k]){
-                    skip++;
-                    //printf("t=%.16f,no global forces for particle %d\n",r->t,p.id);
-                }
+    
+    for(int j=N_active;j<N;j++){//add planetesimal forces to massive bodies
+        struct reb_particle p = particles[j];
+        _Bool skip = 0;
+        for(int k=0;k<N_encounters_previous && skip == 0;k++){
+            if(p.id == previous_encounter_index[k]){
+                skip++;
+                if(r->t >= 133.35 && r->t < 133.5)printf("t=%.16f,no global forces for particle %d, PEI[%d]=%d\n",r->t,p.id,k,previous_encounter_index[k]);
             }
+        }
             
-            if(skip == 0){//If CE don't calculate planetesimal forces in global
+        if(skip == 0){//If CE don't calculate planetesimal forces in global
+            for(int i=0;i<N_active;i++){
+                struct reb_particle* body = &(particles[i]);
                 const double dx = body->x - p.x;
                 const double dy = body->y - p.y;
                 const double dz = body->z - p.z;
@@ -327,13 +326,14 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
 void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* const s, int* N_encounters, double* minimum_r, double* maximum_val, double ias_timestep){
     const int N = r->N;
     const int N_active = r->N_active;
-    struct reb_particle* restrict const particles = r->particles;
-    struct reb_particle p0 = particles[0];
+    struct reb_particle* restrict const global = r->particles;
+    struct reb_particle* restrict const mini = r->particles;
+    struct reb_particle p0 = global[0];
     int num_encounters = 0;
     double max_val = 1e-8;
     double min_r = 1e8;
     for (int i=1; i<N_active; i++){
-        struct reb_particle body = particles[i];
+        struct reb_particle body = global[i];
         const double dxi = p0.x - body.x;
         const double dyi = p0.y - body.y;
         const double dzi = p0.z - body.z;
@@ -342,7 +342,7 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
         //const double rhi = r0i2*pow((body.m/(p0.m*3.)), 2./3.); //can make this faster later
         
         for (int j=i+1; j<N; j++){
-            struct reb_particle pj = particles[j];
+            struct reb_particle pj = global[j];
             
             const double dxj = p0.x - pj.x;
             const double dyj = p0.y - pj.y;
@@ -450,6 +450,9 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
                 struct reb_particle pt = global[EI];
                 reb_add(s,pt);
                 N_encounters_tot++;
+                
+                //remove particle from global
+                
                 
                 FILE *output;
                 output = fopen(CEprint, "a");
