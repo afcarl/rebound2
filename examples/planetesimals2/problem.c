@@ -37,9 +37,9 @@ int main(int argc, char* argv[]){
     double M_planetesimals = 3e-6;                        //Tot. Mass of all planetesimals (Earth mass, 3e-6)
     planetesimal_mass = M_planetesimals/N_planetesimals;  //mass of each planetesimal
     double ias_epsilon = 1e-8;                            //sets precision of ias15
-    double HSR2 = atof(argv[3]);                          //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
-    double dRHill = atof(argv[4]);                        //Sets the timestep - max # Hill radii/timestep.
-    int seed = atoi(argv[5]);
+    double HSR2 = 5;                                      //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
+    double dRHill = 0.5;                                  //Sets the timestep - max # Hill radii/timestep.
+    int seed = atoi(argv[3]);
     
 	//Simulation Setup
     r = reb_create_simulation();
@@ -51,6 +51,11 @@ int main(int argc, char* argv[]){
     //r->ri_whfast.corrector 	= 11;
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
 
+    //Outputting points
+    n_output = 50000;    //true output ~2x n_output for some reason.
+    t_log_output = pow(tmax + 1, 1./(n_output - 1));
+    t_output = dt_ini;
+    
     //Boundary stuff
     //r->boundary     = REB_BOUNDARY_OPEN;
     //double boxsize = 20;
@@ -95,10 +100,6 @@ int main(int argc, char* argv[]){
     //N_active and move to COM
     r->N_active = r->N;
     if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
-    //Outputting points
-    n_output = 5000;    //true output ~2x n_output for some reason.
-    t_log_output = pow(tmax + 1, 1./(n_output - 1));
-    t_output = dt_ini;
     
     //orbiting planetesimal/satellite
     if(p1_satellite_on == 1){
@@ -146,9 +147,9 @@ int main(int argc, char* argv[]){
     double ias_subtime = 3.;        //how much smaller is the ias timestep vs. global?
     ias_timestep = r->dt/ias_subtime;
     ini_mini(r,s,ias_epsilon,turn_planetesimal_forces_on,ias_timestep);
+    clock_t t_ini = clock_start();
     
     //Integrate!
-    clock_t t_ini = clock_start();
     reb_integrate(r, tmax);
     
     //finish
@@ -183,69 +184,68 @@ void heartbeat(struct reb_simulation* r){
     
     double E1 = calc_Etot(r,&K,&U);
     //output error stuff - every iteration
-    if(fabs((E1 - E0)/E0) > 1e-8 && err_print_msg == 0){
+    if(fabs((E1 - E0)/E0) > 1e-6 && err_print_msg == 0){
         err_print_msg++;
         fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s\033[0m, t=%f.\n",plntdir,r->t);
     }
     
-    /*
-    if(r->t > 74.5){
-        FILE *xyz_output;
-        xyz_output = fopen(xyz_check, "a");
-        struct reb_particle* global = r->particles;
-        //fprintf(xyz_output, "%.16f,rmin=%.16f,vmax/rmin=%.16f\n",r->t,min_r,max_val);
-        int i = 20;
-        int j=1;
-        //fprintf(xyz_output, "particle %d,x=%.16f,y=%.16f,z=%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
-        //fprintf(xyz_output, "%.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,fabs(global[i].x-dxold1),fabs(global[i].y-dyold1),fabs(global[i].z-dzold1));
-        //fprintf(xyz_output, "planet %d,x=%.16f,y=%.16f,z=%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",j,global[j].x,global[j].y,global[j].z,global[j].vx,global[j].vy,global[j].vz,global[j].ax,global[j].ay,global[j].az);
-        fprintf(xyz_output, "%.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,fabs(global[j].x-dxold2),fabs(global[j].y-dyold2),fabs(global[j].z-dzold2));
-        dxold1 = global[i].x; dyold1 = global[i].y; dzold1 = global[i].z;
-        dxold2 = global[j].x; dyold2 = global[j].y; dzold2 = global[j].z;
-        //for(int i=0;i<r->N;i++){
-        //    fprintf(xyz_output, "%d,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
-        //}
-        fclose(xyz_output);
-    }*/
-    
     //OUTPUT stuff*******
     if(r->t > t_output || r->t <= r->dt){
         struct reb_particle* global = r->particles;
-        int par_id = 20;
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%d,%d,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0), r->N,s->N, global[par_id].ax,global[par_id].ay,global[par_id].az);
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%d,%d,%.16f,%.16f,%.16f\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0), r->N,s->N);
         fclose(append);
         
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
         t_output *= t_log_output;
         n_o++;
-        
-        /*
-        for(int i=0;i<r->N;i++){
-            if(fabs(global[i].ax) + fabs(global[i].ay) + fabs(global[i].az) > 100){
-                for(int j=0;j<N_encounters_previous;j++){
-                    if(global[i].id == previous_encounter_index[j]){
-                        printf("mini integrated large acc, par %d: ax=%f,ay=%f,az=%f\n",global[i].id,global[i].ax,global[i].ay,global[i].az);
-                    }
-                }
-            }
-        }*/
-        
-        /*
-         if(reb_output_check(r,tmax/100)){
-             FILE *xyz_output;
-             xyz_output = fopen(xyz_check, "a");
-             struct reb_particle* global = r->particles;
-             fprintf(xyz_output, "%.16f\n",r->t);
-             for(int i=0;i<r->N;i++){
-                 fprintf(xyz_output, "%d,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
-             }
-             fclose(xyz_output);
-         }*/
     }
     
 }
+
+/*
+ for(int i=0;i<r->N;i++){
+ if(fabs(global[i].ax) + fabs(global[i].ay) + fabs(global[i].az) > 100){
+ for(int j=0;j<N_encounters_previous;j++){
+ if(global[i].id == previous_encounter_index[j]){
+ printf("mini integrated large acc, par %d: ax=%f,ay=%f,az=%f\n",global[i].id,global[i].ax,global[i].ay,global[i].az);
+ }
+ }
+ }
+ }*/
+
+/*
+ if(reb_output_check(r,tmax/100)){
+ FILE *xyz_output;
+ xyz_output = fopen(xyz_check, "a");
+ struct reb_particle* global = r->particles;
+ fprintf(xyz_output, "%.16f\n",r->t);
+ for(int i=0;i<r->N;i++){
+ fprintf(xyz_output, "%d,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
+ }
+ fclose(xyz_output);
+ }*/
+
+/*
+ if(r->t > 74.5){
+ FILE *xyz_output;
+ xyz_output = fopen(xyz_check, "a");
+ struct reb_particle* global = r->particles;
+ //fprintf(xyz_output, "%.16f,rmin=%.16f,vmax/rmin=%.16f\n",r->t,min_r,max_val);
+ int i = 20;
+ int j=1;
+ //fprintf(xyz_output, "particle %d,x=%.16f,y=%.16f,z=%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
+ //fprintf(xyz_output, "%.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,fabs(global[i].x-dxold1),fabs(global[i].y-dyold1),fabs(global[i].z-dzold1));
+ //fprintf(xyz_output, "planet %d,x=%.16f,y=%.16f,z=%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",j,global[j].x,global[j].y,global[j].z,global[j].vx,global[j].vy,global[j].vz,global[j].ax,global[j].ay,global[j].az);
+ fprintf(xyz_output, "%.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,fabs(global[j].x-dxold2),fabs(global[j].y-dyold2),fabs(global[j].z-dzold2));
+ dxold1 = global[i].x; dyold1 = global[i].y; dzold1 = global[i].z;
+ dxold2 = global[j].x; dyold2 = global[j].y; dzold2 = global[j].z;
+ //for(int i=0;i<r->N;i++){
+ //    fprintf(xyz_output, "%d,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f,%.16f\n",i,global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz,global[i].ax,global[i].ay,global[i].az);
+ //}
+ fclose(xyz_output);
+ }*/
 
 
 //OUTPUT stuff*******
