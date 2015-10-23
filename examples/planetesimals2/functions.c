@@ -322,7 +322,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
 
 
 //collect the id/array number of all planetesimals involved in a close encounter
-void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* const s, int* N_encounters, double* minimum_r, double* maximum_val, double ias_timestep){
+void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* const s, int* N_encounters, double* min_r, double* max_val, double ias_timestep){
     const int rN = r->N;
     const int rN_active = r->N_active;
     const int sN = s->N;
@@ -331,8 +331,6 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
     struct reb_particle* const mini = s->particles;
     struct reb_particle p0 = global[0];
     int num_encounters = 0;
-    double max_val = 1e-8;
-    double min_r = 1e8;
     for (int i=1; i<rN_active; i++){
         struct reb_particle body = global[i];
         const double dxi = p0.x - body.x;
@@ -345,10 +343,12 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
         for (int j=i+1; j<rN; j++){
             struct reb_particle pj = global[j];
             
+            double HSR = r->ri_hybrid.switch_ratio;
             _Bool found_in_mini = 0;
             for(int k=sN_active; k<sN && found_in_mini == 0; k++){
                 if(global[j].id == mini[k].id){
                     pj = mini[k];
+                    HSR *= 1.07;    //HSR(mini) is a bit bigger so no constant enter/leave
                 }
             }
             
@@ -365,17 +365,17 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
             const double rij2 = dx*dx + dy*dy + dz*dz;
             const double ratio = rij2/(rhi+rhj);    //(p-p distance/Hill radii)^2
             
-            //if(fabs(pj.ax) + fabs(pj.ay) + fabs(pj.az) > 1000) printf("\nlarge acceleration at t=%f for par %d: ax=%f,ay=%f,az=%f",r->t,pj.id,pj.ax,pj.ay,pj.az);
+            if(fabs(pj.ax) + fabs(pj.ay) + fabs(pj.az) > 5000) printf("\nlarge acceleration at t=%f for par %d: ax=%f,ay=%f,az=%f",r->t,pj.id,pj.ax,pj.ay,pj.az);
 
-            int par_id = 20;
-            int CE_yes = 0;
-            if(ratio<r->ri_hybrid.switch_ratio) CE_yes = 1;
-            if(r->t > 39.9 && r->t<40.2 && pj.id==par_id && body.id==1){
-                //printf("t=%f: CE par %d + pl %d, r=%f,ax=%f,ay=%f,az=%f,dxj=%f,dyj=%f,dzj=%f,CE=%d\n",r->t,pj.id,body.id,sqrt(rij2),pj.ax,pj.ay,pj.az,pj.x,pj.y,pj.z,CE_yes);
+            //int par_id = 120;
+            //int CE_yes = 0;
+            //if(ratio < HSR) CE_yes = 1;
+            //if(pj.id==par_id && body.id==1){
+                //printf("t=%f: CE par %d + pl %d,px=%f,py=%f,pz=%f,bx=%f,by=%f,bz=%f,r=%f,CE=%d\n",r->t,pj.id,body.id,pj.x,pj.y,pj.z,body.x,body.y,body.z,sqrt(rij2),CE_yes);
                 //printf("t=%f: CE par %d + pl %d, r=%f,ratio=%f,rhi=%f,rhj=%f,dxj=%f,dyj=%f,dzj=%f,CE=%d\n",r->t,pj.id,body.id,sqrt(rij2),ratio,rhi,rhj,pj.x,pj.y,pj.z,CE_yes);
-            }
+            //}
             
-            if(ratio<r->ri_hybrid.switch_ratio){
+            if(ratio < HSR){
                 num_encounters++;
                 if(num_encounters == 1) encounter_index[0] = pj.id;
                 else if(num_encounters > 1){//multiple close encounters
@@ -396,12 +396,10 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
             double vrel = sqrt(vx*vx + vy*vy + vz*vz);
             double rr = sqrt(rij2);
             double val = r->dt*vrel/rr;
-            if(rr < min_r) min_r = rr;
-            if(val > max_val) max_val = val;
+            if(rr < *min_r) *min_r = rr;
+            if(val > *max_val) *max_val = val;
         }
     }
-    *minimum_r = min_r;
-    *maximum_val = max_val;
     *N_encounters = num_encounters;
 }
 

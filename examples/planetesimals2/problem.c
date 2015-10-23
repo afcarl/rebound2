@@ -38,7 +38,7 @@ int main(int argc, char* argv[]){
     //planetesimal_mass = M_planetesimals/N_planetesimals;  //mass of each planetesimal
     planetesimal_mass = 3e-8;                               //each is a moon
     double M_planetesimals = planetesimal_mass*N_planetesimals;
-    double ias_epsilon = 1e-9;                            //sets precision of ias15
+    double ias_epsilon = 1e-8;                            //sets precision of ias15
     double HSR2 = 5;                                      //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
     double dRHill = 0.25;                                  //Sets the timestep - max # Hill radii/timestep.
     int seed = atoi(argv[3]);
@@ -99,7 +99,7 @@ int main(int argc, char* argv[]){
     if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
     
     //Outputting points
-    n_output = 50000;    //true output ~2x n_output for some reason.
+    n_output = 50000;
     t_log_output = pow(tmax + 1, 1./(n_output - 1));
     t_output = dt_ini;
     
@@ -161,7 +161,7 @@ int main(int argc, char* argv[]){
 }
 
 void heartbeat(struct reb_simulation* r){
-    double K = 0, U = 0, min_r = 0, max_val = 0;
+    double K = 0, U = 0, min_r = 1e8, max_val = 1e-8;
     if(HYBRID_ON == 1){
         check_for_encounter(r, s, &N_encounters, &min_r, &max_val, ias_timestep);
         int dN = N_encounters - N_encounters_previous;
