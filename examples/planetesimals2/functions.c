@@ -365,7 +365,7 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
             const double rij2 = dx*dx + dy*dy + dz*dz;
             const double ratio = rij2/(rhi+rhj);    //(p-p distance/Hill radii)^2
             
-            if(fabs(pj.ax) + fabs(pj.ay) + fabs(pj.az) > 5000) printf("\nlarge acceleration at t=%f for par %d: ax=%f,ay=%f,az=%f",r->t,pj.id,pj.ax,pj.ay,pj.az);
+            //if(fabs(pj.ax) + fabs(pj.ay) + fabs(pj.az) > 5000) printf("\nlarge acceleration at t=%f for par %d: ax=%f,ay=%f,az=%f",r->t,pj.id,pj.ax,pj.ay,pj.az);
 
             //int par_id = 120;
             //int CE_yes = 0;

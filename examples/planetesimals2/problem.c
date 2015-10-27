@@ -202,6 +202,28 @@ void heartbeat(struct reb_simulation* r){
         t_output = r->t*t_log_output;
         n_o++;
     }
+    
+    double t1 = 48.15; double t2 = 48.4;
+    //double t1 = 201.79; double t2 = 202;
+    if(r->t > t1 && r->t < t2){
+        //int id = 236;
+        int id = 94;
+        int pid = 2;
+        struct reb_particle* mini = s->particles;
+        for(int i=0;i<s->N;i++){
+            if(mini[i].id == id){
+                double dx = mini[i].x - mini[pid].x;
+                double dy = mini[i].y - mini[pid].y;
+                double dz = mini[i].z - mini[pid].z;
+                double d = sqrt(dx*dx + dy*dy + dz*dz);
+                double ax = mini[i].ax - mini[pid].ax;
+                double ay = mini[i].ay - mini[pid].ay;
+                double az = mini[i].az - mini[pid].az;
+                double a = sqrt(ax*ax + ay*ay + az*az);
+                printf("r->t=%f,s->dt=%.8f,a=%f,d=%f,ax=%.16f,ay=%.16f,az=%.16f,x=%.16f,y=%.16f,z=%.16f\n",r->t,s->dt,a,d,ax,ay,az,dx,dy,dz);
+            }
+        }
+    }
 }
 
 /*
