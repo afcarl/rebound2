@@ -17,13 +17,10 @@
 void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", xyz_check[200]="output/planet_", CEprint[200]="output/planet_";
 
-double tmax, planetesimal_mass, E0, K0, U0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft;
+double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft;
 int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, xyz_output_counter=0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
-
-//temp
-double dxold1=0,dyold1=0,dzold1=0,dxold2=0,dyold2=0,dzold2=0;
 
 int main(int argc, char* argv[]){
     //switches
@@ -144,7 +141,7 @@ int main(int argc, char* argv[]){
     
     //Initializing stuff
     legend(plntdir, lgnddir, xyz_check, CEprint, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,ias_epsilon,seed,HYBRID_ON);
-    E0 = calc_Etot(r, &K0, &U0, soft);
+    E0 = calc_Etot(r, soft);
     
     //Ini mini
     s = reb_create_simulation();    //initialize mini simulation (IAS15)
@@ -163,7 +160,7 @@ int main(int argc, char* argv[]){
 }
 
 void heartbeat(struct reb_simulation* r){
-    double K = 0, U = 0, min_r = 1e8, max_val = 1e-8;
+    double min_r = 1e8, max_val = 1e-8;
     if(HYBRID_ON == 1){
         check_for_encounter(r, s, &N_encounters, &min_r, &max_val, ias_timestep);
         int dN = N_encounters - N_encounters_previous;
@@ -179,14 +176,14 @@ void heartbeat(struct reb_simulation* r){
             } //otherwise do nothing.
         } else { //integrate existing mini, update global, add/remove new/old particles.
             reb_integrate(s, r->t);
-            update_global(s,r,N_encounters_previous, N_encounters);
+            update_global(s,r,N_encounters_previous);
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN,CEprint);
             update_previous_global_positions(r, N_encounters);
         }
         update_encounter_indices(&N_encounters, &N_encounters_previous);
     }
     
-    double E1 = calc_Etot(r,&K,&U,soft);
+    double E1 = calc_Etot(r,soft);
     //output error stuff - every iteration
     if(fabs((E1 - E0)/E0) > 1e-6 && err_print_msg == 0){
         err_print_msg++;
@@ -197,7 +194,7 @@ void heartbeat(struct reb_simulation* r){
     if(r->t > t_output || r->t <= r->dt){
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%d,%d\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0),fabs((K - K0)/K0),fabs((U - U0)/U0), r->N,s->N);
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0));
         fclose(append);
         
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time

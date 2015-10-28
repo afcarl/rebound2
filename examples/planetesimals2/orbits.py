@@ -25,10 +25,10 @@ if len(sys.argv) >= 5:
 msval = 2
 fos = open(''+file_name, 'r')
 data = np.loadtxt(fos, delimiter=',')
-if arg1 == 8:
+if arg1 == 6:
     plt.plot(data[arg4:arg3,0],data[arg4:arg3,5], 'o', ms=msval, markeredgecolor='none')
     plt.plot(data[arg4:arg3,0],data[arg4:arg3,3], 'or', ms=msval, markeredgecolor='none')
-elif arg1 == 9:
+elif arg1 == 7:
     plt.plot(data[arg4:arg3,0],data[arg4:arg3,5], 'o', ms=msval, markeredgecolor='none')
     plt.plot(data[arg4:arg3,0],data[arg4:arg3,4],  'or', ms=msval, markeredgecolor='none')
 elif arg1 == 2:

@@ -40,20 +40,28 @@ void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, st
         sprintf(Nstr, "%d", N_planetesimals);
         strcat(str, Neq);
         strcat(str, Nstr);
+        char seedstr[15];
+        char* Seq = "_sd";
+        sprintf(seedstr, "%d", seed);
+        strcat(str, Seq);
+        strcat(str, seedstr);
+        
+        //Epsilon
         //char* epsln = "_Ep";
         //char eps[15];
         //sprintf(eps,"%.0e",epsilon);
         //strcat(str, epsln);
         //strcat(str, eps);
         
-        strcat(str, us);
-        char str3[15];
-        sprintf(str3, "%.0f", r->ri_hybrid.switch_ratio);
-        strcat(str, str3);
-        strcat(str, us);
-        char str2[15];
-        sprintf(str2, "%.2f", drh);
-        strcat(str, str2);
+        //HSR and dRHill
+        //strcat(str, us);
+        //char str3[15];
+        //sprintf(str3, "%.0f", r->ri_hybrid.switch_ratio);
+        //strcat(str, str3);
+        //strcat(str, us);
+        //char str2[15];
+        //sprintf(str2, "%.2f", drh);
+        //strcat(str, str2);
         
         //char strtime[10];
         //sprintf(strtime, "%d", hybrid_rint);
@@ -143,7 +151,7 @@ void calc_Hill2(struct reb_simulation* r){
     }
 }
 
-double calc_Etot(struct reb_simulation* a, double* K1, double* U1, double soft){
+double calc_Etot(struct reb_simulation* a, double soft){
     double m1,m2;
     const int N = a->N;
     const int N_active = a->N_active;
@@ -183,8 +191,6 @@ double calc_Etot(struct reb_simulation* a, double* K1, double* U1, double soft){
         }
     }
     
-    *K1 = K;
-    *U1 = U;
     return K + U;
 }
 
@@ -405,7 +411,7 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
 }
 
 //Just after mini has been integrated up to r->t, update global.
-void update_global(struct reb_simulation* const s, struct reb_simulation* r, int N_encounters_previous, int N_encounters){
+void update_global(struct reb_simulation* const s, struct reb_simulation* r, int N_encounters_previous){
     int N_active = s->N_active;
     struct reb_particle* global = r->particles;
     struct reb_particle* const mini = s->particles;
@@ -425,9 +431,6 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
         
         if(particle_update == 0){
             fprintf(stderr,"\n\033[1mAlert!\033[0m Particle %d couldn't be found in update_global. Exiting. \n",PEI);
-            printf("N_encounters=%d,size=%lu,",N_encounters,sizeof(encounter_index)/sizeof(encounter_index[0]));
-            for(int i=0;i<N_encounters;i++) printf("EI(%d)=%d,",i,encounter_index[i]);
-            printf("\n");
             printf("N_encounters_previous=%d,size=%lu,",N_encounters_previous,sizeof(previous_encounter_index)/sizeof(previous_encounter_index[0]));
             for(int i=0;i<N_encounters_previous;i++) printf("PEI(%d)=%d,",i,previous_encounter_index[i]);
             printf("\n");
