@@ -469,8 +469,32 @@ static int reb_integrator_ias15_step(struct reb_simulation* r) {
 				}
 			}
 		}
+        
+        /*
+        struct reb_particle* mini = r->particles;
+        for(int j=0;j<r->N_active;j++){
+            for(int i=j+1;i<r->N;i++){
+                double dx = mini[i].x - mini[j].x;
+                double dy = mini[i].y - mini[j].y;
+                double dz = mini[i].z - mini[j].z;
+                double d = sqrt(dx*dx + dy*dy + dz*dz);
+                double ax = mini[i].ax - mini[j].ax;
+                double ay = mini[i].ay - mini[j].ay;
+                double az = mini[i].az - mini[j].az;
+                double a = sqrt(ax*ax + ay*ay + az*az);
+                double ratio = d/a;
+                if(ratio < 1e-11){
+                    FILE *ff;
+                    ff = fopen("output/iasoutput.txt","a");
+                    double t_int = sqrt(ratio);
+                    fprintf(ff,"particle %d, planet %d: s->t=%f,s->dt=%.16f,ratio=%.16f,t_int=%.10f,a=%f,d=%.10f\n",mini[i].id,mini[j].id,r->t,r->dt,ratio,t_int,a,d);
+                    printf("particle %d, planet %d: s->t=%f,s->dt=%.16f,ratio=%.16f,t_int=%.10f,a=%f,d=%.10f\n",mini[i].id,mini[j].id,r->t,r->dt,ratio,t_int,a,d);
+                    fclose(ff);
+                }
+            }
+        }*/
 	}
-	// Set time back to initial value (will be updated below) 
+	// Set time back to initial value (will be updated below)
 	r->t = t_beginning;
 	// Find new timestep
 	const double dt_done = r->dt;
