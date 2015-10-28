@@ -11,7 +11,7 @@ import re
 def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
-file_names = 'xyz_temp/outOct27mini_'
+file_names = 'xyz_temp/outOct28mini_'
 files = glob.glob(file_names+'*.txt')
 files = sorted(files, key=natural_key)
 N_files = len(files)  #number of files we're dealing with

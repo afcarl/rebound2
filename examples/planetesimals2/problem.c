@@ -162,7 +162,8 @@ int main(int argc, char* argv[]){
 void heartbeat(struct reb_simulation* r){
     double min_r = 1e8, max_val = 1e-8;
     if(HYBRID_ON == 1){
-        check_for_encounter(r, s, &N_encounters, &min_r, &max_val, ias_timestep);
+        //check_for_encounter(r, s, &N_encounters, &min_r, &max_val, ias_timestep);
+        check_for_new_encounters(r, &N_encounters, &min_r, &max_val);
         int dN = N_encounters - N_encounters_previous;
         if(N_encounters_previous == 0){
             if(N_encounters > 0){//1st update in a while, update mini massive bodies, add particles, no int
@@ -176,6 +177,7 @@ void heartbeat(struct reb_simulation* r){
             } //otherwise do nothing.
         } else { //integrate existing mini, update global, add/remove new/old particles.
             reb_integrate(s, r->t);
+            check_existing_encounters(s, &N_encounters, &min_r, &max_val);
             update_global(s,r,N_encounters_previous);
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN,CEprint);
             update_previous_global_positions(r, N_encounters);
@@ -203,12 +205,12 @@ void heartbeat(struct reb_simulation* r){
     }
     
     /*
-    if(r->t > 48.1 && r->t < 48.4){
+    if(r->t > 112.6 && r->t < 113.2){
         struct reb_particle* global = r->particles;
         struct reb_particle* mini = s->particles;
         char strxyz[50] = {0};
         char temp[7];
-        strcat(strxyz,"xyz_temp/outOct27mini_");
+        strcat(strxyz,"xyz_temp/outOct28mini_");
         sprintf(temp, "%d",xyz_output_counter);
         strcat(strxyz,temp);
         strcat(strxyz,".txt");
