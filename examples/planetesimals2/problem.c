@@ -17,8 +17,8 @@
 void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", xyz_check[200]="output/planet_", CEprint[200]="output/planet_";
 
-double tmax, planetesimal_mass, E0, K0, U0, n_output, dt_ini, t_output, t_log_output, ias_timestep;
-int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0;
+double tmax, planetesimal_mass, E0, K0, U0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft;
+int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, xyz_output_counter=0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
 
@@ -38,9 +38,10 @@ int main(int argc, char* argv[]){
     //planetesimal_mass = M_planetesimals/N_planetesimals;  //mass of each planetesimal
     planetesimal_mass = 3e-8;                               //each is a moon
     double M_planetesimals = planetesimal_mass*N_planetesimals;
-    double ias_epsilon = 1e-8;                            //sets precision of ias15
-    double HSR2 = 5;                                      //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
-    double dRHill = 0.25;                                  //Sets the timestep - max # Hill radii/timestep.
+    double ias_epsilon = 1e-8;                              //sets precision of ias15
+    double HSR2 = 5;                                        //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
+    double dRHill = 0.25;                                   //Sets the timestep - max # Hill radii/timestep.
+    soft = 1.6e-4/100.;                                     //gravity softening length scale in AU. R_Neptune/100.
     int seed = atoi(argv[3]);
     
 	//Simulation Setup
@@ -49,6 +50,7 @@ int main(int argc, char* argv[]){
 	r->collision	= REB_COLLISION_NONE;
 	r->heartbeat	= heartbeat;
     r->ri_hybrid.switch_ratio = HSR2;
+    r->softening = soft;
     if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces_global;
     //r->ri_whfast.corrector 	= 11;
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
@@ -142,13 +144,13 @@ int main(int argc, char* argv[]){
     
     //Initializing stuff
     legend(plntdir, lgnddir, xyz_check, CEprint, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,ias_epsilon,seed,HYBRID_ON);
-    E0 = calc_Etot(r, &K0, &U0);
+    E0 = calc_Etot(r, &K0, &U0, soft);
     
     //Ini mini
     s = reb_create_simulation();    //initialize mini simulation (IAS15)
     double ias_subtime = 3.;        //how much smaller is the ias timestep vs. global?
     ias_timestep = r->dt/ias_subtime;
-    ini_mini(r,s,ias_epsilon,turn_planetesimal_forces_on,ias_timestep);
+    ini_mini(r,s,ias_epsilon,turn_planetesimal_forces_on,ias_timestep,soft);
     clock_t t_ini = clock_start();
     
     //Integrate!
@@ -184,7 +186,7 @@ void heartbeat(struct reb_simulation* r){
         update_encounter_indices(&N_encounters, &N_encounters_previous);
     }
     
-    double E1 = calc_Etot(r,&K,&U);
+    double E1 = calc_Etot(r,&K,&U,soft);
     //output error stuff - every iteration
     if(fabs((E1 - E0)/E0) > 1e-6 && err_print_msg == 0){
         err_print_msg++;
@@ -203,12 +205,31 @@ void heartbeat(struct reb_simulation* r){
         n_o++;
     }
     
-    double t1 = 48.15; double t2 = 48.4;
-    //double t1 = 201.79; double t2 = 202;
+    /*
+    if(r->t > 48.1 && r->t < 48.4){
+        struct reb_particle* global = r->particles;
+        struct reb_particle* mini = s->particles;
+        char strxyz[50] = {0};
+        char temp[7];
+        strcat(strxyz,"xyz_temp/outOct27mini_");
+        sprintf(temp, "%d",xyz_output_counter);
+        strcat(strxyz,temp);
+        strcat(strxyz,".txt");
+        FILE *xyz_output;
+        xyz_output = fopen(strxyz,"w");
+        //for(int i=0;i<r->N;i++) fprintf(xyz_output, "%f,%d,%.16f,%.16f,%.16f\n",r->t,global[i].id,global[i].x,global[i].y,global[i].z);
+        for(int i=0;i<s->N;i++) fprintf(xyz_output, "%f,%d,%.16f,%.16f,%.16f\n",s->t,mini[i].id,mini[i].x,mini[i].y,mini[i].z);
+        fclose(xyz_output);
+        xyz_output_counter++;
+    }
+    */
+    /*
+    //double t1 = 48.15; double t2 = 48.4;
+    double t1 = 201.79; double t2 = 202;
     if(r->t > t1 && r->t < t2){
-        //int id = 236;
-        int id = 94;
-        int pid = 2;
+        int id = 236;
+        //int id = 94;
+        int pid = 1;
         struct reb_particle* mini = s->particles;
         for(int i=0;i<s->N;i++){
             if(mini[i].id == id){
@@ -216,14 +237,14 @@ void heartbeat(struct reb_simulation* r){
                 double dy = mini[i].y - mini[pid].y;
                 double dz = mini[i].z - mini[pid].z;
                 double d = sqrt(dx*dx + dy*dy + dz*dz);
-                double ax = mini[i].ax - mini[pid].ax;
-                double ay = mini[i].ay - mini[pid].ay;
-                double az = mini[i].az - mini[pid].az;
-                double a = sqrt(ax*ax + ay*ay + az*az);
-                printf("r->t=%f,s->dt=%.8f,a=%f,d=%f,ax=%.16f,ay=%.16f,az=%.16f,x=%.16f,y=%.16f,z=%.16f\n",r->t,s->dt,a,d,ax,ay,az,dx,dy,dz);
+                double vx = mini[i].vx - mini[pid].vx;
+                double vy = mini[i].vy - mini[pid].vy;
+                double vz = mini[i].vz - mini[pid].vz;
+                double v = sqrt(vx*vx + vy*vy + vz*vz);
+                printf("r->t=%f,s->dt=%.8f,v=%f,d=%f,vx=%.16f,vy=%.16f,vz=%.16f,x=%.16f,y=%.16f,z=%.16f\n",r->t,s->dt,v,d,vx,vy,vz,dx,dy,dz);
             }
         }
-    }
+    }*/
 }
 
 /*

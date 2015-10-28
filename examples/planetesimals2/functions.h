@@ -19,7 +19,7 @@ double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double 
 
 void calc_Hill2(struct reb_simulation* r);
 
-double calc_Etot(struct reb_simulation* a, double* K1, double* U1);
+double calc_Etot(struct reb_simulation* a, double* K1, double* U1, double softening);
 
 //void calc_ELtot(double* Etot, double* Ktot, double* Utot, double* Ltot, double planetesimal_mass, struct reb_simulation* r);
 
@@ -31,7 +31,7 @@ void planetesimal_forces_mini(struct reb_simulation *a);
 
 void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* const s, int* N_encounters, double* minimum_r, double* maximum_val, double ias_timestep);
 
-void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double ias_epsilon, int turn_planetesimal_forces_on, double ias_timestep);
+void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double ias_epsilon, int turn_planetesimal_forces_on, double ias_timestep, double timestep);
 
 void update_global(struct reb_simulation* const s, struct reb_simulation* const r, int N_encounters_previous, int N_encounters);
 
@@ -58,6 +58,7 @@ extern double t_prev;
 extern int N_encounters_tot; extern int N_encounters_previous;
 extern int N_tot;
 extern struct reb_simulation* r;
+extern double soft;
 
 
 #endif /* defined(____functions__) */

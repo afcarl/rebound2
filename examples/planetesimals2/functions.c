@@ -143,7 +143,7 @@ void calc_Hill2(struct reb_simulation* r){
     }
 }
 
-double calc_Etot(struct reb_simulation* a, double* K1, double* U1){
+double calc_Etot(struct reb_simulation* a, double* K1, double* U1, double soft){
     double m1,m2;
     const int N = a->N;
     const int N_active = a->N_active;
@@ -178,7 +178,7 @@ double calc_Etot(struct reb_simulation* a, double* K1, double* U1){
                 double ddx = dx - par2.x;
                 double ddy = dy - par2.y;
                 double ddz = dz - par2.z;
-                U -= G*m1*m2/sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
+                U -= G*m1*m2/sqrt(ddx*ddx + ddy*ddy + ddz*ddz + soft*soft);
             }
         }
     }
@@ -242,7 +242,7 @@ void planetesimal_forces_global(struct reb_simulation *r){
                 const double dy = body->y - p.y;
                 const double dz = body->z - p.z;
                 
-                const double rijinv2 = 1.0/(dx*dx + dy*dy + dz*dz);
+                const double rijinv2 = 1.0/(dx*dx + dy*dy + dz*dz + soft*soft);
                 const double ac = -Gm1*rijinv2*sqrt(rijinv2);
                 
                 body->ax += ac*dx;      //perturbation on planets due to planetesimals.
@@ -269,7 +269,7 @@ void planetesimal_forces_mini(struct reb_simulation *s){
             const double dy = body->y - p.y;
             const double dz = body->z - p.z;
             
-            const double rijinv2 = 1.0/(dx*dx + dy*dy + dz*dz);
+            const double rijinv2 = 1.0/(dx*dx + dy*dy + dz*dz + soft*soft);
             const double ac = -Gm1*rijinv2*sqrt(rijinv2);
             
             body->ax += ac*dx;      //perturbation on planets due to planetesimals.
@@ -293,7 +293,7 @@ void planetesimal_forces_mini(struct reb_simulation *s){
                 const double ddy = body->y - iy;
                 const double ddz = body->z - iz;
                 
-                const double rijinv2 = 1.0/(ddx*ddx + ddy*ddy + ddz*ddz);
+                const double rijinv2 = 1.0/(ddx*ddx + ddy*ddy + ddz*ddz + soft*soft);
                 const double ac = -Gm1*rijinv2*sqrt(rijinv2);
                 
                 body->ax += ac*ddx;     //perturbation on planets due to planetesimals.
@@ -305,13 +305,14 @@ void planetesimal_forces_mini(struct reb_simulation *s){
 }
 
 //initialize mini-simulation for close encounters
-void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double ias_epsilon, int turn_planetesimal_forces_on, double ias_timestep){
+void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double ias_epsilon, int turn_planetesimal_forces_on, double ias_timestep, double soft){
     s->N_active = r->N_active;
     s->integrator = REB_INTEGRATOR_IAS15;
     if(turn_planetesimal_forces_on==1)s->additional_forces = planetesimal_forces_mini;
     s->exact_finish_time = 1;
     s->ri_ias15.epsilon = ias_epsilon;
     s->dt = ias_timestep;
+    s->softening = soft;
     
     struct reb_particle* restrict const particles = r->particles;
     for(int k=0; k<s->N_active; k++){
