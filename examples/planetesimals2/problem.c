@@ -49,7 +49,6 @@ int main(int argc, char* argv[]){
     r->ri_hybrid.switch_ratio = HSR2;
     r->softening = soft;
     if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces_global;
-    //r->ri_whfast.corrector 	= 11;
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
     
     //Boundary stuff
@@ -141,7 +140,7 @@ int main(int argc, char* argv[]){
     
     //Initializing stuff
     legend(plntdir, lgnddir, xyz_check, CEprint, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,ias_epsilon,seed,HYBRID_ON);
-    E0 = calc_Etot(r, soft);
+    E0 = calc_Etot(r);
     
     //Ini mini
     s = reb_create_simulation();    //initialize mini simulation (IAS15)
@@ -162,30 +161,28 @@ int main(int argc, char* argv[]){
 void heartbeat(struct reb_simulation* r){
     double min_r = 1e8, max_val = 1e-8;
     if(HYBRID_ON == 1){
-        //check_for_encounter(r, s, &N_encounters, &min_r, &max_val, ias_timestep);
-        check_for_new_encounters(r, &N_encounters, &min_r, &max_val);
-        int dN = N_encounters - N_encounters_previous;
         if(N_encounters_previous == 0){
+            check_for_encounter(r, s, &N_encounters, &min_r, &max_val, ias_timestep);
             if(N_encounters > 0){//1st update in a while, update mini massive bodies, add particles, no int
                 s->t = r->t;
                 int N_active = s->N_active;
                 struct reb_particle* global = r->particles;
                 struct reb_particle* mini = s->particles;
                 for(int i=0; i<N_active; i++) mini[i] = global[i];
-                add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN,CEprint);
+                add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,CEprint);
                 update_previous_global_positions(r, N_encounters);
             } //otherwise do nothing.
         } else { //integrate existing mini, update global, add/remove new/old particles.
             reb_integrate(s, r->t);
-            check_existing_encounters(s, &N_encounters, &min_r, &max_val);
             update_global(s,r,N_encounters_previous);
-            add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,dN,CEprint);
+            check_for_encounter(r, s, &N_encounters, &min_r, &max_val, ias_timestep);
+            add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,CEprint);
             update_previous_global_positions(r, N_encounters);
         }
         update_encounter_indices(&N_encounters, &N_encounters_previous);
     }
     
-    double E1 = calc_Etot(r,soft);
+    double E1 = calc_Etot(r);
     //output error stuff - every iteration
     if(fabs((E1 - E0)/E0) > 1e-6 && err_print_msg == 0){
         err_print_msg++;

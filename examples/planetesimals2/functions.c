@@ -151,7 +151,7 @@ void calc_Hill2(struct reb_simulation* r){
     }
 }
 
-double calc_Etot(struct reb_simulation* a, double soft){
+double calc_Etot(struct reb_simulation* a){
     double m1,m2;
     const int N = a->N;
     const int N_active = a->N_active;
@@ -186,7 +186,7 @@ double calc_Etot(struct reb_simulation* a, double soft){
                 double ddx = dx - par2.x;
                 double ddy = dy - par2.y;
                 double ddz = dz - par2.z;
-                U -= G*m1*m2/sqrt(ddx*ddx + ddy*ddy + ddz*ddz + soft*soft);
+                U -= G*m1*m2/sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
             }
         }
     }
@@ -327,139 +327,6 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
     }
 }
 
-void check_for_new_encounters(struct reb_simulation* const r, int* N_encounters, double* min_r, double* max_val){
-    const int rN = r->N;
-    const int rN_active = r->N_active;
-    struct reb_particle* const global = r->particles;
-    struct reb_particle p0 = global[0];
-    int num_encounters = 0;
-    double HSR = r->ri_hybrid.switch_ratio;
-    for (int i=0; i<rN_active; i++){
-        struct reb_particle body = global[i];
-        const double dxi = p0.x - body.x;
-        const double dyi = p0.y - body.y;
-        const double dzi = p0.z - body.z;
-        const double r0i2 = dxi*dxi + dyi*dyi + dzi*dzi;
-        const double rhi = r0i2*Hill2[i];
-        //const double rhi = r0i2*pow((body.m/(p0.m*3.)), 2./3.); //can make this faster later
-        
-        for (int j=i+1; j<rN; j++){
-            struct reb_particle pj = global[j];
-            
-            _Bool skip = 0;
-            for(int k=0;k<N_encounters_previous && skip == 0;k++){
-                if(pj.id == previous_encounter_index[k]) skip = 1;
-            }
-            if(skip == 1) continue; //only look for new encounters, deal with existing later in mini
-            
-            const double dxj = p0.x - pj.x;
-            const double dyj = p0.y - pj.y;
-            const double dzj = p0.z - pj.z;
-            const double r0j2 = dxj*dxj + dyj*dyj + dzj*dzj;
-            const double rhj = r0j2*Hill2[j];
-            //const double rhj = r0j2*pow((pj.m/(p0.m*3.)), 2./3.); //can make this faster later
-            
-            const double dx = body.x - pj.x;
-            const double dy = body.y - pj.y;
-            const double dz = body.z - pj.z;
-            const double rij2 = dx*dx + dy*dy + dz*dz;
-            const double ratio = rij2/(rhi+rhj);    //(p-p distance/Hill radii)^2
-            
-            //if(fabs(pj.ax) + fabs(pj.ay) + fabs(pj.az) > 5000) printf("\nlarge acceleration at t=%f for par %d: ax=%f,ay=%f,az=%f",r->t,pj.id,pj.ax,pj.ay,pj.az);
-            
-            if(ratio < HSR){
-                num_encounters++;
-                if(num_encounters == 1) encounter_index[0] = pj.id;
-                else if(num_encounters > 1){//multiple close encounters
-                    encounter_index = realloc(encounter_index,num_encounters*sizeof(int));
-                    encounter_index[num_encounters - 1] = pj.id;
-                }
-            }
-            
-            //calculate dt*(vrel/rmin)
-            double vx = body.vx - pj.vx;
-            double vy = body.vy - pj.vy;
-            double vz = body.vz - pj.vz;
-            double vrel = sqrt(vx*vx + vy*vy + vz*vz);
-            double rr = sqrt(rij2);
-            double val = r->dt*vrel/rr;
-            if(rr < *min_r) *min_r = rr;
-            if(val > *max_val) *max_val = val;
-        }
-    }
-    *N_encounters = num_encounters;
-}
-
-void check_existing_encounters(struct reb_simulation* const s, int* N_encounters, double* min_r, double* max_val){
-    const int sN = s->N;
-    const int sN_active = s->N_active;
-    struct reb_particle* const mini = s->particles;
-    struct reb_particle p0 = mini[0];
-    int num_encounters = *N_encounters; //make sure to include existing encounters from global
-    double HSR = r->ri_hybrid.switch_ratio;
-    for (int i=0; i<sN_active; i++){
-        struct reb_particle body = mini[i];
-        const double dxi = p0.x - body.x;
-        const double dyi = p0.y - body.y;
-        const double dzi = p0.z - body.z;
-        const double r0i2 = dxi*dxi + dyi*dyi + dzi*dzi;
-        const double rhi = r0i2*Hill2[i];
-        
-        for (int j=i+1; j<sN; j++){
-            struct reb_particle pj = mini[j];
-            
-            const double dxj = p0.x - pj.x;
-            const double dyj = p0.y - pj.y;
-            const double dzj = p0.z - pj.z;
-            const double r0j2 = dxj*dxj + dyj*dyj + dzj*dzj;
-            const double rhj = r0j2*Hill2[j];
-            
-            const double dx = body.x - pj.x;
-            const double dy = body.y - pj.y;
-            const double dz = body.z - pj.z;
-            const double rij2 = dx*dx + dy*dy + dz*dz;
-            const double ratio = rij2/(rhi+rhj);    //(p-p distance/Hill radii)^2
-            
-            if(ratio < 1.03*HSR){
-                num_encounters++;
-                if(num_encounters == 1) encounter_index[0] = pj.id;
-                else if(num_encounters > 1){//multiple close encounters
-                    encounter_index = realloc(encounter_index,num_encounters*sizeof(int));
-                    encounter_index[num_encounters - 1] = pj.id;
-                }
-                
-                //Super close encounter
-                if(rij2 < 1e-7){    //(2*radius of Neptune in AU)^2
-                    fprintf(stderr,"\n\033[1mSuper Close Encounter at t=%f!\033[0m Particle %d and Planet %d collision should have happened, r=%f.\n",r->t,pj.id,body.id,sqrt(rij2));
-                }
-            }
-            /*
-            int par_id = 48;
-            int CE_yes = 0;
-            if(ratio < HSR) CE_yes = 1;
-            if(pj.id==par_id && body.id==1){
-                FILE *ff;
-                ff=fopen("output/par48.txt","a");
-            //printf("t=%f: CE par %d + pl %d,px=%f,py=%f,pz=%f,bx=%f,by=%f,bz=%f,r=%f,CE=%d\n",r->t,pj.id,body.id,pj.x,pj.y,pj.z,body.x,body.y,body.z,sqrt(rij2),CE_yes);
-            fprintf(ff,"t=%f: CE par %d + pl %d, r=%f,ratio=%f,HSR=%f,rhi=%f,rhj=%f,dxj=%f,dyj=%f,dzj=%f,CE=%d\n",r->t,pj.id,body.id,sqrt(rij2),ratio,1.03*HSR,rhi,rhj,pj.x,pj.y,pj.z,CE_yes);
-                fclose(ff);
-            }*/
-            
-            //calculate dt*(vrel/rmin)
-            double vx = body.vx - pj.vx;
-            double vy = body.vy - pj.vy;
-            double vz = body.vz - pj.vz;
-            double vrel = sqrt(vx*vx + vy*vy + vz*vz);
-            double rr = sqrt(rij2);
-            double val = r->dt*vrel/rr;
-            if(rr < *min_r) *min_r = rr;
-            if(val > *max_val) *max_val = val;
-        }
-    }
-    *N_encounters = num_encounters;
-}
-
-
 //collect the id/array number of all planetesimals involved in a close encounter
 void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* const s, int* N_encounters, double* min_r, double* max_val, double ias_timestep){
     const int rN = r->N;
@@ -481,13 +348,13 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
         
         for (int j=i+1; j<rN; j++){
             struct reb_particle pj = global[j];
-            
             double HSR = r->ri_hybrid.switch_ratio;
+            
             _Bool found_in_mini = 0;
             for(int k=sN_active; k<sN && found_in_mini == 0; k++){
                 if(global[j].id == mini[k].id){
                     pj = mini[k];
-                    HSR *= 1.07;    //HSR(mini) is a bit bigger so no constant enter/leave
+                    HSR *= 1.02;    //HSR(mini) is a bit bigger so no constant enter/leave
                 }
             }
             
@@ -522,9 +389,11 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
                     encounter_index[num_encounters - 1] = pj.id;
                 }
                 
-                //Super close encounter
+                //Boundary conditions
                 if(rij2 < 1e-7){    //(2*radius of Neptune in AU)^2
                     fprintf(stderr,"\n\033[1mSuper Close Encounter at t=%f!\033[0m Particle %d and Planet %d collision should have happened, r=%f.\n",r->t,pj.id,body.id,sqrt(rij2));
+                } else if(i==0 && rij2 > 1e4){
+                    fprintf(stderr,"\n\033[1mEjected Particle at t=%f!\033[0m Particle %d should be removed from the simulation, r=%f.\n",r->t,pj.id,sqrt(rij2));
                 }
             }
             
@@ -575,10 +444,11 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
     
 }
 
-void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters, int N_encounters_previous, int dN, char* CEprint){
+void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters, int N_encounters_previous, char* CEprint){
     int N_active = s->N_active;
     struct reb_particle* mini = s->particles;
     struct reb_particle* global = r->particles;
+    int dN = N_encounters - N_encounters_previous;
     
     //check to add particles
     for(int i=0;i<N_encounters;i++){
