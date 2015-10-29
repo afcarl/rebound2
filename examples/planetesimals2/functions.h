@@ -60,5 +60,8 @@ extern int N_tot;
 extern struct reb_simulation* r;
 extern double soft;
 
+//temp
+extern int output_error;
+
 
 #endif /* defined(____functions__) */

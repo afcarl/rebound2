@@ -18,7 +18,7 @@ void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", xyz_check[200]="output/planet_", CEprint[200]="output/planet_";
 
 double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft;
-int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, xyz_output_counter=0;
+int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, xyz_output_counter=0, output_error = 0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
 
@@ -160,6 +160,7 @@ int main(int argc, char* argv[]){
 
 void heartbeat(struct reb_simulation* r){
     double min_r = 1e8, max_val = 1e-8;
+    int output_error = 0;
     if(HYBRID_ON == 1){
         if(N_encounters_previous == 0){
             check_for_encounter(r, s, &N_encounters, &min_r, &max_val, ias_timestep);
@@ -183,7 +184,7 @@ void heartbeat(struct reb_simulation* r){
     }
     
     double E1 = calc_Etot(r);
-    int output_error = 0;
+
     //output error stuff - every iteration
     if(fabs((E1 - E0)/E0) > 1e-6){
         if(err_print_msg == 0){
