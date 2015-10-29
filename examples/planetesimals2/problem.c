@@ -183,17 +183,21 @@ void heartbeat(struct reb_simulation* r){
     }
     
     double E1 = calc_Etot(r);
+    int output_error = 0;
     //output error stuff - every iteration
-    if(fabs((E1 - E0)/E0) > 1e-6 && err_print_msg == 0){
-        err_print_msg++;
-        fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s\033[0m, t=%f.\n",plntdir,r->t);
+    if(fabs((E1 - E0)/E0) > 1e-6){
+        if(err_print_msg == 0){
+            err_print_msg++;
+            fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s\033[0m, t=%f.\n",plntdir,r->t);
+        }
+        output_error = 1;
     }
     
     //OUTPUT stuff*******
-    if(r->t > t_output || r->t <= r->dt){
+    if(r->t > t_output || r->t <= r->dt || output_error == 1){
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f\n",r->t,s->t,N_encounters_previous,min_r,max_val,fabs((E1 - E0)/E0));
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f\n",r->t,s->t,r->N,min_r,max_val,fabs((E1 - E0)/E0));
         fclose(append);
         
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
