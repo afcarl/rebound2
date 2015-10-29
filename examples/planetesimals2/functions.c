@@ -392,6 +392,10 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
                 //Boundary conditions
                 if(rij2 < 1e-7){    //(2*radius of Neptune in AU)^2
                     fprintf(stderr,"\n\033[1mSuper Close Encounter at t=%f!\033[0m Particle %d and Planet %d collision should have happened, r=%f.\n",r->t,pj.id,body.id,sqrt(rij2));
+                    FILE* ff;
+                    ff = fopen("CE_Np50.txt","a");
+                    fprintf(ff,"Super Close Encounter at t=%f! Particle %d and Planet %d collision should have happened, r=%f.\n",r->t,pj.id,body.id,sqrt(rij2));
+                    fclose(ff);
                 } if(i==0 && rij2 > 1e4){
                     fprintf(stderr,"\n\033[1mEjected Particle at t=%f!\033[0m Particle %d should be removed from the simulation, r=%f.\n",r->t,pj.id,sqrt(rij2));
                 }
