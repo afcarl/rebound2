@@ -15,7 +15,8 @@ def notNone(a):
 class Particle(Structure):
     """
     The main REBOUND particle data structure. 
-    This is an abstraction of the reb_particle structure in C
+    This is an abstraction of the reb_particle structure in C.
+    The Particle fields are set at the end of simulation.py to avoid circular references.
     
     Attributes
     ----------
@@ -31,25 +32,15 @@ class Particle(Structure):
         Particle radius
     lastcollision : float       
         Last time the particle had a physical collision (if checking for collisions)
-    c           : float       
+    c           : c_void_p (C void pointer) 
         Pointer to the cell the particle is currently in (if using tree code)
     id          : int         
         Particle ID (arbitrary, specified by the user)
+    ap          : c_void_p (C void pointer)
+        Pointer to additional parameters one might want to add to particles
+    _sim        : POINTER(rebound.Simulation)
+        Internal pointer to the parent simulation (used in C version of REBOUND)
     """
-    _fields_ = [("x", c_double),
-                ("y", c_double),
-                ("z", c_double),
-                ("vx", c_double),
-                ("vy", c_double),
-                ("vz", c_double),
-                ("ax", c_double),
-                ("ay", c_double),
-                ("az", c_double),
-                ("m", c_double),
-                ("r", c_double),
-                ("lastcollision", c_double),
-                ("c", c_void_p),
-                ("id", c_int)]
     def __str__(self):
         """ 
         Returns a string with the position and velocity of the particle.
@@ -103,7 +94,7 @@ class Particle(Structure):
             True longitude              (Default: 0)
         r           : float       
             Particle radius (only used for collisional simulations)
-        id          : int         
+        id          : int               (Default: 0)
             Particle ID (arbitrary, specified by the user)
         date        : string      
             For consistency with adding particles through horizons.  Not used here.
@@ -128,10 +119,16 @@ class Particle(Structure):
             raise ValueError("Cannot initialize particle from other particles.")
         cart = [x,y,z,vx,vy,vz]
         orbi = [primary,a,e,inc,Omega,omega,pomega,f,M,l,theta]
-        
-        self.m = 0. if m is None else m
-        self.id = -1 if id is None else id
-        self.r  =  0. if r is None else r
+       
+        self.ax = 0.
+        self.ay = 0.
+        self.az = 0.
+        self.m  = 0. if m is None else m
+        self.id = 0 if id is None else id
+        self.r  = 0. if r is None else r
+        self.lastcollision = 0.
+        self.c = None
+        self.ap = None
         
         if notNone(cart) and notNone(orbi):
                 raise ValueError("You cannot pass cartesian coordinates and orbital elements (and/or primary) at the same time.")
@@ -140,7 +137,7 @@ class Particle(Structure):
                 raise ValueError("Need to specify simulation when initializing particle with orbital elements.")
             if primary is None:
                 clibrebound.reb_get_com.restype = Particle
-                primary = clibrebound.reb_get_com(byref(simulation))
+                primary = clibrebound.reb_get_com(byref(simulation)) # this corresponds to adding in Jacobi coordinates
             if a is None:
                 raise ValueError("You need to pass a semi major axis to initialize the particle using orbital elements.")
             if e is None:
@@ -228,11 +225,11 @@ class Particle(Structure):
             self.vy = vy
             self.vz = vz
 
-    def calculate_orbit(self, simulation, primary):
+    def calculate_orbit(self, primary=None):
         """ 
         Returns a rebound.Orbit object with the keplerian orbital elements
         corresponding to the particle around the passed primary
-        (rebound.Particle). 
+        (rebound.Particle) If no primary is passed, defaults to Jacobi coordinates. 
         
         Examples
         --------
@@ -240,24 +237,31 @@ class Particle(Structure):
         >>> sim = rebound.Simulation()
         >>> sim.add(m=1.)
         >>> sim.add(x=1.,vy=1.)
-        >>> orbit = sim.particles[1].calculate_orbit(sim, sim.particles[0])
+        >>> orbit = sim.particles[1].calculate_orbit(sim.particles[0])
         >>> print(orbit.e) # gives the eccentricity
 
         Parameters
         ----------
-        simulation  : rebound.Simulation
-            Simulation instance associated with this particle (Required)
         primary : rebound.Particle
-            Central body (Required)
+            Central body (Optional. Default uses Jacobi coordinates)
         
         Returns
         -------
         A rebound.Orbit object 
         """
+        # First check whether this is particles[0]
+        clibrebound.reb_get_particle_index.restype = c_int
+        index = clibrebound.reb_get_particle_index(byref(self)) # first check this isn't particles[0]
+        if index == 0:
+            raise ValueError("Orbital elements for particle[0] not implemented.")
+
+        if primary is None:    # Use default, i.e., Jacobi coordinates
+            clibrebound.reb_get_jacobi_com.restype = Particle   # now return jacobi center of mass
+            primary = clibrebound.reb_get_jacobi_com(byref(self))
         
         err = c_int()
         clibrebound.reb_tools_particle_to_orbit_err.restype = rebound.Orbit
-        o = clibrebound.reb_tools_particle_to_orbit_err(c_double(simulation.G), self, primary, byref(err))
+        o = clibrebound.reb_tools_particle_to_orbit_err(c_double(self._sim.contents.G), self, primary, byref(err))
 
         if err.value == 1:
             raise ValueError("Primary has no mass.")
@@ -265,3 +269,53 @@ class Particle(Structure):
             raise ValueError("Particle and primary positions are the same.")
 
         return o
+
+    @property
+    def orb_radius(self):
+        return self.calculate_orbit().r
+    @property
+    def v(self):
+        return self.calculate_orbit().v 
+    @property
+    def h(self):
+        return self.calculate_orbit().h
+    @property
+    def P(self):
+        return self.calculate_orbit().P
+    @property
+    def n(self):
+        return self.calculate_orbit().n 
+    @property
+    def a(self):
+        return self.calculate_orbit().a 
+    @property
+    def e(self):
+        return self.calculate_orbit().e 
+    @property
+    def inc(self):
+        return self.calculate_orbit().inc 
+    @property
+    def Omega(self):
+        return self.calculate_orbit().Omega 
+    @property
+    def omega(self):
+        return self.calculate_orbit().omega 
+    @property
+    def pomega(self):
+        return self.calculate_orbit().pomega 
+    @property
+    def f(self):
+        return self.calculate_orbit().f 
+    @property
+    def M(self):
+        return self.calculate_orbit().M 
+    @property
+    def l(self):
+        return self.calculate_orbit().l 
+    @property
+    def theta(self):
+        return self.calculate_orbit().theta 
+    @property
+    def orbit(self):
+        return self.calculate_orbit()
+

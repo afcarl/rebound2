@@ -469,7 +469,7 @@ static int reb_integrator_ias15_step(struct reb_simulation* r) {
 				}
 			}
 		}
-        
+        /*
         struct reb_particle* mini = r->particles;
         for(int j=0;j<r->N_active;j++){
             for(int i=j+1;i<r->N;i++){
@@ -491,7 +491,7 @@ static int reb_integrator_ias15_step(struct reb_simulation* r) {
                     fclose(ff);
                 }
             }
-        }
+        }*/
 	}
 	// Set time back to initial value (will be updated below)
 	r->t = t_beginning;

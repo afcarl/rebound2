@@ -151,7 +151,7 @@ void calc_Hill2(struct reb_simulation* r){
     }
 }
 
-double calc_Etot(struct reb_simulation* a){
+double calc_Etot(struct reb_simulation* a, double soft){
     double m1,m2;
     const int N = a->N;
     const int N_active = a->N_active;
@@ -186,7 +186,7 @@ double calc_Etot(struct reb_simulation* a){
                 double ddx = dx - par2.x;
                 double ddy = dy - par2.y;
                 double ddz = dz - par2.z;
-                U -= G*m1*m2/sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
+                U -= G*m1*m2/sqrt(ddx*ddx + ddy*ddy + ddz*ddz + soft*soft);
             }
         }
     }
@@ -328,13 +328,10 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
 }
 
 //collect the id/array number of all planetesimals involved in a close encounter
-void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* const s, int* N_encounters, double* min_r, double* max_val, double ias_timestep){
+void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int N_encounters_previous, double* min_r, double* max_val, char* xyz_check){
     const int rN = r->N;
     const int rN_active = r->N_active;
-    const int sN = s->N;
-    const int sN_active = s->N_active;
     struct reb_particle* const global = r->particles;
-    struct reb_particle* const mini = s->particles;
     struct reb_particle p0 = global[0];
     int num_encounters = 0;
     for (int i=0; i<rN_active; i++){
@@ -351,10 +348,10 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
             double HSR = r->ri_hybrid.switch_ratio;
             
             _Bool found_in_mini = 0;
-            for(int k=sN_active; k<sN && found_in_mini == 0; k++){
-                if(global[j].id == mini[k].id){
-                    pj = mini[k];
+            for(int k=0; k<N_encounters_previous && found_in_mini == 0; k++){
+                if(global[j].id == previous_encounter_index[k]){
                     HSR *= 1.02;    //HSR(mini) is a bit bigger so no constant enter/leave
+                    found_in_mini = 1;
                 }
             }
             
@@ -390,10 +387,11 @@ void check_for_encounter(struct reb_simulation* const r, struct reb_simulation* 
                 }
                 
                 //Boundary conditions
-                if(rij2 < 1e-7){    //(2*radius of Neptune in AU)^2
+                if(rij2 < 2.5e-6){    //(radius of Neptune in AU)^2
                     fprintf(stderr,"\n\033[1mSuper Close Encounter at t=%f!\033[0m Particle %d and Planet %d collision should have happened, r=%f.\n",r->t,pj.id,body.id,sqrt(rij2));
+                    
                     FILE* ff;
-                    ff = fopen("CE_Np50.txt","a");
+                    ff = fopen(xyz_check,"a");
                     fprintf(ff,"Super Close Encounter at t=%f! Particle %d and Planet %d collision should have happened, r=%f.\n",r->t,pj.id,body.id,sqrt(rij2));
                     output_error = 1;
                     fclose(ff);
@@ -574,16 +572,6 @@ void clock_finish(clock_t t_ini, int N_encounters, char* legenddir){
     fprintf(ff,"Elapsed simulation time is %.2f s, with %d close encounters.\n",time,N_encounters);
     printf("\nSimulation complete. Elapsed simulation time is %.2f s, with %d close encounters.\n\n",time,N_encounters);
 }
-
-/*
-void clock_finish(clock_t timer, int N_encounters, char* legenddir){
-    timer = clock() - timer;
-    FILE *ff;
-    ff=fopen(legenddir, "a");
-    double result = ((float)timer)/CLOCKS_PER_SEC;
-    fprintf(ff,"Elapsed simulation time is %f s, with %d close encounters.\n",result,N_encounters);
-    printf("\n\nSimulation complete. Elapsed simulation time is %f s, with %d close encounters.\n\n",result,N_encounters);
-}*/
 
 void global_free(){
     free(encounter_index);
