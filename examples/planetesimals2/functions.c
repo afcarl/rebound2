@@ -335,13 +335,12 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int 
     struct reb_particle p0 = global[0];
     int num_encounters = 0;
     for (int i=0; i<rN_active; i++){
-        struct reb_particle body = global[i];
-        const double dxi = p0.x - body.x;
-        const double dyi = p0.y - body.y;
-        const double dzi = p0.z - body.z;
+        struct reb_particle* body = &(global[i]);
+        const double dxi = p0.x - body->x;
+        const double dyi = p0.y - body->y;
+        const double dzi = p0.z - body->z;
         const double r0i2 = dxi*dxi + dyi*dyi + dzi*dzi;
         const double rhi = r0i2*Hill2[i];
-        //const double rhi = r0i2*pow((body.m/(p0.m*3.)), 2./3.); //can make this faster later
         
         for (int j=i+1; j<rN; j++){
             struct reb_particle pj = global[j];
@@ -360,11 +359,10 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int 
             const double dzj = p0.z - pj.z;
             const double r0j2 = dxj*dxj + dyj*dyj + dzj*dzj;
             const double rhj = r0j2*Hill2[j];
-            //const double rhj = r0j2*pow((pj.m/(p0.m*3.)), 2./3.); //can make this faster later
             
-            const double dx = body.x - pj.x;
-            const double dy = body.y - pj.y;
-            const double dz = body.z - pj.z;
+            const double dx = body->x - pj.x;
+            const double dy = body->y - pj.y;
+            const double dz = body->z - pj.z;
             const double rij2 = dx*dx + dy*dy + dz*dz;
             const double ratio = rij2/(rhi+rhj);    //(p-p distance/Hill radii)^2
             
@@ -379,20 +377,28 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int 
             //}
             
             if(ratio < HSR){
-                double radius2 = body.r*body.r;
-                if(rij2 < radius2){//Collision
-                    fprintf(stderr,"\n\033[1mSuper Close Encounter at t=%f!\033[0m Particle %d and Planet %d collision should have happened, r=%f.\n",r->t,pj.id,body.id,sqrt(rij2));
+                double radius2 = body->r*body->r;
+                if(rij2 < radius2){//Collision - automatically removed from mini since not added to encounter index
+                    //physics
+                    double massive_mass = body->m;
+                    double invmass = 1.0/(massive_mass + planetesimal_mass);
+                    body->vx = (body->vx*massive_mass + pj.vx*planetesimal_mass)*invmass;
+                    body->vy = (body->vy*massive_mass + pj.vx*planetesimal_mass)*invmass;
+                    body->vz = (body->vz*massive_mass + pj.vx*planetesimal_mass)*invmass;
+                    body->m += planetesimal_mass;
                     
-                    FILE* ff;
-                    ff = fopen(xyz_check,"a");
-                    fprintf(ff,"Super Close Encounter at t=%f! Particle %d and Planet %d collision should have happened, r=%f.\n",r->t,pj.id,body.id,sqrt(rij2));
-                    output_error = 1;
-                    fclose(ff);
-                }
-                else if(i==0 && rij2 > 1e4){//Ejection
+                    fprintf(stderr,"\n\033[1mCollision at t=%f!\033[0m between Particle %d and Planet %d, r=%f, planet radius=%f.\n",r->t,pj.id,body->id,sqrt(rij2),sqrt(radius2));
+                    
+                    reb_remove(r,j,1);
+                    
+                    //FILE* ff;
+                    //ff = fopen(xyz_check,"a");
+                    //fprintf(ff,"Super Close Encounter at t=%f! Particle %d and Planet %d collision should have happened, r=%f.\n",r->t,pj.id,body.id,sqrt(rij2));
+                    //output_error = 1;
+                    //fclose(ff);
+                } else if(i==0 && rij2 > 1e4){//Ejection
                     fprintf(stderr,"\n\033[1mEjected Particle at t=%f!\033[0m Particle %d should be removed from the simulation, r=%f.\n",r->t,pj.id,sqrt(rij2));
-                }
-                else {//add to CE array
+                } else {//add to CE array
                     num_encounters++;
                     if(num_encounters == 1) encounter_index[0] = pj.id;
                     else if(num_encounters > 1){//multiple close encounters
@@ -403,9 +409,9 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int 
             }
             
             //calculate dt*(vrel/rmin)
-            double vx = body.vx - pj.vx;
-            double vy = body.vy - pj.vy;
-            double vz = body.vz - pj.vz;
+            double vx = body->vx - pj.vx;
+            double vy = body->vy - pj.vy;
+            double vz = body->vz - pj.vz;
             double vrel = sqrt(vx*vx + vy*vy + vz*vz);
             double rr = sqrt(rij2);
             double val = r->dt*vrel/rr;
