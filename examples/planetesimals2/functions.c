@@ -379,7 +379,6 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int 
             if(ratio < HSR){
                 double radius2 = body->r*body->r;
                 if(rij2 < radius2){//Collision - automatically removed from mini since not added to encounter index
-                    //physics
                     double massive_mass = body->m;
                     double invmass = 1.0/(massive_mass + planetesimal_mass);
                     body->vx = (body->vx*massive_mass + pj.vx*planetesimal_mass)*invmass;
@@ -431,12 +430,16 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
     //update massive and planetesimal particles
     for(int i=0; i<N_active; i++) global[i] = mini[i];  //massive particles, always in same order
     for(int j=0; j<N_encounters_previous; j++){
-        _Bool particle_update = 0;
         int PEI = previous_encounter_index[j];          //encounter index == global[EI].id
-        for(int k=0;particle_update==0 && k<N_encounters_previous;k++){
-            int mini_index = N_active + k;
-            if(mini[mini_index].id == PEI){
-                global[PEI] = mini[mini_index];
+        _Bool found_mini = 0;
+        _Bool particle_update = 0;
+        int mini_index;
+        for(int k=N_active;found_mini==0 && k<s->N;k++){
+            if(mini[k].id == PEI){ mini_index = k; found_mini = 1; }
+        }
+        for(int k=N_active;particle_update==0 && k<r->N;k++){
+            if(global[k].id == PEI && found_mini == 1){
+                global[k] = mini[mini_index];
                 particle_update = 1;
             }
         }
@@ -470,18 +473,24 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
                 if(EI == previous_encounter_index[j]) index_found = 1;
             }
             if(index_found == 0){//couldn't find index
-                struct reb_particle pt = global[EI];
-                reb_add(s,pt);
-                N_encounters_tot++;
-                
-                FILE *output;
-                output = fopen(CEprint, "a");
-                fprintf(output,"t=%f,%f particle %d added. dN == %d, N_close_encounters=%d\n",r->t,s->t,EI,dN,N_encounters);
-                for(int i=0;i<N_encounters;i++)fprintf(output,"EI[%d]=%d,",i,encounter_index[i]);
-                fprintf(output,"\n");
-                for(int i=0;i<N_encounters_previous;i++)fprintf(output,"PEI[%d]=%d,",i,previous_encounter_index[i]);
-                fprintf(output,"\n");
-                fclose(output);
+                _Bool added_particle = 0;
+                for(int k=r->N_active && added_particle == 0;k<r->N;k++){
+                    if(global[k].id == EI){
+                        struct reb_particle pt = global[k];
+                        reb_add(s,pt);
+                        N_encounters_tot++;
+                        added_particle = 1;
+                        
+                        FILE *output;
+                        output = fopen(CEprint, "a");
+                        fprintf(output,"t=%f,%f particle %d added. dN == %d, N_close_encounters=%d\n",r->t,s->t,EI,dN,N_encounters);
+                        for(int i=0;i<N_encounters;i++)fprintf(output,"EI[%d]=%d,",i,encounter_index[i]);
+                        fprintf(output,"\n");
+                        for(int i=0;i<N_encounters_previous;i++)fprintf(output,"PEI[%d]=%d,",i,previous_encounter_index[i]);
+                        fprintf(output,"\n");
+                        fclose(output);
+                    }
+                }
             }
         }
     }
@@ -496,9 +505,9 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
             }
             if(index_found == 0){//couldn't find index, remove particle
                 int removed_particle = 0;
-                for(int k=0;removed_particle==0 && k<N_encounters_previous;k++){
-                    if(mini[k+N_active].id == PEI){
-                        removed_particle = reb_remove(s,k+N_active,1);    //remove particle
+                for(int k=N_active;removed_particle==0 && k<s->N;k++){
+                    if(mini[k].id == PEI){
+                        removed_particle = reb_remove(s,k,1);    //remove particle
                         
                         FILE *output;
                         output = fopen(CEprint, "a");
@@ -514,7 +523,6 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
         }
     }
 }
-
 
 void update_previous_global_positions(struct reb_simulation* r, int N_encounters){
     struct reb_particle* global = r->particles;

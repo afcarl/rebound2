@@ -25,7 +25,7 @@ struct reb_simulation* s; struct reb_simulation* r;
 int main(int argc, char* argv[]){
     //switches
     int turn_planetesimal_forces_on = 1;
-    int p1_satellite_on = 0;
+    int p1_satellite_on = 1;
     HYBRID_ON = 1;
     
     //System constants
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]){
     double a2=1, m2=5e-5, e2=0.01, inc2=reb_random_normal(0.00001);
     struct reb_particle p2 = {0};
     p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, inc2, 0, 0, 0);
-    p2.r = 0.1;
+    p2.r = 1.6e-4;
     p2.id = r->N;
     reb_add(r, p2);
     dt_ini = calc_dt(r, m2, star.m, a2, dRHill, dt_ini);
@@ -207,12 +207,12 @@ void heartbeat(struct reb_simulation* r){
     }
     
     /*
-    if(r->t > 112.6 && r->t < 113.2){
+    if(r->t > 0.8 && r->t < 1.2){
         struct reb_particle* global = r->particles;
         struct reb_particle* mini = s->particles;
         char strxyz[50] = {0};
         char temp[7];
-        strcat(strxyz,"xyz_temp/outOct28mini_");
+        strcat(strxyz,"xyz_temp/outNov5mini_");
         sprintf(temp, "%d",xyz_output_counter);
         strcat(strxyz,temp);
         strcat(strxyz,".txt");
@@ -222,8 +222,7 @@ void heartbeat(struct reb_simulation* r){
         for(int i=0;i<s->N;i++) fprintf(xyz_output, "%f,%d,%.16f,%.16f,%.16f\n",s->t,mini[i].id,mini[i].x,mini[i].y,mini[i].z);
         fclose(xyz_output);
         xyz_output_counter++;
-    }
-    */
+    }*/
     /*
     //double t1 = 48.15; double t2 = 48.4;
     double t1 = 201.79; double t2 = 202;
