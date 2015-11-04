@@ -379,15 +379,8 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int 
             //}
             
             if(ratio < HSR){
-                num_encounters++;
-                if(num_encounters == 1) encounter_index[0] = pj.id;
-                else if(num_encounters > 1){//multiple close encounters
-                    encounter_index = realloc(encounter_index,num_encounters*sizeof(int));
-                    encounter_index[num_encounters - 1] = pj.id;
-                }
-                
-                //Boundary conditions
-                if(rij2 < 2.5e-6){    //(radius of Neptune in AU)^2
+                double radius2 = body.r*body.r;
+                if(rij2 < radius2){//Collision
                     fprintf(stderr,"\n\033[1mSuper Close Encounter at t=%f!\033[0m Particle %d and Planet %d collision should have happened, r=%f.\n",r->t,pj.id,body.id,sqrt(rij2));
                     
                     FILE* ff;
@@ -395,8 +388,17 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int 
                     fprintf(ff,"Super Close Encounter at t=%f! Particle %d and Planet %d collision should have happened, r=%f.\n",r->t,pj.id,body.id,sqrt(rij2));
                     output_error = 1;
                     fclose(ff);
-                } if(i==0 && rij2 > 1e4){
+                }
+                else if(i==0 && rij2 > 1e4){//Ejection
                     fprintf(stderr,"\n\033[1mEjected Particle at t=%f!\033[0m Particle %d should be removed from the simulation, r=%f.\n",r->t,pj.id,sqrt(rij2));
+                }
+                else {//add to CE array
+                    num_encounters++;
+                    if(num_encounters == 1) encounter_index[0] = pj.id;
+                    else if(num_encounters > 1){//multiple close encounters
+                        encounter_index = realloc(encounter_index,num_encounters*sizeof(int));
+                        encounter_index[num_encounters - 1] = pj.id;
+                    }
                 }
             }
             
