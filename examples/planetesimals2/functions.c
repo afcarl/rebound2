@@ -151,7 +151,7 @@ void calc_Hill2(struct reb_simulation* r){
     }
 }
 
-double calc_Etot(struct reb_simulation* a, double soft){
+double calc_Etot(struct reb_simulation* a, double soft, double dE_collision){
     double m1,m2;
     const int N = a->N;
     const int N_active = a->N_active;
@@ -191,7 +191,7 @@ double calc_Etot(struct reb_simulation* a, double soft){
         }
     }
     
-    return K + U;
+    return K + U + dE_collision;
 }
 
 //Calculates 'a' and 'e' of planet each output.
@@ -328,7 +328,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
 }
 
 //collect the id/array number of all planetesimals involved in a close encounter
-void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int N_encounters_previous, double* min_r, double* max_val, char* xyz_check){
+void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int N_encounters_previous, double* min_r, double* max_val, char* xyz_check, double* dE_collision, double soft){
     const int rN = r->N;
     const int rN_active = r->N_active;
     struct reb_particle* const global = r->particles;
@@ -381,14 +381,58 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int 
                 if(rij2 < radius2){//Collision - automatically removed from mini since not added to encounter index
                     double massive_mass = body->m;
                     double invmass = 1.0/(massive_mass + planetesimal_mass);
+                    
+                    /*
+                    double K_i = 0, U_i= 0, K_f = 0, U_f = 0, G = r->G;
+                    K_i += 0.5*planetesimal_mass*(pj.vx*pj.vx + pj.vy*pj.vy + pj.vz*pj.vz);
+                    K_i += 0.5*body->m*(body->vx*body->vx + body->vy*body->vy + body->vz*body->vz);
+                    for(int k=0;k<rN;k++){
+                        struct reb_particle par = global[k];
+                        if(par.id == pj.id) continue;
+                        int parm;
+                        if(k < rN_active) parm = par.m; else parm = planetesimal_mass;
+                        double dx = pj.x - par.x;
+                        double dy = pj.y - par.y;
+                        double dz = pj.z - par.z;
+                        U_i -= G*planetesimal_mass*parm/sqrt(dx*dx + dy*dy + dz*dz + soft*soft);
+                    }
+                    for(int k=0;k<rN;k++){
+                        struct reb_particle par = global[k];
+                        if(par.id == pj.id || par.id == body->id) continue;
+                        int parm;
+                        if(k < rN_active) parm = par.m; else parm = planetesimal_mass;
+                        double dx = body->x - par.x;
+                        double dy = body->y - par.y;
+                        double dz = body->z - par.z;
+                        U_i -= G*body->m*parm/sqrt(dx*dx + dy*dy + dz*dz + soft*soft);
+                    }*/
+                    double E_i = calc_Etot(r, soft, 0);
+                    
                     body->vx = (body->vx*massive_mass + pj.vx*planetesimal_mass)*invmass;
-                    body->vy = (body->vy*massive_mass + pj.vx*planetesimal_mass)*invmass;
-                    body->vz = (body->vz*massive_mass + pj.vx*planetesimal_mass)*invmass;
+                    body->vy = (body->vy*massive_mass + pj.vy*planetesimal_mass)*invmass;
+                    body->vz = (body->vz*massive_mass + pj.vz*planetesimal_mass)*invmass;
                     body->m += planetesimal_mass;
                     
-                    fprintf(stderr,"\n\033[1mCollision at t=%f!\033[0m between Particle %d and Planet %d, r=%f, planet radius=%f.\n",r->t,pj.id,body->id,sqrt(rij2),sqrt(radius2));
+                    fprintf(stderr,"\n\033[1mCollision at t=%.16f!\033[0m between Particle %d and Planet %d, r=%f, planet radius=%f.\n",r->t,pj.id,body->id,sqrt(rij2),sqrt(radius2));
                     
                     reb_remove(r,j,1);
+                    
+                    double E_f = calc_Etot(r, soft, 0);
+                    *dE_collision += E_i - E_f;
+                    
+                    /*
+                    K_f += 0.5*body->m*(body->vx*body->vx + body->vy*body->vy + body->vz*body->vz);
+                    for(int k=0;k<rN;k++){
+                        struct reb_particle par = global[k];
+                        if(par.id == pj.id || par.id == body->id) continue;
+                        int parm;
+                        if(k < rN_active) parm = par.m; else parm = planetesimal_mass;
+                        double dx = body->x - par.x;
+                        double dy = body->y - par.y;
+                        double dz = body->z - par.z;
+                        U_f -= G*body->m*parm/sqrt(dx*dx + dy*dy + dz*dz + soft*soft);
+                    }*/
+
                     
                     //FILE* ff;
                     //ff = fopen(xyz_check,"a");
