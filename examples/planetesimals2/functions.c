@@ -381,31 +381,6 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int 
                 if(rij2 < radius2){//Collision - automatically removed from mini since not added to encounter index
                     double massive_mass = body->m;
                     double invmass = 1.0/(massive_mass + planetesimal_mass);
-                    
-                    /*
-                    double K_i = 0, U_i= 0, K_f = 0, U_f = 0, G = r->G;
-                    K_i += 0.5*planetesimal_mass*(pj.vx*pj.vx + pj.vy*pj.vy + pj.vz*pj.vz);
-                    K_i += 0.5*body->m*(body->vx*body->vx + body->vy*body->vy + body->vz*body->vz);
-                    for(int k=0;k<rN;k++){
-                        struct reb_particle par = global[k];
-                        if(par.id == pj.id) continue;
-                        int parm;
-                        if(k < rN_active) parm = par.m; else parm = planetesimal_mass;
-                        double dx = pj.x - par.x;
-                        double dy = pj.y - par.y;
-                        double dz = pj.z - par.z;
-                        U_i -= G*planetesimal_mass*parm/sqrt(dx*dx + dy*dy + dz*dz + soft*soft);
-                    }
-                    for(int k=0;k<rN;k++){
-                        struct reb_particle par = global[k];
-                        if(par.id == pj.id || par.id == body->id) continue;
-                        int parm;
-                        if(k < rN_active) parm = par.m; else parm = planetesimal_mass;
-                        double dx = body->x - par.x;
-                        double dy = body->y - par.y;
-                        double dz = body->z - par.z;
-                        U_i -= G*body->m*parm/sqrt(dx*dx + dy*dy + dz*dz + soft*soft);
-                    }*/
                     double E_i = calc_Etot(r, soft, 0);
                     
                     body->vx = (body->vx*massive_mass + pj.vx*planetesimal_mass)*invmass;
@@ -419,26 +394,11 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int 
                     
                     double E_f = calc_Etot(r, soft, 0);
                     *dE_collision += E_i - E_f;
-                    
-                    /*
-                    K_f += 0.5*body->m*(body->vx*body->vx + body->vy*body->vy + body->vz*body->vz);
-                    for(int k=0;k<rN;k++){
-                        struct reb_particle par = global[k];
-                        if(par.id == pj.id || par.id == body->id) continue;
-                        int parm;
-                        if(k < rN_active) parm = par.m; else parm = planetesimal_mass;
-                        double dx = body->x - par.x;
-                        double dy = body->y - par.y;
-                        double dz = body->z - par.z;
-                        U_f -= G*body->m*parm/sqrt(dx*dx + dy*dy + dz*dz + soft*soft);
-                    }*/
-
-                    
-                    //FILE* ff;
-                    //ff = fopen(xyz_check,"a");
-                    //fprintf(ff,"Super Close Encounter at t=%f! Particle %d and Planet %d collision should have happened, r=%f.\n",r->t,pj.id,body.id,sqrt(rij2));
-                    //output_error = 1;
-                    //fclose(ff);
+                
+                    FILE* ff;
+                    ff = fopen(xyz_check,"a");
+                    fprintf(ff,"Collision at t=%f! between Particle %d and Planet %d, r=%f.\n",r->t,pj.id,body->id,sqrt(rij2));
+                    fclose(ff);
                 } else if(i==0 && rij2 > 1e4){//Ejection
                     fprintf(stderr,"\n\033[1mEjected Particle at t=%f!\033[0m Particle %d should be removed from the simulation, r=%f.\n",r->t,pj.id,sqrt(rij2));
                 } else {//add to CE array
