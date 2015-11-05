@@ -377,6 +377,10 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
             if(ratio < HSR){
                 double radius2 = body->r*body->r;
                 if(rij2 < radius2){//Collision - automatically removed from mini since not added to encounter index
+                    if(j < rN_active){
+                        fprintf(stderr,"\n\033[1mCollision at t=%f between %d and %d, both are Massive bodies. Can't deal with this collisional physics right now. Exiting. \033[0m \n",r->t,pj.id,body->id);
+                        exit(0);
+                    }
                     double massive_mass = body->m;
                     double invmass = 1.0/(massive_mass + planetesimal_mass);
                     double E_i = calc_Etot(r, soft, 0);
