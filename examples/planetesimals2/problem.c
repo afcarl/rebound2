@@ -162,7 +162,7 @@ void heartbeat(struct reb_simulation* r){
     double min_r = 1e8, max_val = 1e-8;
     if(HYBRID_ON == 1){
         if(N_encounters_previous == 0){
-            check_for_encounter(r, &N_encounters, N_encounters_previous, &min_r, &max_val, xyz_check, &dE_collision, soft);
+            check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, xyz_check, &dE_collision, soft);
             if(N_encounters > 0){//1st update in a while, update mini massive bodies, add particles, no int
                 s->t = r->t;
                 int N_active = s->N_active;
@@ -175,7 +175,7 @@ void heartbeat(struct reb_simulation* r){
         } else { //integrate existing mini, update global, add/remove new/old particles.
             reb_integrate(s, r->t);
             update_global(s,r,N_encounters_previous);
-            check_for_encounter(r, &N_encounters, N_encounters_previous, &min_r, &max_val, xyz_check, &dE_collision, soft);
+            check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, xyz_check, &dE_collision, soft);
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,CEprint);
             update_previous_global_positions(r, N_encounters);
         }
@@ -196,18 +196,18 @@ void heartbeat(struct reb_simulation* r){
     
     //OUTPUT stuff*******
     if(r->t > t_output || r->t <= r->dt || output_error == 1){
+        struct reb_particle* global = r->particles;
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f\n",r->t,s->t,r->N,min_r,max_val,fabs((E1 - E0)/E0));
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,r->N,min_r,max_val,fabs((E1 - E0)/E0),global[1].vx,global[1].vy,global[1].vz,global[1].m);
         fclose(append);
         
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
         t_output = r->t*t_log_output;
         n_o++;
     }
-    
     /*
-    if(r->t > 0.8 && r->t < 1.2){
+    if(r->t > 0.7 && r->t < 0.83){
         struct reb_particle* global = r->particles;
         struct reb_particle* mini = s->particles;
         char strxyz[50] = {0};
@@ -218,32 +218,13 @@ void heartbeat(struct reb_simulation* r){
         strcat(strxyz,".txt");
         FILE *xyz_output;
         xyz_output = fopen(strxyz,"w");
-        //for(int i=0;i<r->N;i++) fprintf(xyz_output, "%f,%d,%.16f,%.16f,%.16f\n",r->t,global[i].id,global[i].x,global[i].y,global[i].z);
+        //for(int i=0;i<r->N_active;i++) fprintf(xyz_output, "%f,%d,%.16f,%.16f,%.16f\n",r->t,global[i].id,global[i].x,global[i].y,global[i].z);
+        //for(int i=0;i<r->N;i++){
+        //    if(global[i].id == 887) fprintf(xyz_output, "%f,%d,%.16f,%.16f,%.16f\n",r->t,global[i].id,global[i].x,global[i].y,global[i].z);
+        //}
         for(int i=0;i<s->N;i++) fprintf(xyz_output, "%f,%d,%.16f,%.16f,%.16f\n",s->t,mini[i].id,mini[i].x,mini[i].y,mini[i].z);
         fclose(xyz_output);
         xyz_output_counter++;
-    }*/
-    /*
-    //double t1 = 48.15; double t2 = 48.4;
-    double t1 = 201.79; double t2 = 202;
-    if(r->t > t1 && r->t < t2){
-        int id = 236;
-        //int id = 94;
-        int pid = 1;
-        struct reb_particle* mini = s->particles;
-        for(int i=0;i<s->N;i++){
-            if(mini[i].id == id){
-                double dx = mini[i].x - mini[pid].x;
-                double dy = mini[i].y - mini[pid].y;
-                double dz = mini[i].z - mini[pid].z;
-                double d = sqrt(dx*dx + dy*dy + dz*dz);
-                double vx = mini[i].vx - mini[pid].vx;
-                double vy = mini[i].vy - mini[pid].vy;
-                double vz = mini[i].vz - mini[pid].vz;
-                double v = sqrt(vx*vx + vy*vy + vz*vz);
-                printf("r->t=%f,s->dt=%.8f,v=%f,d=%f,vx=%.16f,vy=%.16f,vz=%.16f,x=%.16f,y=%.16f,z=%.16f\n",r->t,s->dt,v,d,vx,vy,vz,dx,dy,dz);
-            }
-        }
     }*/
 }
 

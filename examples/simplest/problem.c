@@ -9,13 +9,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void heartbeat(struct reb_simulation* r){
-	//printf("%f\n",r->t);
-}
+void heartbeat(struct reb_simulation* r);
+
+struct reb_simulation* r;
 
 int main(int argc, char* argv[]) {
-	struct reb_simulation* r = reb_create_simulation();
-	r->dt = 0.1;
+	r = reb_create_simulation();
+	r->dt = 0.01;
 	r->heartbeat = heartbeat;
     //r->usleep = 80000;
     r->integrator=REB_INTEGRATOR_WHFAST;
@@ -47,3 +47,10 @@ int main(int argc, char* argv[]) {
     printf("values fini: x=%f,y=%f,vx=%f,vy=%f,t=%f\n",out.x,out.y,out.vx,out.vy,r->t);
 }
 
+void heartbeat(struct reb_simulation* r){
+    struct reb_particle* global = r->particles;
+    if(r->t > 0.1 && r->t < 0.13){
+        global[1].m += 1e-6;
+        printf("t=%.16f, m=%.16f\n",r->t,global[1].m);
+    }
+}

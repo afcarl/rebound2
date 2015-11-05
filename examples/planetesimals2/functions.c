@@ -156,12 +156,11 @@ double calc_Etot(struct reb_simulation* a, double soft, double dE_collision){
     const int N = a->N;
     const int N_active = a->N_active;
     const double G = a->G;
-    double L = 0, U = 0, K = 0;
+    double U = 0, K = 0;
     struct reb_particle* const particles = a->particles;
     for(int i=0;i<N;i++){
         struct reb_particle par = particles[i];
         if(i < N_active) m1 = par.m; else m1 = planetesimal_mass;
-        //m1 = par.m;
         const double dvx = par.vx;
         const double dvy = par.vy;
         const double dvz = par.vz;
@@ -170,10 +169,10 @@ double calc_Etot(struct reb_simulation* a, double soft, double dE_collision){
         const double dz = par.z;
         
         //L_tot = m*(r x v)
-        const double hx = dy*dvz - dz*dvy;
-        const double hy = dz*dvx - dx*dvz;
-        const double hz = dx*dvy - dy*dvx;
-        L += m1*sqrt ( hx*hx + hy*hy + hz*hz );
+        //const double hx = dy*dvz - dz*dvy;
+        //const double hy = dz*dvx - dx*dvz;
+        //const double hz = dx*dvy - dy*dvx;
+        //L += m1*sqrt ( hx*hx + hy*hy + hz*hz );
         
         //E_tot
         K += 0.5*m1*(dvx*dvx + dvy*dvy + dvz*dvz);
@@ -182,7 +181,6 @@ double calc_Etot(struct reb_simulation* a, double soft, double dE_collision){
             for(int j=i+1;j<N;j++){
                 struct reb_particle par2 = particles[j];
                 if(j < N_active) m2 = par2.m; else m2 = planetesimal_mass;
-                //m2 = par2.m;
                 double ddx = dx - par2.x;
                 double ddy = dy - par2.y;
                 double ddz = dz - par2.z;
@@ -328,10 +326,10 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
 }
 
 //collect the id/array number of all planetesimals involved in a close encounter
-void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int N_encounters_previous, double* min_r, double* max_val, char* xyz_check, double* dE_collision, double soft){
+void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int* N_encounters, int N_encounters_previous, double* min_r, double* max_val, char* xyz_check, double* dE_collision, double soft){
     const int rN = r->N;
     const int rN_active = r->N_active;
-    struct reb_particle* const global = r->particles;
+    struct reb_particle* global = r->particles;
     struct reb_particle p0 = global[0];
     int num_encounters = 0;
     for (int i=0; i<rN_active; i++){
@@ -387,6 +385,8 @@ void check_for_encounter(struct reb_simulation* const r, int* N_encounters, int 
                     body->vy = (body->vy*massive_mass + pj.vy*planetesimal_mass)*invmass;
                     body->vz = (body->vz*massive_mass + pj.vz*planetesimal_mass)*invmass;
                     body->m += planetesimal_mass;
+                    struct reb_particle* mini = s->particles;
+                    mini[i] = *body;     //need to update mini accordingly
                     
                     fprintf(stderr,"\n\033[1mCollision at t=%.16f!\033[0m between Particle %d and Planet %d, r=%f, planet radius=%f.\n",r->t,pj.id,body->id,sqrt(rij2),sqrt(radius2));
                     
