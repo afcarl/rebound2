@@ -194,15 +194,14 @@ void heartbeat(struct reb_simulation* r){
     
     //OUTPUT stuff*******
     if(r->t > t_output || r->t <= r->dt){
-        struct reb_particle* global = r->particles;
+        t_output = r->t*t_log_output;
+        n_o++;
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%.16f,%.16f,%.16f,%.16f\n",r->t,s->t,r->N,min_r,max_val,fabs((E1 - E0)/E0),global[1].vx,global[1].vy,global[1].vz,global[1].m);
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%f,%d\n",r->t,s->t,r->N,min_r,max_val,fabs((E1 - E0)/E0),t_output,n_o);
         fclose(append);
         
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
-        t_output = r->t*t_log_output;
-        n_o++;
     }
     /*
     if(r->t > 0.7 && r->t < 0.83){
