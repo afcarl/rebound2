@@ -99,6 +99,7 @@ int main(int argc, char* argv[]){
     //Outputting points
     n_output = 50000;
     t_log_output = pow(tmax + 1, 1./(n_output - 1));
+    
     t_output = dt_ini;
     
     //orbiting planetesimal/satellite
