@@ -185,17 +185,15 @@ void heartbeat(struct reb_simulation* r){
     double E1 = calc_Etot(r, soft, dE_collision);
 
     //output error stuff - every iteration
-    int output_error = 0;
     if(fabs((E1 - E0)/E0) > 1e-6){
         if(err_print_msg == 0){
             err_print_msg++;
             fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s\033[0m, t=%.16f.\n",plntdir,r->t);
         }
-        output_error = 1;
     }
     
     //OUTPUT stuff*******
-    if(r->t > t_output || r->t <= r->dt || output_error == 1){
+    if(r->t > t_output || r->t <= r->dt){
         struct reb_particle* global = r->particles;
         FILE *append;
         append = fopen(plntdir, "a");
