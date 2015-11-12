@@ -6,7 +6,6 @@ import math
 import matplotlib.cm as cm
 pi = math.pi
 
-#names=['time (years)','Semi-Major Axis (AU)','Eccentricity','(Ei - E0) / E0','(Ki - K0) / K0','(Ui - U0) / U0','Total Ang. Mom.','planet-star distance']
 names=['time (years)','time (mini, years)','Energy and N_CE', 'r_min','(dt*v_rel/r)_max', 'Energy','Kinetic','Potential','Energy and r_min','Energy and (dt*v_rel/r)_max', 'ax','ay','az','par20CE']
 colors=['b','g','m','r','c','y']
 
@@ -51,6 +50,7 @@ if arg1 == 5:
 plt.ylabel(names[arg1])
 plt.xlabel('time (years)')
 plt.yscale('log')
+#plt.savefig(file_name+'.png')
 plt.show()
 
 #Get number of massive planets
