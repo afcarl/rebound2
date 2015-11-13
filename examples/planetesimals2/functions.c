@@ -126,13 +126,14 @@ void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, st
 
 void output_to_mercury_swifter(struct reb_simulation* r, double HSR){
     struct reb_particle* restrict const particles = r->particles;
+    struct reb_particle p0 = particles[0];
     int N = r->N;
     int N_active = r->N_active;
     
     //Need Hill radii for swifter too.
     FILE* swifter = fopen("swifter_mercury_output/swifter_pl.in","w");
-    FILE* mercuryb = fopen("swifter_mercury_output/mercury_big.in","w");
-    FILE* mercurys = fopen("swifter_mercury_output/mercury_small.in","w");
+    FILE* mercuryb = fopen("swifter_mercury_output/mercury_big.in.sample","w");
+    FILE* mercurys = fopen("swifter_mercury_output/mercury_small.in.sample","w");
     
     //mercury initial:
     fprintf(mercuryb,")O+_06 Big-body initial data  (WARNING: Do not delete this line!!)\n");
@@ -153,32 +154,33 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR){
     fprintf(swifter," 0. 0. 0.\n");
     fprintf(swifter," 0. 0. 0.\n");
     
-    //MERCURY
+    //MERCURY - heliocentric coords
     double AU_d = 0.017202424;  //converts [v] = AU/(yr/2pi) -> AU/day
     //massive planets
     for(int i=1;i<N_active;i++){
         struct reb_particle p = particles[i];
         fprintf(mercuryb," BODY%d      m=%.16f r=%f\n",i,p.m,HSR);
-        fprintf(mercuryb," %.16f %.16f %.16f\n",p.x,p.y,p.z);
-        fprintf(mercuryb," %.16f %.16f %.16f\n",p.vx*AU_d,p.vy*AU_d,p.vz*AU_d);      //AU/day
+        fprintf(mercuryb," %.16f %.16f %.16f\n",p.x - p0.x,p.y - p0.y,p.z - p0.x);
+        fprintf(mercuryb," %.16f %.16f %.16f\n",(p.vx - p0.vx)*AU_d,(p.vy - p0.vy)*AU_d,(p.vz - p0.vz)*AU_d);   //AU/day
+        fprintf(mercuryb," 0. 0. 0.\n");
     }
     //mini bodies
     for(int i=N_active;i<N;i++){
         struct reb_particle p = particles[i];
         fprintf(mercurys," BODY%d      m=%.16f r=%f\n",i,planetesimal_mass,HSR);
-        fprintf(mercurys," %.16f %.16f %.16f\n",p.x,p.y,p.z);
-        fprintf(mercurys," %.16f %.16f %.16f\n",p.vx*AU_d,p.vy*AU_d,p.vz*AU_d);      //AU/day
+        fprintf(mercurys," %.16f %.16f %.16f\n",p.x - p0.x,p.y - p0.y,p.z - p0.x);     //AU, heliocentric
+        fprintf(mercurys," %.16f %.16f %.16f\n",(p.vx - p0.vx)*AU_d,(p.vy - p0.vy)*AU_d,(p.vz - p0.vz)*AU_d);   //AU/day
+        fprintf(mercurys," 0. 0. 0.\n");
     }
     
-    //SWIFTER
-    struct reb_particle p0 = particles[0];
-    for(int i=0;i<N;i++){
+    //SWIFTER - heliocentric coords, requires G=1 so already good.
+    for(int i=1;i<N;i++){
         struct reb_particle p = particles[i];
         double m; if(i >= N_active) m = planetesimal_mass; else m = p.m;
         fprintf(swifter," %d %.16f %f\n",i+1,m,sqrt(Hill2[i]));
         fprintf(swifter," %f\n",p.r);
-        fprintf(swifter," %.16f %.16f %.16f\n",p.x - p0.x, p.y - p0.y, p.z - p0.z);          //heliocentric
-        fprintf(swifter," %.16f %.16f %.16f\n",p.vx - p0.vx, p.vy - p0.vx, p.vz - p0.vx);    //heliocentric
+        fprintf(swifter," %.16f %.16f %.16f\n",p.x - p0.x, p.y - p0.y, p.z - p0.z);
+        fprintf(swifter," %.16f %.16f %.16f\n",p.vx - p0.vx, p.vy - p0.vx, p.vz - p0.vx);
     }
     
     fclose(mercuryb);

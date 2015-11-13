@@ -28,7 +28,7 @@ int main(int argc, char* argv[]){
     int turn_planetesimal_forces_on = 1;
     int p1_satellite_on = 0;
     int mercury_swifter_output = 1;
-    output_movie = 1;
+    output_movie = 0;
     
     //System constants
     tmax = atof(argv[1]);
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]){
     dt_ini = calc_dt(r, m1, star.m, a1, dRHill, 1);
     
     //planet 2
-    double a2=1, m2=5e-5, e2=0.01, inc2=reb_random_normal(0.00001);
+    double a2=1.0, m2=5e-4, e2=0.01, inc2=reb_random_normal(0.00001);
     struct reb_particle p2 = {0};
     p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, inc2, 0, 0, 0);
     p2.r = 1.6e-4;
