@@ -124,6 +124,68 @@ void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, st
     
 }
 
+void output_to_mercury_swifter(struct reb_simulation* r, double HSR){
+    struct reb_particle* restrict const particles = r->particles;
+    int N = r->N;
+    int N_active = r->N_active;
+    
+    //Need Hill radii for swifter too.
+    FILE* swifter = fopen("swifter_mercury_output/swifter_pl.in","w");
+    FILE* mercuryb = fopen("swifter_mercury_output/mercury_big.in","w");
+    FILE* mercurys = fopen("swifter_mercury_output/mercury_small.in","w");
+    
+    //mercury initial:
+    fprintf(mercuryb,")O+_06 Big-body initial data  (WARNING: Do not delete this line!!)\n");
+    fprintf(mercuryb,") Lines beginning with `)' are ignored.\n");
+    fprintf(mercuryb,")---------------------------------------------------------------------\n");
+    fprintf(mercuryb," style (Cartesian, Asteroidal, Cometary) = Cartesian\n");
+    fprintf(mercuryb," epoch (in days) = 2451000.5\n");
+    fprintf(mercuryb,")---------------------------------------------------------------------\n");
+    fprintf(mercurys,")O+_06 Big-body initial data  (WARNING: Do not delete this line!!)\n");
+    fprintf(mercurys,") Lines beginning with `)' are ignored.\n");
+    fprintf(mercurys,")---------------------------------------------------------------------\n");
+    fprintf(mercurys," style (Cartesian, Asteroidal, Cometary) = Cartesian\n");
+    fprintf(mercurys,")---------------------------------------------------------------------\n");
+    
+    //swifter initial - Nbodies and sun:
+    fprintf(swifter," %d\n",N);
+    fprintf(swifter," 1 %f\n",particles[0].m);
+    fprintf(swifter," 0. 0. 0.\n");
+    fprintf(swifter," 0. 0. 0.\n");
+    
+    //MERCURY
+    double AU_d = 0.017202424;  //converts [v] = AU/(yr/2pi) -> AU/day
+    //massive planets
+    for(int i=1;i<N_active;i++){
+        struct reb_particle p = particles[i];
+        fprintf(mercuryb," BODY%d      m=%.16f r=%f\n",i,p.m,HSR);
+        fprintf(mercuryb," %.16f %.16f %.16f\n",p.x,p.y,p.z);
+        fprintf(mercuryb," %.16f %.16f %.16f\n",p.vx*AU_d,p.vy*AU_d,p.vz*AU_d);      //AU/day
+    }
+    //mini bodies
+    for(int i=N_active;i<N;i++){
+        struct reb_particle p = particles[i];
+        fprintf(mercurys," BODY%d      m=%.16f r=%f\n",i,planetesimal_mass,HSR);
+        fprintf(mercurys," %.16f %.16f %.16f\n",p.x,p.y,p.z);
+        fprintf(mercurys," %.16f %.16f %.16f\n",p.vx*AU_d,p.vy*AU_d,p.vz*AU_d);      //AU/day
+    }
+    
+    //SWIFTER
+    struct reb_particle p0 = particles[0];
+    for(int i=0;i<N;i++){
+        struct reb_particle p = particles[i];
+        double m; if(i >= N_active) m = planetesimal_mass; else m = p.m;
+        fprintf(swifter," %d %.16f %f\n",i+1,m,sqrt(Hill2[i]));
+        fprintf(swifter," %f\n",p.r);
+        fprintf(swifter," %.16f %.16f %.16f\n",p.x - p0.x, p.y - p0.y, p.z - p0.z);          //heliocentric
+        fprintf(swifter," %.16f %.16f %.16f\n",p.vx - p0.vx, p.vy - p0.vx, p.vz - p0.vx);    //heliocentric
+    }
+    
+    fclose(mercuryb);
+    fclose(mercurys);
+    fclose(swifter);
+}
+
 double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double dRHill, double dt_prev){
     if(dRHill > r->ri_hybrid.switch_ratio){
         printf("\033[1mWarning!\033[0m dRhill !> N_RHill. Setting dRhill = N_Rhill/2 \n");
@@ -570,6 +632,22 @@ void update_encounter_indices(int* N_encounters, int* N_encounters_previous){
     //reset encounter counters.
     *N_encounters_previous = *N_encounters;
     *N_encounters = 0;
+}
+
+void output_frames(struct reb_particle* particles, char* name, int N, double t, int* movie_counter){
+    char str[50] = {0};
+    char temp[7];
+    strcat(str, name);
+    int mc = *movie_counter;
+    sprintf(temp, "%d",mc);
+    strcat(str,temp);
+    strcat(str,".txt");
+    FILE *output;
+    output = fopen(str,"w");
+    for(int i=0;i<N;i++) fprintf(output, "%f,%d,%.16f,%.16f,%.16f\n",t,particles[i].id,particles[i].x,particles[i].y,particles[i].z);
+    fclose(output);
+    mc++;
+    *movie_counter = mc;
 }
 
 time_t clock_start(){

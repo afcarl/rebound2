@@ -18,15 +18,17 @@ void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", xyz_check[200]="output/planet_", CEprint[200]="output/planet_";
 
 double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft, dE_collision = 0;
-int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, xyz_output_counter=0;
+int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, output_movie, movie_counter = 0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
 
 int main(int argc, char* argv[]){
     //switches
+    HYBRID_ON = 1;
     int turn_planetesimal_forces_on = 1;
     int p1_satellite_on = 0;
-    HYBRID_ON = 1;
+    int mercury_swifter_output = 1;
+    output_movie = 1;
     
     //System constants
     tmax = atof(argv[1]);
@@ -99,7 +101,6 @@ int main(int argc, char* argv[]){
     //Outputting points
     n_output = 50000;
     t_log_output = pow(tmax + 1, 1./(n_output - 1));
-    
     t_output = dt_ini;
     
     //orbiting planetesimal/satellite
@@ -138,6 +139,9 @@ int main(int argc, char* argv[]){
     previous_encounter_index = malloc(sizeof(int));
     Hill2 = calloc(sizeof(double),r->N);             //Hill radius squared for fast calc.
     calc_Hill2(r);
+    
+    //input files for swifter/mercury
+    if(mercury_swifter_output == 1) output_to_mercury_swifter(r, sqrt(HSR2));
     
     //Initializing stuff
     legend(plntdir, lgnddir, xyz_check, CEprint, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,ias_epsilon,seed,HYBRID_ON);
@@ -204,26 +208,16 @@ void heartbeat(struct reb_simulation* r){
         
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
     }
-    /*
-    if(r->t > 0.7 && r->t < 0.83){
-        struct reb_particle* global = r->particles;
-        struct reb_particle* mini = s->particles;
-        char strxyz[50] = {0};
-        char temp[7];
-        strcat(strxyz,"xyz_temp/outNov5mini_");
-        sprintf(temp, "%d",xyz_output_counter);
-        strcat(strxyz,temp);
-        strcat(strxyz,".txt");
-        FILE *xyz_output;
-        xyz_output = fopen(strxyz,"w");
-        //for(int i=0;i<r->N_active;i++) fprintf(xyz_output, "%f,%d,%.16f,%.16f,%.16f\n",r->t,global[i].id,global[i].x,global[i].y,global[i].z);
-        //for(int i=0;i<r->N;i++){
-        //    if(global[i].id == 887) fprintf(xyz_output, "%f,%d,%.16f,%.16f,%.16f\n",r->t,global[i].id,global[i].x,global[i].y,global[i].z);
-        //}
-        for(int i=0;i<s->N;i++) fprintf(xyz_output, "%f,%d,%.16f,%.16f,%.16f\n",s->t,mini[i].id,mini[i].x,mini[i].y,mini[i].z);
-        fclose(xyz_output);
-        xyz_output_counter++;
-    }*/
+    
+    //output movie
+    double t_movie_i = 0.7, t_movie_f = 0.83;
+    if(output_movie == 1 && r->t > t_movie_i && r->t < t_movie_f){
+        char* name = "movie_output/outNov5_";
+        int send_mini = 0;
+        struct reb_particle* particles; int N; double t;
+        if(send_mini == 1){particles=s->particles; N=s->N; t=r->t;} else {particles=r->particles; N=r->N; t=s->t;}
+        output_frames(particles, name, N, t, &movie_counter);
+    }
 }
 
 /*

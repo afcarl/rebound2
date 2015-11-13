@@ -1,3 +1,4 @@
+examples/planetesimals2/xyz_temp/*
 examples/planetesimals2/instruments/*
 examples/planetesimals2/output/*
 examples/planetesimals2/saved_output/*

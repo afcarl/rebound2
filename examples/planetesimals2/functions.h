@@ -15,6 +15,8 @@
 //FUNCTIONS******************************
 void legend(char* planetdir, char* legenddir, char* xyz_print, char* CEprint, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, int N_planetesimals, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, double epsilon, int seed, int HYBRID_ON);
 
+void output_to_mercury_swifter(struct reb_simulation* r, double HSR);
+
 double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double dRHill, double dt_prev);
 
 void calc_Hill2(struct reb_simulation* r);
@@ -40,6 +42,8 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
 void update_previous_global_positions(struct reb_simulation* r, int N_encounters);
 
 void update_encounter_indices(int* N_encounters, int* N_encounters_previous);
+
+void output_frames(struct reb_particle* particles, char* name, int N, double t, int* movie_counter);
 
 time_t clock_start();
 
