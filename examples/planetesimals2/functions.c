@@ -132,8 +132,8 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR){
     
     //Need Hill radii for swifter too.
     FILE* swifter = fopen("swifter_mercury_output/swifter_pl.in","w");
-    FILE* mercuryb = fopen("swifter_mercury_output/mercury_big.in.sample","w");
-    FILE* mercurys = fopen("swifter_mercury_output/mercury_small.in.sample","w");
+    FILE* mercuryb = fopen("swifter_mercury_output/mercury_big.in","w");
+    FILE* mercurys = fopen("swifter_mercury_output/mercury_small.in","w");
     
     //mercury initial:
     fprintf(mercuryb,")O+_06 Big-body initial data  (WARNING: Do not delete this line!!)\n");
