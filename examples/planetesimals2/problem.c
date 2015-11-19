@@ -37,7 +37,7 @@ int main(int argc, char* argv[]){
     //planetesimal_mass = M_planetesimals/N_planetesimals;  //mass of each planetesimal
     planetesimal_mass = 3e-8;                               //each is a moon
     double M_planetesimals = planetesimal_mass*N_planetesimals;
-    double ias_epsilon = 1e-8;                              //sets precision of ias15
+    double ias_epsilon = 1e-7;                              //sets precision of ias15
     double HSR2 = 5;                                        //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
     double dRHill = 0.125;                                   //Sets the timestep - max # Hill radii/timestep.
     soft = 1.6e-4/10.;                                          //gravity softening length scale in AU. R_Neptune/100.
@@ -67,8 +67,9 @@ int main(int argc, char* argv[]){
     star.id     = 0;            // 0 = star
 	reb_add(r, star);
     
+    /*
     //planet 1
-    double a1=0.7, m1=5e-4, e1=0, inc1 = reb_random_normal(0.00001);
+    double a1=2.0, m1=5e-4, e1=0, inc1 = reb_random_normal(0.00001);
     struct reb_particle p1 = {0};
     p1 = reb_tools_orbit_to_particle(r->G, star, m1, a1, e1, inc1, 0, 0, 0);
     p1.r = 1.6e-4;              //I think radius of particle is in AU!
@@ -77,14 +78,48 @@ int main(int argc, char* argv[]){
     dt_ini = calc_dt(r, m1, star.m, a1, dRHill, 1);
     
     //planet 2
-    double a2=1.0, m2=5e-4, e2=0.01, inc2=reb_random_normal(0.00001);
+    double a2=5.0, m2=5e-4, e2=0.01, inc2=reb_random_normal(0.00001);
     struct reb_particle p2 = {0};
     p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, inc2, 0, 0, 0);
     p2.r = 1.6e-4;
     p2.id = r->N;
     reb_add(r, p2);
     dt_ini = calc_dt(r, m2, star.m, a2, dRHill, dt_ini);
+    */
     
+     double a1=5.2, m1=0.0009543, e1=0, inc1 = reb_random_normal(0.00001);
+     struct reb_particle p1 = {0};
+     p1 = reb_tools_orbit_to_particle(r->G, star, m1, a1, e1, inc1, 0, 0, 0.85);
+     p1.r = 0.00046732617;
+     p1.id = r->N;
+     reb_add(r, p1);
+     dt_ini = calc_dt(r, m1, star.m, a1, dRHill, 1);
+     
+     //planet 2
+     double a2=9.5, m2=0.0002857, e2=0.0, inc2=reb_random_normal(0.00001);
+     struct reb_particle p2 = {0};
+     p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, inc2, 0, 0, 0);
+     p2.r = 0.000389256877;
+     p2.id = r->N;
+     reb_add(r, p2);
+     dt_ini = calc_dt(r, m2, star.m, a2, dRHill, dt_ini);
+     
+     double a3=19.2, m3=0.00004365, e3=0.0, inc3=reb_random_normal(0.00001);
+     struct reb_particle p3 = {0};
+     p3 = reb_tools_orbit_to_particle(r->G, star, m3, a3, e3, inc3, 0, 0, 0);
+     p3.r = 0.000169534499;
+     p3.id = r->N;
+     reb_add(r, p3);
+     dt_ini = calc_dt(r, m3, star.m, a3, dRHill, dt_ini);
+     
+     double a4=30.1, m4=5e-4, e4=0.0, inc4=reb_random_normal(0.00001);
+     struct reb_particle p4 = {0};
+     p4 = reb_tools_orbit_to_particle(r->G, star, m4, a4, e4, inc4, 0, 0, 0);
+     p4.r = 1.6e-4;
+     p4.id = r->N;
+     reb_add(r, p4);
+     dt_ini = calc_dt(r, m4, star.m, a4, dRHill, dt_ini);
+     
     //calc dt
     if(r->integrator == REB_INTEGRATOR_IAS15){
         dt_ini /= 3.;
@@ -99,7 +134,7 @@ int main(int argc, char* argv[]){
     if(r->integrator != REB_INTEGRATOR_WH) reb_move_to_com(r);
     
     //Outputting points
-    n_output = 50000;
+    n_output = 10000;
     t_log_output = pow(tmax + 1, 1./(n_output - 1));
     t_output = dt_ini;
     
@@ -141,7 +176,7 @@ int main(int argc, char* argv[]){
     calc_Hill2(r);
     
     //input files for swifter/mercury
-    if(mercury_swifter_output == 1) output_to_mercury_swifter(r, sqrt(HSR2));
+    if(mercury_swifter_output == 1) output_to_mercury_swifter(r, sqrt(HSR2), tmax, n_output);
     
     //Initializing stuff
     legend(plntdir, lgnddir, xyz_check, CEprint, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,ias_epsilon,seed,HYBRID_ON);
@@ -187,18 +222,9 @@ void heartbeat(struct reb_simulation* r){
         update_encounter_indices(&N_encounters, &N_encounters_previous);
     }
     
-    double E1 = calc_Etot(r, soft, dE_collision);
-
-    //output error stuff - every iteration
-    if(fabs((E1 - E0)/E0) > 1e-6){
-        if(err_print_msg == 0){
-            err_print_msg++;
-            fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s\033[0m, t=%.16f.\n",plntdir,r->t);
-        }
-    }
-    
     //OUTPUT stuff*******
     if(r->t > t_output || r->t <= r->dt){
+        double E1 = calc_Etot(r, soft, dE_collision);
         t_output = r->t*t_log_output;
         n_o++;
         FILE *append;
@@ -219,6 +245,15 @@ void heartbeat(struct reb_simulation* r){
         output_frames(particles, name, N, t, &movie_counter);
     }
 }
+
+/*
+ //output error stuff - every iteration
+ if(fabs((E1 - E0)/E0) > 1e-6){
+ if(err_print_msg == 0){
+ err_print_msg++;
+ fprintf(stderr,"\n\033[1mERROR EXCEEDED for %s\033[0m, t=%.16f.\n",plntdir,r->t);
+ }
+ }*/
 
 /*
  for(int i=0;i<r->N;i++){
@@ -276,4 +311,5 @@ void heartbeat(struct reb_simulation* r){
  fclose(append);
  E_curr = E_ini; L_curr = L_ini;
  }*/
+
 

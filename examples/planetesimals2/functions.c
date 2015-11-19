@@ -124,7 +124,7 @@ void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, st
     
 }
 
-void output_to_mercury_swifter(struct reb_simulation* r, double HSR){
+void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax, int n_output){
     struct reb_particle* restrict const particles = r->particles;
     struct reb_particle p0 = particles[0];
     int N = r->N;
@@ -132,8 +132,65 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR){
     
     //Need Hill radii for swifter too.
     FILE* swifter = fopen("swifter_mercury_output/swifter_pl.in","w");
+    FILE* swifterparams = fopen("swifter_mercury_output/param.in","w");
     FILE* mercuryb = fopen("swifter_mercury_output/mercury_big.in","w");
     FILE* mercurys = fopen("swifter_mercury_output/mercury_small.in","w");
+    
+    //conversion options - swifter
+    int alt_units = 0;
+    double mass_conv = 1, vel_conv = 1, time_conv = 1;
+    if(alt_units == 1){
+        mass_conv = 2.959139768995959e-04;  //solar masses to this unit
+        vel_conv = 0.017202424;             //converts [v] = AU/(yr/2pi) -> AU/day
+        time_conv = 58.09155423;            //converts [yr/2pi] -> days
+    }
+    
+    //swifter initial - Nbodies and sun:
+    fprintf(swifter," %d\n",N);
+    fprintf(swifter," 1 %.16f\n",particles[0].m*mass_conv);
+    fprintf(swifter," .0 .0 .0\n");
+    fprintf(swifter," .0 .0 .0\n");
+    
+    //SWIFTER - heliocentric coords
+    for(int i=1;i<N;i++){
+        struct reb_particle p = particles[i];
+        double m; if(i >= N_active) m = planetesimal_mass*mass_conv; else m = p.m*mass_conv;
+        fprintf(swifter," %d %.16f %f\n",i+1,m,sqrt(Hill2[i]));
+        fprintf(swifter," %f\n",p.r);
+        fprintf(swifter," %.16f %.16f %.16f\n",p.x - p0.x, p.y - p0.y, p.z - p0.z);
+        fprintf(swifter," %.16f %.16f %.16f\n",(p.vx - p0.vx)*vel_conv,(p.vy - p0.vy)*vel_conv,(p.vz - p0.vz)*vel_conv);
+    }
+    
+    //SWIFTER - Other params (time, dt, etc.)
+    int steps = tmax/(r->dt*n_output);
+    fprintf(swifterparams,"! \n");
+    fprintf(swifterparams,"! Parameter file for Swifter, with N=%d total bodies. \n",r->N);
+    fprintf(swifterparams,"! \n! \n");
+    fprintf(swifterparams,"T0             0.0E0 \n");
+    fprintf(swifterparams,"TSTOP          %e        !In units where G=1\n",tmax);
+    fprintf(swifterparams,"DT             %e        !In units where G=1\n",r->dt);
+    fprintf(swifterparams,"PL_IN          swifter_pl.in\n");
+    fprintf(swifterparams,"!TP_IN         tp.in     !Commented out for now, no test par\n");
+    fprintf(swifterparams,"IN_TYPE        ASCII\n");
+    fprintf(swifterparams,"ISTEP_OUT      %d        !# timesteps between outputs \n",steps);
+    fprintf(swifterparams,"BIN_OUT        out.dat\n");
+    fprintf(swifterparams,"OUT_TYPE       REAL8\n");
+    fprintf(swifterparams,"OUT_FORM       XV\n");
+    fprintf(swifterparams,"OUT_STAT       NEW\n");
+    fprintf(swifterparams,"ISTEP_DUMP     10000     !Dump parameters (incase of crash)\n");
+    fprintf(swifterparams,"J2             0.0E0\n");
+    fprintf(swifterparams,"J4             0.0E0\n");
+    fprintf(swifterparams,"CHK_CLOSE      yes\n");
+    fprintf(swifterparams,"CHK_RMIN       -1.0\n");
+    fprintf(swifterparams,"CHK_RMAX       1000.0\n");
+    fprintf(swifterparams,"CHK_EJECT      -1.0\n");
+    fprintf(swifterparams,"CHK_QMIN       -1.0\n");
+    fprintf(swifterparams,"!CHK_QMIN_COORD HELIO\n");
+    fprintf(swifterparams,"!CHK_QMIN_RANGE 1.0 1000.0\n");
+    fprintf(swifterparams,"ENC_OUT        enc.dat\n");
+    fprintf(swifterparams,"EXTRA_FORCE    no\n");
+    fprintf(swifterparams,"BIG_DISCARD    yes\n");
+    fprintf(swifterparams,"RHILL_PRESENT  yes\n");
     
     //mercury initial:
     fprintf(mercuryb,")O+_06 Big-body initial data  (WARNING: Do not delete this line!!)\n");
@@ -148,15 +205,9 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR){
     fprintf(mercurys," style (Cartesian, Asteroidal, Cometary) = Cartesian\n");
     fprintf(mercurys,")---------------------------------------------------------------------\n");
     
-    //swifter initial - Nbodies and sun:
-    fprintf(swifter," %d\n",N);
-    fprintf(swifter," 1 %f\n",particles[0].m);
-    fprintf(swifter," 0. 0. 0.\n");
-    fprintf(swifter," 0. 0. 0.\n");
-    
     //MERCURY - heliocentric coords
-    double AU_d = 0.017202424;  //converts [v] = AU/(yr/2pi) -> AU/day
     //massive planets
+    double AU_d = 0.017202424; //converts [v] = AU/(yr/2pi) -> AU/day
     for(int i=1;i<N_active;i++){
         struct reb_particle p = particles[i];
         fprintf(mercuryb," BODY%d      m=%.16f r=%f\n",i,p.m,HSR);
@@ -173,19 +224,10 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR){
         fprintf(mercurys," 0. 0. 0.\n");
     }
     
-    //SWIFTER - heliocentric coords, requires G=1 so already good.
-    for(int i=1;i<N;i++){
-        struct reb_particle p = particles[i];
-        double m; if(i >= N_active) m = planetesimal_mass; else m = p.m;
-        fprintf(swifter," %d %.16f %f\n",i+1,m,sqrt(Hill2[i]));
-        fprintf(swifter," %f\n",p.r);
-        fprintf(swifter," %.16f %.16f %.16f\n",p.x - p0.x, p.y - p0.y, p.z - p0.z);
-        fprintf(swifter," %.16f %.16f %.16f\n",p.vx - p0.vx, p.vy - p0.vx, p.vz - p0.vx);
-    }
-    
     fclose(mercuryb);
     fclose(mercurys);
     fclose(swifter);
+    fclose(swifterparams);
 }
 
 double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double dRHill, double dt_prev){
