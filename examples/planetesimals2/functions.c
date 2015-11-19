@@ -16,7 +16,7 @@
 #include "../../src/rebound.h"
 #include "../../src/integrator_whfast.h"
 
-void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, int N_planetesimals, double inner, double outer, double powerlaw, double mp, double a, double e, double Ms, double drh, double epsilon, int seed, int HYBRID_ON){
+void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, struct reb_simulation* r, double tmax, double m_planetesimal, double total_planetesimal_mass, int N_planetesimals, double inner, double outer, double powerlaw, double Ms, double drh, double epsilon, int seed, int HYBRID_ON){
     
     int N_active = r->N_active, N = r->N;
     
@@ -97,10 +97,8 @@ void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, st
     strcat(legenddir, file);
     FILE *ff;
     ff=fopen(legenddir, "w");
-    fprintf(ff,"General:\ndt, tmax, N_active, ri_hybrid.switch_ratio, dRHill, ias_epsilon, Seed, Integrator\n");
-    fprintf(ff,"%f,%.1f,%d,%f,%f,%.2e,%d,%s \n\n",r->dt,tmax,N_active,r->ri_hybrid.switch_ratio,drh,epsilon,seed,intgrtr);
-    fprintf(ff,"Planet/Star:\nplanet mass, semi-major axis, e_initial, Stellar Mass\n");
-    fprintf(ff,"%f,%f,%f,%f\n\n",mp,a,e,Ms);
+    fprintf(ff,"General:\ndt, tmax, Stellar mass, N_active, ri_hybrid.switch_ratio, dRHill, ias_epsilon, Seed, Integrator\n");
+    fprintf(ff,"%f,%.1f,%f,%d,%f,%f,%.2e,%d,%s \n\n",r->dt,tmax,Ms,N_active,r->ri_hybrid.switch_ratio,drh,epsilon,seed,intgrtr);
     fprintf(ff,"Planetesimal:\nN_planetesimals, Mtot_planetsimal, m_planetesimal, planetesimal boundary conditions: inner/outer edge, powerlaw\n");
     fprintf(ff,"%d,%.10f,%.15f,%f,%f,%f\n\n",N-N_active,total_planetesimal_mass, m_planetesimal, inner, outer, powerlaw);
     fclose(ff);

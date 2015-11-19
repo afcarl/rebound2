@@ -28,7 +28,7 @@ int main(int argc, char* argv[]){
     int turn_planetesimal_forces_on = 1;
     int p1_satellite_on = 0;
     int mercury_swifter_output = 1;
-    output_movie = 0;
+    output_movie = 1;
     
     //System constants
     tmax = atof(argv[1]);
@@ -37,7 +37,7 @@ int main(int argc, char* argv[]){
     //planetesimal_mass = M_planetesimals/N_planetesimals;  //mass of each planetesimal
     planetesimal_mass = 3e-8;                               //each is a moon
     double M_planetesimals = planetesimal_mass*N_planetesimals;
-    double ias_epsilon = 1e-7;                              //sets precision of ias15
+    double ias_epsilon = 1e-8;                              //sets precision of ias15
     double HSR2 = 5;                                        //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
     double dRHill = 0.125;                                   //Sets the timestep - max # Hill radii/timestep.
     soft = 1.6e-4/10.;                                          //gravity softening length scale in AU. R_Neptune/100.
@@ -67,6 +67,8 @@ int main(int argc, char* argv[]){
     star.id     = 0;            // 0 = star
 	reb_add(r, star);
     
+    double amin, amax;  //for planetesimal disk
+    
     /*
     //planet 1
     double a1=2.0, m1=5e-4, e1=0, inc1 = reb_random_normal(0.00001);
@@ -87,39 +89,43 @@ int main(int argc, char* argv[]){
     dt_ini = calc_dt(r, m2, star.m, a2, dRHill, dt_ini);
     */
     
-     double a1=5.2, m1=0.0009543, e1=0, inc1 = reb_random_normal(0.00001);
-     struct reb_particle p1 = {0};
-     p1 = reb_tools_orbit_to_particle(r->G, star, m1, a1, e1, inc1, 0, 0, 0.85);
-     p1.r = 0.00046732617;
-     p1.id = r->N;
-     reb_add(r, p1);
-     dt_ini = calc_dt(r, m1, star.m, a1, dRHill, 1);
+    double a=5.2, m=0.0009543, e=0, inc = reb_random_normal(0.00001);
+    struct reb_particle p1 = {0};
+    p1 = reb_tools_orbit_to_particle(r->G, star, m, a, e, inc, 0, 0, 0.85);
+    p1.r = 0.00046732617;
+    p1.id = r->N;
+    reb_add(r, p1);
+    dt_ini = calc_dt(r, m, star.m, a, dRHill, 1);
+    
+    amin = a;
+    
+    //planet 2
+    a=9.5, m=0.0002857, e=0.0, inc=reb_random_normal(0.00001);
+    struct reb_particle p2 = {0};
+    p2 = reb_tools_orbit_to_particle(r->G, star, m, a, e, inc, 0, 0, 0);
+    p2.r = 0.000389256877;
+    p2.id = r->N;
+    reb_add(r, p2);
+    dt_ini = calc_dt(r, m, star.m, a, dRHill, dt_ini);
      
-     //planet 2
-     double a2=9.5, m2=0.0002857, e2=0.0, inc2=reb_random_normal(0.00001);
-     struct reb_particle p2 = {0};
-     p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, inc2, 0, 0, 0);
-     p2.r = 0.000389256877;
-     p2.id = r->N;
-     reb_add(r, p2);
-     dt_ini = calc_dt(r, m2, star.m, a2, dRHill, dt_ini);
+    a=19.2, m=0.00004365, e=0.0, inc=reb_random_normal(0.00001);
+    struct reb_particle p3 = {0};
+    p3 = reb_tools_orbit_to_particle(r->G, star, m, a, e, inc, 0, 0, 0);
+    p3.r = 0.000169534499;
+    p3.id = r->N;
+    reb_add(r, p3);
+    dt_ini = calc_dt(r, m, star.m, a, dRHill, dt_ini);
      
-     double a3=19.2, m3=0.00004365, e3=0.0, inc3=reb_random_normal(0.00001);
-     struct reb_particle p3 = {0};
-     p3 = reb_tools_orbit_to_particle(r->G, star, m3, a3, e3, inc3, 0, 0, 0);
-     p3.r = 0.000169534499;
-     p3.id = r->N;
-     reb_add(r, p3);
-     dt_ini = calc_dt(r, m3, star.m, a3, dRHill, dt_ini);
-     
-     double a4=30.1, m4=5e-4, e4=0.0, inc4=reb_random_normal(0.00001);
-     struct reb_particle p4 = {0};
-     p4 = reb_tools_orbit_to_particle(r->G, star, m4, a4, e4, inc4, 0, 0, 0);
-     p4.r = 1.6e-4;
-     p4.id = r->N;
-     reb_add(r, p4);
-     dt_ini = calc_dt(r, m4, star.m, a4, dRHill, dt_ini);
-     
+    a=30.1, m=5e-4, e=0.0, inc=reb_random_normal(0.00001);
+    struct reb_particle p4 = {0};
+    p4 = reb_tools_orbit_to_particle(r->G, star, m, a, e, inc, 0, 0, 0);
+    p4.r = 1.6e-4;
+    p4.id = r->N;
+    reb_add(r, p4);
+    dt_ini = calc_dt(r, m, star.m, a, dRHill, dt_ini);
+    
+    amax = a;
+    
     //calc dt
     if(r->integrator == REB_INTEGRATOR_IAS15){
         dt_ini /= 3.;
@@ -144,7 +150,7 @@ int main(int argc, char* argv[]){
         struct reb_particle pt = {0};
         //pt = reb_tools_orbit_to_particle(r->G, p1, planetesimal_mass, x, 0, 0, 0, 0, 0);
         //pt.y += p1.y;
-        pt = reb_tools_orbit_to_particle(r->G, star, 0, x + a1, 0, 0, 0, 0, 0); //m=planetesimal_mass?
+        pt = reb_tools_orbit_to_particle(r->G, star, 0, x + a, 0, 0, 0, 0, 0); //m=planetesimal_mass?
         pt.r = 4e-5;            //I think radius of particle is in AU!
         pt.id = r->N;              //1 = planet
         reb_add(r, pt);
@@ -152,7 +158,7 @@ int main(int argc, char* argv[]){
     
     //planetesimals
     double planetesimal_buffer = 0.1;   //Chatterjee & Ford use 0.01
-    double inner = a1 - planetesimal_buffer, outer = a2 + planetesimal_buffer, powerlaw = 0.5;
+    double inner = amin - planetesimal_buffer, outer = amax + planetesimal_buffer, powerlaw = 0.5;
     while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
 		double a	= reb_random_powerlaw(inner,outer,powerlaw);
@@ -179,7 +185,7 @@ int main(int argc, char* argv[]){
     if(mercury_swifter_output == 1) output_to_mercury_swifter(r, sqrt(HSR2), tmax, n_output);
     
     //Initializing stuff
-    legend(plntdir, lgnddir, xyz_check, CEprint, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, m1, a1, e1, star.m, dRHill,ias_epsilon,seed,HYBRID_ON);
+    legend(plntdir, lgnddir, xyz_check, CEprint, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, star.m, dRHill,ias_epsilon,seed,HYBRID_ON);
     E0 = calc_Etot(r, soft, 0);
     
     //Ini mini
@@ -236,9 +242,9 @@ void heartbeat(struct reb_simulation* r){
     }
     
     //output movie
-    double t_movie_i = 0.7, t_movie_f = 0.83;
+    double t_movie_i = 0.0, t_movie_f = 0.5;
     if(output_movie == 1 && r->t > t_movie_i && r->t < t_movie_f){
-        char* name = "movie_output/outNov5_";
+        char* name = "movie_output/movie_output";
         int send_mini = 0;
         struct reb_particle* particles; int N; double t;
         if(send_mini == 1){particles=s->particles; N=s->N; t=r->t;} else {particles=r->particles; N=r->N; t=s->t;}
