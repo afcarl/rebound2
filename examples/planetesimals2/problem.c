@@ -18,7 +18,7 @@ void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", xyz_check[200]="output/planet_", CEprint[200]="output/planet_";
 
 double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft, dE_collision = 0;
-int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, output_movie, movie_counter = 0;
+int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, output_movie, movie_counter = 0, output_movie_rate, t_movie_i = 0, t_movie_f = 0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
 
@@ -28,7 +28,12 @@ int main(int argc, char* argv[]){
     int turn_planetesimal_forces_on = 1;
     int p1_satellite_on = 0;
     int mercury_swifter_output = 1;
+    //movie
     output_movie = 1;
+    if(output_movie == 1){
+        t_movie_i = 0, t_movie_f = 1000;
+        system("rm -v movie_output/*.txt");
+    }
     
     //System constants
     tmax = atof(argv[1]);
@@ -142,7 +147,8 @@ int main(int argc, char* argv[]){
     //Outputting points
     n_output = 10000;
     t_log_output = pow(tmax + 1, 1./(n_output - 1));
-    t_output = dt_ini;
+    t_output = dt_ini;  //general output
+    output_movie_rate = tmax/(n_output);  //linear output movie rate
     
     //orbiting planetesimal/satellite
     if(p1_satellite_on == 1){
@@ -242,13 +248,13 @@ void heartbeat(struct reb_simulation* r){
     }
     
     //output movie
-    double t_movie_i = 0.0, t_movie_f = 0.5;
     if(output_movie == 1 && r->t > t_movie_i && r->t < t_movie_f){
         char* name = "movie_output/movie_output";
         int send_mini = 0;
         struct reb_particle* particles; int N; double t;
-        if(send_mini == 1){particles=s->particles; N=s->N; t=r->t;} else {particles=r->particles; N=r->N; t=s->t;}
+        if(send_mini == 1){particles=s->particles; N=s->N; t=s->t;} else {particles=r->particles; N=r->N; t=r->t;}
         output_frames(particles, name, N, t, &movie_counter);
+        t_movie_i += output_movie_rate;
     }
 }
 

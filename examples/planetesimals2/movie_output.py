@@ -32,7 +32,7 @@ for i in xrange(0,N_files):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(x,y,z,c=colors[0:len(x)], lw=0)
-    ax.view_init(elev = 10, azim=100)    #both are in degrees. elev = 0 or 90 is what you want
+    ax.view_init(elev = 90, azim=100)    #both are in degrees. elev = 0 or 90 is what you want
     ax.set_xlim([-plotrange,plotrange])
     ax.set_ylim([-plotrange,plotrange])
     ax.set_zlim([-plotrange/4,plotrange/4])
