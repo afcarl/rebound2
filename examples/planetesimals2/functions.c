@@ -153,7 +153,8 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax
     for(int i=1;i<N;i++){
         struct reb_particle p = particles[i];
         double m; if(i >= N_active) m = planetesimal_mass*mass_conv; else m = p.m*mass_conv;
-        fprintf(swifter," %d %.16f %f\n",i+1,m,sqrt(Hill2[i]));
+        double r = sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
+        fprintf(swifter," %d %.16f %f\n",i+1,m,r*sqrt(Hill2[i]));
         fprintf(swifter," %f\n",p.r);
         fprintf(swifter," %.16f %.16f %.16f\n",p.x - p0.x, p.y - p0.y, p.z - p0.z);
         fprintf(swifter," %.16f %.16f %.16f\n",(p.vx - p0.vx)*vel_conv,(p.vy - p0.vy)*vel_conv,(p.vz - p0.vz)*vel_conv);
@@ -208,7 +209,8 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax
     double AU_d = 0.017202424; //converts [v] = AU/(yr/2pi) -> AU/day
     for(int i=1;i<N_active;i++){
         struct reb_particle p = particles[i];
-        fprintf(mercuryb," BODY%d      m=%.16f r=%f\n",i,p.m,HSR);
+        double r = sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
+        fprintf(mercuryb," BODY%d      m=%.16f r=%f\n",i,p.m,HSR*r*sqrt(Hill2[i]));
         fprintf(mercuryb," %.16f %.16f %.16f\n",p.x - p0.x,p.y - p0.y,p.z - p0.x);
         fprintf(mercuryb," %.16f %.16f %.16f\n",(p.vx - p0.vx)*AU_d,(p.vy - p0.vy)*AU_d,(p.vz - p0.vz)*AU_d);   //AU/day
         fprintf(mercuryb," 0. 0. 0.\n");
@@ -216,7 +218,8 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax
     //mini bodies
     for(int i=N_active;i<N;i++){
         struct reb_particle p = particles[i];
-        fprintf(mercurys," BODY%d      m=%.16f r=%f\n",i,planetesimal_mass,HSR);
+        double r = sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
+        fprintf(mercurys," BODY%d      m=%.16f r=%f\n",i,planetesimal_mass,HSR*r*sqrt(Hill2[i]));
         fprintf(mercurys," %.16f %.16f %.16f\n",p.x - p0.x,p.y - p0.y,p.z - p0.x);     //AU, heliocentric
         fprintf(mercurys," %.16f %.16f %.16f\n",(p.vx - p0.vx)*AU_d,(p.vy - p0.vy)*AU_d,(p.vz - p0.vz)*AU_d);   //AU/day
         fprintf(mercurys," 0. 0. 0.\n");

@@ -29,7 +29,7 @@ int main(int argc, char* argv[]){
     int p1_satellite_on = 0;
     int mercury_swifter_output = 1;
     //movie
-    output_movie = 1;
+    output_movie = 0;
     if(output_movie == 1){
         t_movie_i = 0, t_movie_f = 1000;
         system("rm -v movie_output/*.txt");
@@ -76,7 +76,7 @@ int main(int argc, char* argv[]){
     
     /*
     //planet 1
-    double a1=2.0, m1=5e-4, e1=0, inc1 = reb_random_normal(0.00001);
+    double a1=2.0, m1=5e-5, e1=0, inc1 = reb_random_normal(0.00001);
     struct reb_particle p1 = {0};
     p1 = reb_tools_orbit_to_particle(r->G, star, m1, a1, e1, inc1, 0, 0, 0);
     p1.r = 1.6e-4;              //I think radius of particle is in AU!
@@ -85,7 +85,7 @@ int main(int argc, char* argv[]){
     dt_ini = calc_dt(r, m1, star.m, a1, dRHill, 1);
     
     //planet 2
-    double a2=5.0, m2=5e-4, e2=0.01, inc2=reb_random_normal(0.00001);
+    double a2=5.0, m2=5e-5, e2=0.01, inc2=reb_random_normal(0.00001);
     struct reb_particle p2 = {0};
     p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, inc2, 0, 0, 0);
     p2.r = 1.6e-4;
@@ -121,7 +121,7 @@ int main(int argc, char* argv[]){
     reb_add(r, p3);
     dt_ini = calc_dt(r, m, star.m, a, dRHill, dt_ini);
      
-    a=30.1, m=5e-4, e=0.0, inc=reb_random_normal(0.00001);
+    a=30.1, m=5e-5, e=0.0, inc=reb_random_normal(0.00001);
     struct reb_particle p4 = {0};
     p4 = reb_tools_orbit_to_particle(r->G, star, m, a, e, inc, 0, 0, 0);
     p4.r = 1.6e-4;
