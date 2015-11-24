@@ -133,6 +133,7 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax
     FILE* swifterparams = fopen("swifter_mercury_output/param.in","w");
     FILE* mercuryb = fopen("swifter_mercury_output/mercury_big.in","w");
     FILE* mercurys = fopen("swifter_mercury_output/mercury_small.in","w");
+    FILE* mercuryparams = fopen("swifter_mercury_output/mercury_param.in","w");
     
     //conversion options - swifter
     int alt_units = 0;
@@ -225,10 +226,53 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax
         fprintf(mercurys," 0. 0. 0.\n");
     }
     
+    //Mercury param file
+    double twopiyr_day = 58.09155423;
+    double day_zero = 2451179.5;
+    int mercury_timestep = r->dt*twopiyr_day;
+    fprintf(mercuryparams,")O+_06 Big-body initial data  (WARNING: Do not delete this line!!)\n");
+    fprintf(mercuryparams,") Lines beginning with `)' are ignored.\n");
+    fprintf(mercuryparams,")---------------------------------------------------------------------\n");
+    fprintf(mercuryparams,") Important integration parameters:\n");
+    fprintf(mercuryparams,")---------------------------------------------------------------------\n");
+    fprintf(mercuryparams," algorithm (MVS, BS, BS2, RADAU, HYBRID etc) = hyb\n");
+    fprintf(mercuryparams," start time (days)= %f\n",day_zero);
+    fprintf(mercuryparams," stop time (days) =%.1f\n",tmax*twopiyr_day + day_zero);
+    fprintf(mercuryparams," output interval (days) = %.2fd0\n",tmax/n_output*twopiyr_day);
+    fprintf(mercuryparams," timestep (days) = %d\n",mercury_timestep);
+    fprintf(mercuryparams," accuracy parameter=1.d-12\n");
+    fprintf(mercuryparams,")---------------------------------------------------------------------\n");
+    fprintf(mercuryparams,") Integration options:\n");
+    fprintf(mercuryparams,")---------------------------------------------------------------------\n");
+    fprintf(mercuryparams," stop integration after a close encounter = no\n");
+    fprintf(mercuryparams," allow collisions to occur = no\n");
+    fprintf(mercuryparams," include collisional fragmentation = no\n");
+    fprintf(mercuryparams," express time in days or years = years\n");
+    fprintf(mercuryparams," express time relative to integration start time = no\n");
+    fprintf(mercuryparams," output precision = medium\n");
+    fprintf(mercuryparams," < not used at present >\n");
+    fprintf(mercuryparams," include relativity in integration= no\n");
+    fprintf(mercuryparams," include user-defined force = no\n");
+    fprintf(mercuryparams,")---------------------------------------------------------------------\n");
+    fprintf(mercuryparams,") These parameters do not need to be adjusted often:\n");
+    fprintf(mercuryparams,")---------------------------------------------------------------------\n");
+    fprintf(mercuryparams," ejection distance (AU)= 100\n");
+    fprintf(mercuryparams," radius of central body (AU) = 0.005\n");
+    fprintf(mercuryparams," central mass (solar) = 1.0\n");
+    fprintf(mercuryparams," central J2 = 0\n");
+    fprintf(mercuryparams," central J4 = 0\n");
+    fprintf(mercuryparams," central J6 = 0\n");
+    fprintf(mercuryparams," < not used at present >\n");
+    fprintf(mercuryparams," < not used at present >\n");
+    fprintf(mercuryparams," Hybrid integrator changeover (Hill radii) = 3.\n");
+    fprintf(mercuryparams," number of timesteps between data dumps = 500\n");
+    fprintf(mercuryparams," number of timesteps between periodic effects = 100\n");
+    
     fclose(mercuryb);
     fclose(mercurys);
     fclose(swifter);
     fclose(swifterparams);
+    fclose(mercuryparams);
 }
 
 double calc_dt(struct reb_simulation* r, double mp, double Ms, double a, double dRHill, double dt_prev){
