@@ -154,7 +154,7 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax
     for(int i=1;i<N;i++){
         struct reb_particle p = particles[i];
         double m; if(i >= N_active) m = planetesimal_mass*mass_conv; else m = p.m*mass_conv;
-        double r = sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
+        double r = sqrt((p.x-p0.x)*(p.x-p0.x) + (p.y-p0.y)*(p.y-p0.y) + (p.z-p0.z)*(p.z-p0.z));
         fprintf(swifter," %d %.16f %f\n",i+1,m,r*sqrt(Hill2[i]));
         fprintf(swifter," %f\n",p.r);
         fprintf(swifter," %.16f %.16f %.16f\n",p.x - p0.x, p.y - p0.y, p.z - p0.z);
@@ -207,12 +207,12 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax
     
     //MERCURY - heliocentric coords
     //massive planets
-    double AU_d = 0.017202424; //converts [v] = AU/(yr/2pi) -> AU/day
+    double AU_d = 0.01720242383; //converts [v] = AU/(yr/2pi) -> AU/day
     for(int i=1;i<N_active;i++){
         struct reb_particle p = particles[i];
         double r = sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
         fprintf(mercuryb," BODY%d      m=%.16f r=%f\n",i,p.m,HSR*r*sqrt(Hill2[i]));
-        fprintf(mercuryb," %.16f %.16f %.16f\n",p.x - p0.x,p.y - p0.y,p.z - p0.x);
+        fprintf(mercuryb," %.16f %.16f %.16f\n",p.x - p0.x,p.y - p0.y,p.z - p0.z);
         fprintf(mercuryb," %.16f %.16f %.16f\n",(p.vx - p0.vx)*AU_d,(p.vy - p0.vy)*AU_d,(p.vz - p0.vz)*AU_d);   //AU/day
         fprintf(mercuryb," 0. 0. 0.\n");
     }
@@ -221,15 +221,14 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax
         struct reb_particle p = particles[i];
         double r = sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
         fprintf(mercurys," BODY%d      m=%.16f r=%f\n",i,planetesimal_mass,HSR*r*sqrt(Hill2[i]));
-        fprintf(mercurys," %.16f %.16f %.16f\n",p.x - p0.x,p.y - p0.y,p.z - p0.x);     //AU, heliocentric
+        fprintf(mercurys," %.16f %.16f %.16f\n",p.x - p0.x,p.y - p0.y,p.z - p0.z);     //AU, heliocentric
         fprintf(mercurys," %.16f %.16f %.16f\n",(p.vx - p0.vx)*AU_d,(p.vy - p0.vy)*AU_d,(p.vz - p0.vz)*AU_d);   //AU/day
         fprintf(mercurys," 0. 0. 0.\n");
     }
     
     //Mercury param file
-    double twopiyr_day = 58.09155423;
     double day_zero = 2451179.5;
-    int mercury_timestep = r->dt*twopiyr_day;
+    //int mercury_timestep = r->dt/AU_d;
     fprintf(mercuryparams,")O+_06 Big-body initial data  (WARNING: Do not delete this line!!)\n");
     fprintf(mercuryparams,") Lines beginning with `)' are ignored.\n");
     fprintf(mercuryparams,")---------------------------------------------------------------------\n");
@@ -237,9 +236,9 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax
     fprintf(mercuryparams,")---------------------------------------------------------------------\n");
     fprintf(mercuryparams," algorithm (MVS, BS, BS2, RADAU, HYBRID etc) = hyb\n");
     fprintf(mercuryparams," start time (days)= %f\n",day_zero);
-    fprintf(mercuryparams," stop time (days) =%.1f\n",tmax*twopiyr_day + day_zero);
-    fprintf(mercuryparams," output interval (days) = %.2fd0\n",tmax/n_output*twopiyr_day);
-    fprintf(mercuryparams," timestep (days) = %d\n",mercury_timestep);
+    fprintf(mercuryparams," stop time (days) =%.1f\n",tmax/AU_d + day_zero);
+    fprintf(mercuryparams," output interval (days) = %.2fd0\n",tmax/n_output/AU_d);
+    fprintf(mercuryparams," timestep (days) = %f\n",r->dt/AU_d);
     fprintf(mercuryparams," accuracy parameter=1.d-12\n");
     fprintf(mercuryparams,")---------------------------------------------------------------------\n");
     fprintf(mercuryparams,") Integration options:\n");
@@ -515,16 +514,6 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
             const double rij2 = dx*dx + dy*dy + dz*dz;
             const double ratio = rij2/(rhi+rhj);    //(p-p distance/Hill radii)^2
             
-            //if(fabs(pj.ax) + fabs(pj.ay) + fabs(pj.az) > 5000) printf("\nlarge acceleration at t=%f for par %d: ax=%f,ay=%f,az=%f",r->t,pj.id,pj.ax,pj.ay,pj.az);
-
-            //int par_id = 48;
-            //int CE_yes = 0;
-            //if(ratio < HSR) CE_yes = 1;
-            //if(pj.id==par_id && body.id==1 && r->t > 112.8 && r->t < 113.1){
-                //printf("t=%f: CE par %d + pl %d,px=%f,py=%f,pz=%f,bx=%f,by=%f,bz=%f,r=%f,CE=%d\n",r->t,pj.id,body.id,pj.x,pj.y,pj.z,body.x,body.y,body.z,sqrt(rij2),CE_yes);
-                //printf("t=%f: CE par %d + pl %d, r=%f,ratio=%f,HSR=%f,rhi=%f,rhj=%f,dxj=%f,dyj=%f,dzj=%f,CE=%d\n",r->t,pj.id,body.id,sqrt(rij2),ratio,1.03*HSR,rhi,rhj,pj.x,pj.y,pj.z,CE_yes);
-            //}
-            
             if(ratio < HSR){
                 double radius2 = body->r*body->r;
                 if(rij2 < radius2){//Collision - automatically removed from mini since not added to encounter index
@@ -550,12 +539,29 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
                     double E_f = calc_Etot(r, soft, 0);
                     *dE_collision += E_i - E_f;
                 
+                    //Update Hill radii and xyz_prev arrays
+                    Hill2[i] = pow((body->m/(p0.m*3.)), 2./3.);
+                    for(int k=j;k<rN-1;k++){
+                        x_prev[k] = x_prev[k+1];
+                        y_prev[k] = y_prev[k+1];
+                        z_prev[k] = z_prev[k+1];
+                        Hill2[k] = Hill2[k+1];
+                    }
+                    Hill2 = realloc(Hill2,(rN-1)*sizeof(double));
+                    x_prev = realloc(x_prev,(rN-1)*sizeof(double));
+                    y_prev = realloc(y_prev,(rN-1)*sizeof(double));
+                    z_prev = realloc(z_prev,(rN-1)*sizeof(double));
+                    
                     FILE* ff;
                     ff = fopen(xyz_check,"a");
                     fprintf(ff,"Collision at t=%f! between Particle %d and Planet %d, r=%f.\n",r->t,pj.id,body->id,sqrt(rij2));
                     fclose(ff);
                 } else if(i==0 && rij2 > 1e4){//Ejection
-                    fprintf(stderr,"\n\033[1mEjected Particle at t=%f!\033[0m Particle %d should be removed from the simulation, r=%f.\n",r->t,pj.id,sqrt(rij2));
+                    double E_i = calc_Etot(r, soft, 0);
+                    reb_remove(r,j,1);
+                    double E_f = calc_Etot(r, soft, 0);
+                    *dE_collision += E_i - E_f;
+                    fprintf(stderr,"\n\033[1mEjected Particle %d at t=%f!\033[0m Particle too far from sun r=%f.\n",pj.id,r->t,sqrt(rij2));
                 } else {//add to CE array
                     num_encounters++;
                     if(num_encounters == 1) encounter_index[0] = pj.id;

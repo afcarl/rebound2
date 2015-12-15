@@ -17,8 +17,8 @@
 void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", xyz_check[200]="output/planet_", CEprint[200]="output/planet_";
 
-double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft, dE_collision = 0;
-int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, output_movie, movie_counter = 0, output_movie_rate, t_movie_i = 0, t_movie_f = 0;
+double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft, dE_collision = 0, output_movie_rate,t_movie_i = 0, t_movie_f = 0;
+int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, output_movie, movie_counter = 0, movie_mini = 0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
 
@@ -26,12 +26,14 @@ int main(int argc, char* argv[]){
     //switches
     HYBRID_ON = 1;
     int turn_planetesimal_forces_on = 1;
-    int p1_satellite_on = 0;
+    int p1_satellite_on = 1;
     int mercury_swifter_output = 1;
     //movie
-    output_movie = 0;
+    output_movie = 1;
     if(output_movie == 1){
-        t_movie_i = 0, t_movie_f = 1000;
+        t_movie_i = 0, t_movie_f = 50;     //start/finish times to output movie
+        movie_mini = 0;                     //whether to output particles from mini or global
+        output_movie_rate = 0.1;
         system("rm -v movie_output/*.txt");
     }
     
@@ -74,26 +76,27 @@ int main(int argc, char* argv[]){
     
     double amin, amax;  //for planetesimal disk
     
-    /*
     //planet 1
-    double a1=2.0, m1=5e-5, e1=0, inc1 = reb_random_normal(0.00001);
+    double a=0.5, m=5e-5, e=0, inc = reb_random_normal(0.00001);
     struct reb_particle p1 = {0};
-    p1 = reb_tools_orbit_to_particle(r->G, star, m1, a1, e1, inc1, 0, 0, 0);
+    p1 = reb_tools_orbit_to_particle(r->G, star, m, a, e, inc, 0, 0, 0);
     p1.r = 1.6e-4;              //I think radius of particle is in AU!
     p1.id = r->N;
     reb_add(r, p1);
-    dt_ini = calc_dt(r, m1, star.m, a1, dRHill, 1);
+    dt_ini = calc_dt(r, m, star.m, a, dRHill, 1);
+    
+    amin = a;
     
     //planet 2
-    double a2=5.0, m2=5e-5, e2=0.01, inc2=reb_random_normal(0.00001);
-    struct reb_particle p2 = {0};
-    p2 = reb_tools_orbit_to_particle(r->G, star, m2, a2, e2, inc2, 0, 0, 0);
-    p2.r = 1.6e-4;
-    p2.id = r->N;
-    reb_add(r, p2);
-    dt_ini = calc_dt(r, m2, star.m, a2, dRHill, dt_ini);
-    */
-    
+    //a=0.7, m=5e-5, e=0.01, inc=reb_random_normal(0.00001);
+    //struct reb_particle p2 = {0};
+    //p2 = reb_tools_orbit_to_particle(r->G, star, m, a, e, inc, 0, 0, 0);
+    //p2.r = 1.6e-4;
+    //p2.id = r->N;
+    //reb_add(r, p2);
+    //dt_ini = calc_dt(r, m, star.m, a, dRHill, dt_ini);
+
+    /*
     double a=5.2, m=0.0009543, e=0, inc = reb_random_normal(0.00001);
     struct reb_particle p1 = {0};
     p1 = reb_tools_orbit_to_particle(r->G, star, m, a, e, inc, 0, 0, 0.85);
@@ -128,7 +131,7 @@ int main(int argc, char* argv[]){
     p4.id = r->N;
     reb_add(r, p4);
     dt_ini = calc_dt(r, m, star.m, a, dRHill, dt_ini);
-    
+    */
     amax = a;
     
     //calc dt
@@ -148,15 +151,14 @@ int main(int argc, char* argv[]){
     n_output = 10000;
     t_log_output = pow(tmax + 1, 1./(n_output - 1));
     t_output = dt_ini;  //general output
-    output_movie_rate = tmax/(n_output);  //linear output movie rate
     
     //orbiting planetesimal/satellite
     if(p1_satellite_on == 1){
         double x=0.01;
         struct reb_particle pt = {0};
-        //pt = reb_tools_orbit_to_particle(r->G, p1, planetesimal_mass, x, 0, 0, 0, 0, 0);
+        //pt = reb_tools_orbit_to_particle(r->G, p1, 0, x, 0, 0, 0, 0, 0.1);
         //pt.y += p1.y;
-        pt = reb_tools_orbit_to_particle(r->G, star, 0, x + a, 0, 0, 0, 0, 0); //m=planetesimal_mass?
+        pt = reb_tools_orbit_to_particle(r->G, star, 0, a - x, 0, 0, 0, 0, -0.1); //m=planetesimal_mass?
         pt.r = 4e-5;            //I think radius of particle is in AU!
         pt.id = r->N;              //1 = planet
         reb_add(r, pt);
@@ -241,7 +243,7 @@ void heartbeat(struct reb_simulation* r){
         n_o++;
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%f,%d\n",r->t,s->t,r->N,min_r,max_val,fabs((E1 - E0)/E0),t_output,n_o);
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%d\n",r->t,s->t,r->N,min_r,max_val,fabs((E1 - E0)/E0),n_o);
         fclose(append);
         
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
@@ -250,9 +252,8 @@ void heartbeat(struct reb_simulation* r){
     //output movie
     if(output_movie == 1 && r->t > t_movie_i && r->t < t_movie_f){
         char* name = "movie_output/movie_output";
-        int send_mini = 0;
         struct reb_particle* particles; int N; double t;
-        if(send_mini == 1){particles=s->particles; N=s->N; t=s->t;} else {particles=r->particles; N=r->N; t=r->t;}
+        if(movie_mini == 1){particles=s->particles; N=s->N; t=s->t;} else {particles=r->particles; N=r->N; t=r->t;}
         output_frames(particles, name, N, t, &movie_counter);
         t_movie_i += output_movie_rate;
     }

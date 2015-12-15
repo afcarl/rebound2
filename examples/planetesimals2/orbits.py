@@ -7,7 +7,7 @@ import matplotlib.cm as cm
 pi = math.pi
 import re
 
-names=['time (years)','time (mini, years)','Energy and N_CE', 'r_min','(dt*v_rel/r)_max', 'Energy','Kinetic','Potential','Energy and r_min','Energy and (dt*v_rel/r)_max', 'ax','ay','az','par20CE']
+names=['time (years)','time (mini, years)','Energy and N_CE', 'r_min','(dt*v_rel/r)_max', 'Energy','Energy and r_min','Energy and (dt*v_rel/r)_max', 'ax','ay','az','par20CE']
 colors=['b','g','m','r','c','y']
 
 file_name=str(sys.argv[1])
@@ -29,10 +29,12 @@ if arg1 == 6:
     plt.plot(data[arg4:arg3,0],data[arg4:arg3,5], 'o', ms=msval, markeredgecolor='none')
     plt.plot(data[arg4:arg3,0],data[arg4:arg3,3], 'or', ms=msval, markeredgecolor='none')
     plt.xscale('log')
+    print 'min_r is', min(data[arg4:arg3,3])
 elif arg1 == 7:
     plt.plot(data[arg4:arg3,0],data[arg4:arg3,5], 'o', ms=msval, markeredgecolor='none')
     plt.plot(data[arg4:arg3,0],data[arg4:arg3,4],  'or', ms=msval, markeredgecolor='none')
     plt.xscale('log')
+    print 'max(dt*v_rel/r) is', max(data[arg4:arg3,4])
 elif arg1 == 2:
     fig, axes = plt.subplots(nrows=2, ncols=1)
     axes[1].plot(data[arg4:arg3,0],data[arg4:arg3,5], 'o', ms=msval, markeredgecolor='none')
@@ -54,31 +56,3 @@ plt.yscale('log')
 file_output_name = re.sub('\.txt$', '', file_name)
 plt.savefig(file_output_name+'.png')
 plt.show()
-
-#Get number of massive planets
-#fos = open(file_name[0:-4]+'_Properties.txt', 'r')
-#for i in xrange(0,3):
-#    header = fos.readline()
-#output = header.split(",")
-#N_active = int(output[2]) - 1    #-1 cause of the star
-#N_active = 2
-
-#for i in xrange(0,N_active):
-#    p=data[i::N_active]
-#    plt.plot(p[arg4:arg3,arg1], p[arg4:arg3,arg2], 'o'+colors[i], marker='o', markersize=2,markeredgecolor='none',label='planet '+str(i), )
-#    if arg2 == 3 or arg2==4 or arg2==5 or arg2==6:
-#        plt.yscale('log')
-#        break
-
-#plt.ylim([1e-4,0.05])
-#if arg2==7:
-#plt.ylim([0.69,0.71])
-    #plt.ylim([0.98,1.02])
-    #if arg2==1:
-#plt.ylim([0.699,0.701])
-    #plt.ylim([0.998,1.002])
-#plt.xlim([p[arg4,0],p[arg3,0]])
-#plt.xlim([33,45])
-#plt.xlabel('' + names[arg1])
-#plt.ylabel('' + names[arg2])
-#plt.legend(loc='upper left',prop={'size':10})

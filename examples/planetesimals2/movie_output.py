@@ -23,12 +23,16 @@ dir = 'movie_output/'
 files = glob.glob(dir+'movie_output*.txt')
 files = sorted(files, key=natural_key)
 N_files = len(files)  #number of files we're dealing with
-plotrange = 25
+plotrange = 1
+N_prev = 0
 
 for i in xrange(0,N_files):
     fos = open(files[i], 'r')
     t,n,x,y,z = np.loadtxt(fos, delimiter=',', unpack='True')
-    colors = get_colors(len(x),N_massive)
+    N = len(x)
+    if N != N_prev:
+        colors = get_colors(N,N_massive)
+        N_prev = N
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(x,y,z,c=colors[0:len(x)], lw=0)
