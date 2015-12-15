@@ -31,9 +31,9 @@ int main(int argc, char* argv[]){
     //movie
     output_movie = 1;
     if(output_movie == 1){
-        t_movie_i = 0, t_movie_f = 50;     //start/finish times to output movie
+        t_movie_i = 0, t_movie_f = 10;     //start/finish times to output movie
         movie_mini = 0;                     //whether to output particles from mini or global
-        output_movie_rate = 0.1;
+        output_movie_rate = 0.9996789848;
         system("rm -v movie_output/*.txt");
     }
     
@@ -250,11 +250,11 @@ void heartbeat(struct reb_simulation* r){
     }
     
     //output movie
-    if(output_movie == 1 && r->t > t_movie_i && r->t < t_movie_f){
-        char* name = "movie_output/movie_output";
+    if(output_movie == 1 && r->t >= t_movie_i && r->t < t_movie_f){
+        char* dir = "movie/movie_output/hybridbody";
         struct reb_particle* particles; int N; double t;
         if(movie_mini == 1){particles=s->particles; N=s->N; t=s->t;} else {particles=r->particles; N=r->N; t=r->t;}
-        output_frames(particles, name, N, t, &movie_counter);
+        output_frames(particles, dir, N, t, &movie_counter);
         t_movie_i += output_movie_rate;
     }
 }

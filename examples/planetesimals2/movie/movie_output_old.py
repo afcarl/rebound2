@@ -20,7 +20,7 @@ def get_colors(N_bodies,N_massive):
 N_massive = int(raw_input("Number of massive bodies (including sun): "))
 
 dir = 'movie_output/'
-files = glob.glob(dir+'movie_output*.txt')
+files = glob.glob(dir+'hybridbody*.txt')
 files = sorted(files, key=natural_key)
 N_files = len(files)  #number of files we're dealing with
 plotrange = 1

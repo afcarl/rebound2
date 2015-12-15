@@ -1,4 +1,4 @@
-examples/planetesimals2/movie_output/*
+examples/planetesimals2/movie/movie_output/*
 examples/planetesimals2/instruments/*
 examples/planetesimals2/output/*
 examples/planetesimals2/saved_output/*

@@ -491,7 +491,7 @@ double reb_tools_megno_deltad_delta(struct reb_simulation* const r){
 	const int N_var = r->N_var;
         double deltad = 0;
         double delta2 = 0;
-        for (int i=N-N_var;i<N;i++){
+        for (int i=N-N_var;i<N;i++){//N_var = variational particles.
                 deltad += particles[i].vx * particles[i].x; 
                 deltad += particles[i].vy * particles[i].y; 
                 deltad += particles[i].vz * particles[i].z; 
@@ -508,11 +508,11 @@ double reb_tools_megno_deltad_delta(struct reb_simulation* const r){
         return deltad/delta2;
 }
 
-void reb_tools_megno_update(struct reb_simulation* r, double dY){
-	// Calculate running Y(t)
+void reb_tools_megno_update(struct reb_simulation* r, double dY){//A.S. dY = dy/dt (from Eq.9) * r->dt
+	// Calculate running Y(t)   A.S. - Just after Eq.9 - y(t)/t
 	r->megno_Ys += dY;
 	double Y = r->megno_Ys/r->t;
-	// Calculate averge <Y> 
+	// Calculate averge <Y>     A.S. - Just after Eq.9 - w(t)/t
 	r->megno_Yss += Y * r->dt;
 	// Update covariance of (Y,t) and variance of t
 	r->megno_n++;
