@@ -5,15 +5,15 @@
 )---------------------------------------------------------------------
  algorithm (MVS, BS, BS2, RADAU, HYBRID etc) = hyb
  start time (days)= 2451179.500000
- stop time (days) =2451760.8
- output interval (days) = 0.06d0
- timestep (days) = 0.033708
+ stop time (days) =2509310.8
+ output interval (days) = 7.26d0
+ timestep (days) = 0.072622
  accuracy parameter=1.d-12
 )---------------------------------------------------------------------
 ) Integration options:
 )---------------------------------------------------------------------
  stop integration after a close encounter = no
- allow collisions to occur = no
+ allow collisions to occur = yes
  include collisional fragmentation = no
  express time in days or years = years
  express time relative to integration start time = no

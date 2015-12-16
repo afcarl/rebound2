@@ -1,3 +1,5 @@
+#This macro outputs 3D plots of the x,y,z co-ordinates of the particles. Main movie script
+
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,8 +27,6 @@ dir = 'movie_output/'
 files = glob.glob(dir+'hybridbody*.txt')
 files = sorted(files, key=natural_key)
 N_bodies = len(files)  #number of files we're dealing with
-plotrange = 1
-N_prev = 0
 
 #read in data for each body
 data = []
@@ -39,7 +39,7 @@ except:
     print 'couldnt open', f, 'exiting'
     exit(0)
 
-n_it = len(data[0])   #calc num of lines
+n_it = len(data[0])     #calc num of lines
 limit = 1               #size limits for plots = (x,y,z/2)
 
 print 'deleting any existing .png images in output_movie folder'

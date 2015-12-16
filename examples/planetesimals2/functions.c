@@ -122,7 +122,7 @@ void legend(char* planetdir, char* legenddir, char* xyz_check, char* CEprint, st
     
 }
 
-void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax, int n_output){
+void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax, int n_output, int movie_output_interval){
     struct reb_particle* restrict const particles = r->particles;
     struct reb_particle p0 = particles[0];
     int N = r->N;
@@ -162,7 +162,6 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax
     }
     
     //SWIFTER - Other params (time, dt, etc.)
-    int steps = tmax/(r->dt*n_output);
     fprintf(swifterparams,"! \n");
     fprintf(swifterparams,"! Parameter file for Swifter, with N=%d total bodies. \n",r->N);
     fprintf(swifterparams,"! \n! \n");
@@ -172,7 +171,7 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax
     fprintf(swifterparams,"PL_IN          swifter_pl.in\n");
     fprintf(swifterparams,"!TP_IN         tp.in     !Commented out for now, no test par\n");
     fprintf(swifterparams,"IN_TYPE        ASCII\n");
-    fprintf(swifterparams,"ISTEP_OUT      %d        !# timesteps between outputs \n",steps);
+    fprintf(swifterparams,"ISTEP_OUT      %d        !# timesteps between outputs \n",movie_output_interval);
     fprintf(swifterparams,"BIN_OUT        out.dat\n");
     fprintf(swifterparams,"OUT_TYPE       REAL8\n");
     fprintf(swifterparams,"OUT_FORM       XV\n");
@@ -237,14 +236,14 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax
     fprintf(mercuryparams," algorithm (MVS, BS, BS2, RADAU, HYBRID etc) = hyb\n");
     fprintf(mercuryparams," start time (days)= %f\n",day_zero);
     fprintf(mercuryparams," stop time (days) =%.1f\n",tmax/AU_d + day_zero);
-    fprintf(mercuryparams," output interval (days) = %.2fd0\n",tmax/n_output/AU_d);
+    fprintf(mercuryparams," output interval (days) = %.2fd0\n",movie_output_interval*r->dt/AU_d);
     fprintf(mercuryparams," timestep (days) = %f\n",r->dt/AU_d);
     fprintf(mercuryparams," accuracy parameter=1.d-12\n");
     fprintf(mercuryparams,")---------------------------------------------------------------------\n");
     fprintf(mercuryparams,") Integration options:\n");
     fprintf(mercuryparams,")---------------------------------------------------------------------\n");
     fprintf(mercuryparams," stop integration after a close encounter = no\n");
-    fprintf(mercuryparams," allow collisions to occur = no\n");
+    fprintf(mercuryparams," allow collisions to occur = yes\n");
     fprintf(mercuryparams," include collisional fragmentation = no\n");
     fprintf(mercuryparams," express time in days or years = years\n");
     fprintf(mercuryparams," express time relative to integration start time = no\n");
@@ -729,7 +728,8 @@ void update_encounter_indices(int* N_encounters, int* N_encounters_previous){
     *N_encounters = 0;
 }
 
-void output_frames(struct reb_particle* particles, char* dir, int N, double t, int* movie_counter){
+void output_frames(struct reb_particle* particles, char* dir, int N, double t){
+    struct reb_particle p0 = particles[0];
     for(int i=0;i<N;i++){
         char str[50] = {0};
         char temp[7];
@@ -739,10 +739,9 @@ void output_frames(struct reb_particle* particles, char* dir, int N, double t, i
         strcat(str,".txt");
         FILE *output;
         output = fopen(str,"a");
-        fprintf(output, "%.12f,%d,%.16f,%.16f,%.16f,%d\n",t,particles[i].id,particles[i].x,particles[i].y,particles[i].z,*movie_counter);
+        fprintf(output, "%.12f,%d,%.16f,%.16f,%.16f\n",t,particles[i].id,particles[i].x-p0.x,particles[i].y-p0.y,particles[i].z-p0.z);
         fclose(output);
     }
-    *movie_counter += 1;
 }
 
 time_t clock_start(){

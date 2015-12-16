@@ -17,26 +17,12 @@
 void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", xyz_check[200]="output/planet_", CEprint[200]="output/planet_";
 
-double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft, dE_collision = 0, output_movie_rate,t_movie_i = 0, t_movie_f = 0;
-int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, output_movie, movie_counter = 0, movie_mini = 0;
+double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft, dE_collision = 0;
+int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, movie_mini = 0, movie_output, movie_counter, movie_output_interval;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
 
 int main(int argc, char* argv[]){
-    //switches
-    HYBRID_ON = 1;
-    int turn_planetesimal_forces_on = 1;
-    int p1_satellite_on = 1;
-    int mercury_swifter_output = 1;
-    //movie
-    output_movie = 1;
-    if(output_movie == 1){
-        t_movie_i = 0, t_movie_f = 10;     //start/finish times to output movie
-        movie_mini = 0;                     //whether to output particles from mini or global
-        output_movie_rate = 0.9996789848;
-        system("rm -v movie_output/*.txt");
-    }
-    
     //System constants
     tmax = atof(argv[1]);
     int N_planetesimals = atoi(argv[2]);
@@ -50,6 +36,20 @@ int main(int argc, char* argv[]){
     soft = 1.6e-4/10.;                                          //gravity softening length scale in AU. R_Neptune/100.
     int seed = atoi(argv[3]);
     
+    //switches
+    HYBRID_ON = 1;
+    int turn_planetesimal_forces_on = 1;
+    int p1_satellite_on = 0;
+    int mercury_swifter_output = 1;
+    //movie
+    movie_output = 0;
+    movie_output_interval = 100;                 //number of dt per movie output (used for swifter/mercury too)
+    if(movie_output == 1){
+        movie_mini = 0;                         //whether to output particles from mini or global
+        system("rm -v movie/movie_output/*.txt");
+        movie_counter = movie_output_interval;
+    }
+    
 	//Simulation Setup
     r = reb_create_simulation();
 	r->integrator	= 1;                                  //REB_INTEGRATOR_IAS15 = 0, WHFAST = 1, WH=3, HYBRID = 5
@@ -58,6 +58,7 @@ int main(int argc, char* argv[]){
     r->ri_hybrid.switch_ratio = HSR2;
     r->softening = soft;
     if(turn_planetesimal_forces_on==1)r->additional_forces = planetesimal_forces_global;
+    //r->ri_whfast.corrector 	= 11;
     //r->usleep   = 5000; //larger the number, slower OpenGL simulation
     
     //Boundary stuff
@@ -70,14 +71,14 @@ int main(int argc, char* argv[]){
 	// Initial conditions
 	struct reb_particle star = {0};
 	star.m 		= 1;
-	star.r		= 0.005;        //I think radius of particle is in AU!
+	star.r		= 0.005;        // Radius of particle is in AU!
     star.id     = 0;            // 0 = star
 	reb_add(r, star);
     
     double amin, amax;  //for planetesimal disk
     
     //planet 1
-    double a=0.5, m=5e-5, e=0, inc = reb_random_normal(0.00001);
+    double a=0.5, m=5e-4, e=0, inc = reb_random_normal(0.00001);
     struct reb_particle p1 = {0};
     p1 = reb_tools_orbit_to_particle(r->G, star, m, a, e, inc, 0, 0, 0);
     p1.r = 1.6e-4;              //I think radius of particle is in AU!
@@ -88,13 +89,13 @@ int main(int argc, char* argv[]){
     amin = a;
     
     //planet 2
-    //a=0.7, m=5e-5, e=0.01, inc=reb_random_normal(0.00001);
-    //struct reb_particle p2 = {0};
-    //p2 = reb_tools_orbit_to_particle(r->G, star, m, a, e, inc, 0, 0, 0);
-    //p2.r = 1.6e-4;
-    //p2.id = r->N;
-    //reb_add(r, p2);
-    //dt_ini = calc_dt(r, m, star.m, a, dRHill, dt_ini);
+    a=0.7, m=5e-4, e=0.01, inc=reb_random_normal(0.00001);
+    struct reb_particle p2 = {0};
+    p2 = reb_tools_orbit_to_particle(r->G, star, m, a, e, inc, 0, 0, 0);
+    p2.r = 1.6e-4;
+    p2.id = r->N;
+    reb_add(r, p2);
+    dt_ini = calc_dt(r, m, star.m, a, dRHill, dt_ini);
 
     /*
     double a=5.2, m=0.0009543, e=0, inc = reb_random_normal(0.00001);
@@ -140,8 +141,10 @@ int main(int argc, char* argv[]){
         printf("dt = %f \n",dt_ini);
         dRHill = -1;
     }
-    printf("timesetep is dt = %f, ri_hybrid.switch_ratio=%f \n",dt_ini,r->ri_hybrid.switch_ratio);
-    r->dt = dt_ini;
+    char timebuff[32] = {0};
+    sprintf(timebuff, "%e", dt_ini);
+    r->dt = atof(timebuff);
+    printf("timesetep is dt = %.16f, ri_hybrid.switch_ratio=%f \n",r->dt,r->ri_hybrid.switch_ratio);
     
     //N_active and move to COM
     r->N_active = r->N;
@@ -150,13 +153,14 @@ int main(int argc, char* argv[]){
     //Outputting points
     n_output = 10000;
     t_log_output = pow(tmax + 1, 1./(n_output - 1));
-    t_output = dt_ini;  //general output
+    t_output = r->dt;  //general output
+    if(movie_output == 0)movie_output_interval = tmax/(r->dt*n_output);  //Number of dt per movie output (used for swifter/mercury too!!)
     
     //orbiting planetesimal/satellite
     if(p1_satellite_on == 1){
         double x=0.01;
         struct reb_particle pt = {0};
-        //pt = reb_tools_orbit_to_particle(r->G, p1, 0, x, 0, 0, 0, 0, 0.1);
+        //pt = reb_tools_orbit_to_particle(r->G, p1, 0, x, 0, 0, 0, 0, 0.1);    //works well with m2=5e-4
         //pt.y += p1.y;
         pt = reb_tools_orbit_to_particle(r->G, star, 0, a - x, 0, 0, 0, 0, -0.1); //m=planetesimal_mass?
         pt.r = 4e-5;            //I think radius of particle is in AU!
@@ -165,7 +169,8 @@ int main(int argc, char* argv[]){
     }
     
     //planetesimals
-    double planetesimal_buffer = 0.1;   //Chatterjee & Ford use 0.01
+    if(turn_planetesimal_forces_on == 0) planetesimal_mass = 0;
+    double planetesimal_buffer = 0.1;   //max +/- distance from massive bodies, Chatterjee & Ford use 0.01
     double inner = amin - planetesimal_buffer, outer = amax + planetesimal_buffer, powerlaw = 0.5;
     while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
@@ -190,7 +195,7 @@ int main(int argc, char* argv[]){
     calc_Hill2(r);
     
     //input files for swifter/mercury
-    if(mercury_swifter_output == 1) output_to_mercury_swifter(r, sqrt(HSR2), tmax, n_output);
+    if(mercury_swifter_output == 1) output_to_mercury_swifter(r, sqrt(HSR2), tmax, n_output, movie_output_interval);
     
     //Initializing stuff
     legend(plntdir, lgnddir, xyz_check, CEprint, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, star.m, dRHill,ias_epsilon,seed,HYBRID_ON);
@@ -249,14 +254,14 @@ void heartbeat(struct reb_simulation* r){
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
     }
     
-    //output movie
-    if(output_movie == 1 && r->t >= t_movie_i && r->t < t_movie_f){
+    //output movie - outputs in heliocentric coords
+    if(movie_output == 1 && movie_counter == movie_output_interval){
         char* dir = "movie/movie_output/hybridbody";
         struct reb_particle* particles; int N; double t;
         if(movie_mini == 1){particles=s->particles; N=s->N; t=s->t;} else {particles=r->particles; N=r->N; t=r->t;}
-        output_frames(particles, dir, N, t, &movie_counter);
-        t_movie_i += output_movie_rate;
-    }
+        output_frames(particles, dir, N, t);
+        movie_counter = 0;
+    } movie_counter++;
 }
 
 /*
