@@ -192,11 +192,12 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax
     fprintf(swifterparams,"RHILL_PRESENT  yes\n");
     
     //mercury initial:
+    double day_zero = 2451179.5;
     fprintf(mercuryb,")O+_06 Big-body initial data  (WARNING: Do not delete this line!!)\n");
     fprintf(mercuryb,") Lines beginning with `)' are ignored.\n");
     fprintf(mercuryb,")---------------------------------------------------------------------\n");
     fprintf(mercuryb," style (Cartesian, Asteroidal, Cometary) = Cartesian\n");
-    fprintf(mercuryb," epoch (in days) = 2451000.5\n");
+    fprintf(mercuryb," epoch (in days) = %f\n",day_zero);
     fprintf(mercuryb,")---------------------------------------------------------------------\n");
     fprintf(mercurys,")O+_06 Big-body initial data  (WARNING: Do not delete this line!!)\n");
     fprintf(mercurys,") Lines beginning with `)' are ignored.\n");
@@ -226,7 +227,6 @@ void output_to_mercury_swifter(struct reb_simulation* r, double HSR, double tmax
     }
     
     //Mercury param file
-    double day_zero = 2451179.5;
     //int mercury_timestep = r->dt/AU_d;
     fprintf(mercuryparams,")O+_06 Big-body initial data  (WARNING: Do not delete this line!!)\n");
     fprintf(mercuryparams,") Lines beginning with `)' are ignored.\n");

@@ -1,3 +1,4 @@
+examples/planetesimals2/energy_avg/*
 examples/planetesimals2/movie/movie_compare_integrators/*
 examples/planetesimals2/movie/movie_output/*
 examples/planetesimals2/instruments/*
