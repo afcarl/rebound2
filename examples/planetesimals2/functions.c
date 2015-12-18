@@ -555,12 +555,6 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
                     ff = fopen(xyz_check,"a");
                     fprintf(ff,"Collision at t=%f! between Particle %d and Planet %d, r=%f.\n",r->t,pj.id,body->id,sqrt(rij2));
                     fclose(ff);
-                } else if(i==0 && rij2 > 1e4){//Ejection
-                    double E_i = calc_Etot(r, soft, 0);
-                    reb_remove(r,j,1);
-                    double E_f = calc_Etot(r, soft, 0);
-                    *dE_collision += E_i - E_f;
-                    fprintf(stderr,"\n\033[1mEjected Particle %d at t=%f!\033[0m Particle too far from sun r=%f.\n",pj.id,r->t,sqrt(rij2));
                 } else {//add to CE array
                     num_encounters++;
                     if(num_encounters == 1) encounter_index[0] = pj.id;
@@ -569,6 +563,14 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
                         encounter_index[num_encounters - 1] = pj.id;
                     }
                 }
+            }
+            
+            if(i==0 && rij2 > 1e4){//Ejection
+                double E_i = calc_Etot(r, soft, 0);
+                reb_remove(r,j,1);
+                double E_f = calc_Etot(r, soft, 0);
+                *dE_collision += E_i - E_f;
+                fprintf(stderr,"\n\033[1mEjected Particle %d at t=%f!\033[0m Particle too far from sun r=%f.\n",pj.id,r->t,sqrt(rij2));
             }
             
             //calculate dt*(vrel/rmin)

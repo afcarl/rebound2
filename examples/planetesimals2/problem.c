@@ -259,7 +259,7 @@ void heartbeat(struct reb_simulation* r){
     double E1 = calc_Etot(r, soft, dE_collision);
     double dE = fabs((E1 - E0)/E0);
     if(dE > 1e-6 && err_print == 0){
-        fprintf(stderr,"\n\033[1mError Exceeded at t=%f",r->t);
+        fprintf(stderr,"\n\033[1mError Exceeded at t=%f\n",r->t);
         err_print = 1;
     }
     
@@ -275,8 +275,8 @@ void heartbeat(struct reb_simulation* r){
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
     }
     
-    //output movie - outputs in heliocentric coords 8190, 8208
-    if(movie_output == 1 && movie_counter >= movie_output_interval && r->t > 10 && r->t < 100){
+    //output movie - outputs in heliocentric coords
+    if(movie_output == 1 && movie_counter >= movie_output_interval && r->t > 8190 && r->t < 8208){
         char* dir = "movie/movie_output/hybridbody";
         struct reb_particle* particles; int N; double t;
         if(movie_mini == 1){particles=s->particles; N=s->N; t=s->t;} else {particles=r->particles; N=r->N; t=r->t;}
