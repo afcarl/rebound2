@@ -43,7 +43,9 @@ void update_previous_global_positions(struct reb_simulation* r, int N_encounters
 
 void update_encounter_indices(int* N_encounters, int* N_encounters_previous);
 
-void output_frames(struct reb_particle* particles, char* name, int N, double t);
+void output_frame_per_body(struct reb_particle* particles, char* dir, int N, double t);
+
+void output_frame_per_time(struct reb_particle* particles, char* name, int N, double t, int* movie_counter);
 
 time_t clock_start();
 

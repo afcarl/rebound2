@@ -730,7 +730,7 @@ void update_encounter_indices(int* N_encounters, int* N_encounters_previous){
     *N_encounters = 0;
 }
 
-void output_frames(struct reb_particle* particles, char* dir, int N, double t){
+void output_frame_per_body(struct reb_particle* particles, char* dir, int N, double t){
     struct reb_particle p0 = particles[0];
     for(int i=0;i<N;i++){
         char str[50] = {0};
@@ -744,6 +744,22 @@ void output_frames(struct reb_particle* particles, char* dir, int N, double t){
         fprintf(output, "%.12f,%d,%.16f,%.16f,%.16f\n",t,particles[i].id,particles[i].x-p0.x,particles[i].y-p0.y,particles[i].z-p0.z);
         fclose(output);
     }
+}
+
+void output_frame_per_time(struct reb_particle* particles, char* name, int N, double t, int* movie_counter){
+        char str[50] = {0};
+        char temp[7];
+        strcat(str, name);
+        int mc = *movie_counter;
+        sprintf(temp, "%d",mc);
+        strcat(str,temp);
+        strcat(str,".txt");
+        FILE *output;
+        output = fopen(str,"w");
+        for(int i=0;i<N;i++) fprintf(output, "%f,%d,%.16f,%.16f,%.16f\n",t,particles[i].id,particles[i].x,particles[i].y,particles[i].z);
+        fclose(output);
+        mc++;
+        *movie_counter = mc;
 }
 
 time_t clock_start(){
