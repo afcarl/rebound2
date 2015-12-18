@@ -622,7 +622,7 @@ void update_global(struct reb_simulation* const s, struct reb_simulation* r, int
     
 }
 
-void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters, int N_encounters_previous, char* CEprint){
+void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters, int N_encounters_previous, char* CEprint, double soft, double dE_collision, double E0){
     int N_active = s->N_active;
     struct reb_particle* mini = s->particles;
     struct reb_particle* global = r->particles;
@@ -645,9 +645,10 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
                         N_encounters_tot++;
                         added_particle = 1;
                         
+                        double E1 = calc_Etot(r, soft, dE_collision);
                         FILE *output;
                         output = fopen(CEprint, "a");
-                        fprintf(output,"t=%f,%f particle %d added. dN == %d, N_close_encounters=%d\n",r->t,s->t,EI,dN,N_encounters);
+                        fprintf(output,"t=%f,%f particle %d added. dN == %d, N_close_encounters=%d, dE/E=%.16f\n",r->t,s->t,EI,dN,N_encounters,fabs((E1 - E0)/E0));
                         for(int i=0;i<N_encounters;i++)fprintf(output,"EI[%d]=%d,",i,encounter_index[i]);
                         fprintf(output,"\n");
                         for(int i=0;i<N_encounters_previous;i++)fprintf(output,"PEI[%d]=%d,",i,previous_encounter_index[i]);
@@ -673,9 +674,10 @@ void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* 
                     if(mini[k].id == PEI){
                         removed_particle = reb_remove(s,k,1);    //remove particle
                         
+                        double E1 = calc_Etot(r, soft, dE_collision);
                         FILE *output;
                         output = fopen(CEprint, "a");
-                        fprintf(output,"t=%f,%f particle %d leaving. dN == %d, N_close_encounters=%d.\n",r->t,s->t,PEI,dN,N_encounters);
+                        fprintf(output,"t=%f,%f particle %d leaving. dN == %d, N_close_encounters=%d, dE/E=%.16f.\n",r->t,s->t,PEI,dN,N_encounters,fabs((E1 - E0)/E0));
                         for(int i=0;i<N_encounters;i++)fprintf(output,"EI[%d]=%d,",i,encounter_index[i]);
                         fprintf(output,"\n");
                         for(int i=0;i<N_encounters_previous;i++)fprintf(output,"PEI[%d]=%d,",i,previous_encounter_index[i]);

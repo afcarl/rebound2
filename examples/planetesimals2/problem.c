@@ -31,7 +31,7 @@ int main(int argc, char* argv[]){
     planetesimal_mass = 3e-8;                               //each is a moon
     double M_planetesimals = planetesimal_mass*N_planetesimals;
     double ias_epsilon = 1e-8;                              //sets precision of ias15
-    double HSR2 = 5;                                        //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
+    double HSR2 = 3;                                        //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
     double dRHill = 0.125;                                   //Sets the timestep - max # Hill radii/timestep.
     soft = 1.6e-4/10.;                                          //gravity softening length scale in AU. R_Neptune/100.
     int seed = atoi(argv[3]);
@@ -203,7 +203,7 @@ int main(int argc, char* argv[]){
     
     //Ini mini
     s = reb_create_simulation();    //initialize mini simulation (IAS15)
-    double ias_subtime = 3.;        //how much smaller is the ias timestep vs. global?
+    double ias_subtime = 3.;        //sets how much smaller ias15 vs. global timestep is
     ias_timestep = r->dt/ias_subtime;
     ini_mini(r,s,ias_epsilon,turn_planetesimal_forces_on,ias_timestep,soft);
     clock_t t_ini = clock_start();
@@ -228,14 +228,28 @@ void heartbeat(struct reb_simulation* r){
                 struct reb_particle* global = r->particles;
                 struct reb_particle* mini = s->particles;
                 for(int i=0; i<N_active; i++) mini[i] = global[i];
-                add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,CEprint);
+                add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,CEprint,soft,dE_collision,E0); //remove soft,dE_collision,E0 later
                 update_previous_global_positions(r, N_encounters);
             } //otherwise do nothing.
         } else { //integrate existing mini, update global, add/remove new/old particles.
             reb_integrate(s, r->t);
+            /*if(N_encounters == 0){//last particle just leaving
+                printf("\n");
+                struct reb_particle comr = reb_get_com(r);
+                struct reb_particle coms = reb_get_com(s);
+                printf("com: dx=%.16f, dy=%.16f, dz=%.16f, dvx=%.16f, dvy=%.16f, dvz=%.16f\n",comr.x - coms.x, comr.y - coms.y,comr.z - coms.z,comr.vx - coms.vx,comr.vy - coms.vy,comr.vz - coms.vz);
+                struct reb_particle* global = r->particles;
+                struct reb_particle* mini = s->particles;
+                for(int i=0;i<r->N_active;i++){
+                    printf("%d, dx=%.16f, dy=%.16f, dz=%.16f, dvx=%.16f, dvy=%.16f, dvz=%.16f\n",global[i].id, global[i].x-mini[i].x,global[i].y-mini[i].y,global[i].z-mini[i].z,global[i].vx-mini[i].vx,global[i].vy-mini[i].vy,global[i].vz-mini[i].vz);
+                    printf("%d, px=%.16f, py=%.16f, pz=%.16f, pvx=%.16f, pvy=%.16f, pvz=%.16f\n",global[i].id, (global[i].x-mini[i].x)/global[i].x,(global[i].y-mini[i].y)/global[i].y,(global[i].z-mini[i].z)/global[i].z,(global[i].vx-mini[i].vx)/global[i].vx,(global[i].vy-mini[i].vy)/global[i].vy,(global[i].vz-mini[i].vz)/global[i].vz);
+                    printf("%d, x=%.16f, y=%.16f, z=%.16f, vx=%.16f, vy=%.16f, vz=%.16f\n",global[i].id, global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz);
+                }
+                exit(0);
+            }*/
             update_global(s,r,N_encounters_previous);
             check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, xyz_check, &dE_collision, soft);
-            add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,CEprint);
+            add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,CEprint,soft,dE_collision,E0); //remove soft,dE_collision,E0 later
             update_previous_global_positions(r, N_encounters);
         }
         update_encounter_indices(&N_encounters, &N_encounters_previous);

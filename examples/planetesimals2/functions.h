@@ -37,7 +37,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
 
 void update_global(struct reb_simulation* const s, struct reb_simulation* const r, int N_encounters_previous);
 
-void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters,int N_encounters_previous, char* CEprint);
+void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters,int N_encounters_previous, char* CEprint, double soft, double dE_collison, double E0);
 
 void update_previous_global_positions(struct reb_simulation* r, int N_encounters);
 
