@@ -17,7 +17,7 @@
 void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", xyz_check[200]="output/planet_", CEprint[200]="output/planet_";
 
-double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft, dE_collision = 0;
+double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft, dE_collision = 0, movie_ti, movie_tf;
 int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, movie_mini = 0, movie_output, movie_counter, movie_mc = 0, movie_output_interval, movie_output_file_per_time, err_print = 0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
@@ -45,8 +45,10 @@ int main(int argc, char* argv[]){
     movie_output = 1;
     movie_output_interval = 100;                 //number of dt per movie output (used for swifter/mercury too)
     if(movie_output == 1){
-        movie_mini = 1;                         //whether to output particles from mini or global
+        movie_mini = 0;                         //whether to output particles from mini or global
         movie_output_file_per_time = 1;          //output a file every unit of time (best for analyzing mini), or output file for each body and keep filling them
+        movie_ti = 10;
+        movie_tf = 100;
         system("rm -v movie/movie_output/*.txt");
         movie_counter = movie_output_interval;
     }
@@ -276,13 +278,19 @@ void heartbeat(struct reb_simulation* r){
     }
     
     //output movie - outputs in heliocentric coords
-    if(movie_output == 1 && movie_counter >= movie_output_interval && r->t > 8190 && r->t < 8208){
-        char* dir = "movie/movie_output/hybridbody";
-        struct reb_particle* particles; int N; double t;
-        if(movie_mini == 1){particles=s->particles; N=s->N; t=s->t;} else {particles=r->particles; N=r->N; t=r->t;}
-        if(movie_output_file_per_time == 1)output_frame_per_time(particles, dir, N, t, &movie_mc); else output_frame_per_body(particles, dir, N, t);
-        movie_counter = 0;
-    } movie_counter++;
+    if(movie_output == 1){
+        if(r->t > movie_ti && r->t < movie_tf){
+            if(movie_counter >= movie_output_interval){
+                char* dir = "movie/movie_output/hybridbody";
+                struct reb_particle* particles; int N; double t;
+                if(movie_mini == 1){particles=s->particles; N=s->N; t=s->t;} else {particles=r->particles; N=r->N; t=r->t;}
+                if(movie_output_file_per_time == 1)output_frame_per_time(particles, dir, N, t, &movie_mc); else output_frame_per_body(particles, dir, N, t);
+                movie_counter = 0;
+            }
+            movie_counter++;
+        }
+    }
+    
 }
 
 /*
