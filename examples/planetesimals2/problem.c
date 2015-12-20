@@ -17,7 +17,7 @@
 void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", xyz_check[200]="output/planet_", CEprint[200]="output/planet_";
 
-double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft, dE_collision = 0, movie_ti, movie_tf;
+double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft, dE_collision = 0, movie_ti, movie_tf, ejection_distance2;
 int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, movie_mini = 0, movie_output, movie_counter, movie_mc = 0, movie_output_interval, movie_output_file_per_time, err_print = 0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
@@ -137,6 +137,7 @@ int main(int argc, char* argv[]){
     dt_ini = calc_dt(r, m, star.m, a, dRHill, dt_ini);
     */
     amax = a;
+    ejection_distance2 = pow(2*amax,2);     //distance at which particles removed from simulation (squared)
     
     //calc dt
     if(r->integrator == REB_INTEGRATOR_IAS15){
@@ -224,7 +225,7 @@ void heartbeat(struct reb_simulation* r){
     double min_r = 1e8, max_val = 1e-8;
     if(HYBRID_ON == 1){
         if(N_encounters_previous == 0){
-            check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, xyz_check, &dE_collision, soft);
+            check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, xyz_check, &dE_collision, soft, ejection_distance2);
             if(N_encounters > 0){//1st update in a while, update mini massive bodies, add particles, no int
                 s->t = r->t;
                 int N_active = s->N_active;
@@ -251,7 +252,7 @@ void heartbeat(struct reb_simulation* r){
                 exit(0);
             }*/
             update_global(s,r,N_encounters_previous);
-            check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, xyz_check, &dE_collision, soft);
+            check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, xyz_check, &dE_collision, soft, ejection_distance2);
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,CEprint,soft,dE_collision,E0); //remove soft,dE_collision,E0 later
             update_previous_global_positions(r, N_encounters);
         }
@@ -263,6 +264,11 @@ void heartbeat(struct reb_simulation* r){
     if(dE > 1e-6 && err_print == 0){
         fprintf(stderr,"\n\033[1mError Exceeded at t=%f\n",r->t);
         err_print = 1;
+
+        FILE *append;
+        append = fopen(plntdir, "a");
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,-10000\n",r->t,s->t,r->N,min_r,max_val,dE);
+        fclose(append);
     }
     
     //OUTPUT stuff*******

@@ -48,7 +48,7 @@ else:
 if arg1 == 5:
     plt.plot(data[arg4:arg3,0],3e-10*data[arg4:arg3,0]**(0.5),color='black',label='t^1/2 growth')
     plt.legend(loc='upper left',prop={'size':10})
-#plt.xscale('log')
+plt.xscale('log')
 
 plt.ylabel(names[arg1])
 plt.xlabel('time (years)')

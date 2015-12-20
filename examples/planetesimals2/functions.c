@@ -475,7 +475,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
 }
 
 //collect the id/array number of all planetesimals involved in a close encounter
-void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int* N_encounters, int N_encounters_previous, double* min_r, double* max_val, char* xyz_check, double* dE_collision, double soft){
+void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int* N_encounters, int N_encounters_previous, double* min_r, double* max_val, char* xyz_check, double* dE_collision, double soft, double ejection_distance2){
     const int rN = r->N;
     const int rN_active = r->N_active;
     struct reb_particle* global = r->particles;
@@ -565,7 +565,7 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
                 }
             }
             
-            if(i==0 && rij2 > 1e4){//Ejection
+            if(i==0 && rij2 > ejection_distance2){//Ejection
                 double E_i = calc_Etot(r, soft, 0);
                 reb_remove(r,j,1);
                 double E_f = calc_Etot(r, soft, 0);
