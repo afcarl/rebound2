@@ -774,7 +774,7 @@ time_t clock_start(){
     return t_ini;
 }
 
-void clock_finish(clock_t t_ini, int N_encounters, char* legenddir){
+void clock_finish(clock_t t_ini, int N_encounters, int N, char* legenddir){
     char buf[64];
     time_t t_fini = time(NULL);
     struct tm *tmp = gmtime(&t_fini);
@@ -785,8 +785,8 @@ void clock_finish(clock_t t_ini, int N_encounters, char* legenddir){
     
     FILE *ff;
     ff=fopen(legenddir, "a");
-    fprintf(ff,"Elapsed simulation time is %.2f s, with %d close encounters.\n",time,N_encounters);
-    printf("\nSimulation complete. Elapsed simulation time is %.2f s, with %d close encounters.\n\n",time,N_encounters);
+    fprintf(ff,"Elapsed simulation time is %.2f s, with %d close encounters and %d planetesimals remaining.\n",time,N_encounters,N);
+    printf("\nSimulation complete. Elapsed simulation time is %.2f s, with %d close encounters and %d planetesimals remaining.\n\n",time,N_encounters, N);
 }
 
 void global_free(){

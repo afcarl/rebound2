@@ -137,7 +137,7 @@ int main(int argc, char* argv[]){
     dt_ini = calc_dt(r, m, star.m, a, dRHill, dt_ini);
     */
     amax = a;
-    ejection_distance2 = pow(2*amax,2);     //distance at which particles removed from simulation (squared)
+    ejection_distance2 = pow(3*amax,2);     //distance at which particles removed from simulation (squared)
     
     //calc dt
     if(r->integrator == REB_INTEGRATOR_IAS15){
@@ -216,7 +216,7 @@ int main(int argc, char* argv[]){
     reb_integrate(r, tmax);
     
     //finish
-    clock_finish(t_ini,N_encounters_tot,lgnddir);
+    clock_finish(t_ini,N_encounters_tot,r->N - r->N_active,lgnddir);
     printf("N_outputs total=%d\n",n_o);
     global_free();
 }

@@ -49,7 +49,7 @@ void output_frame_per_time(struct reb_particle* particles, char* name, int N, do
 
 time_t clock_start();
 
-void clock_finish(clock_t t_ini, int N_encounters, char* legenddir);
+void clock_finish(clock_t t_ini, int N_encounters, int N, char* legenddir);
 
 void global_free();
 

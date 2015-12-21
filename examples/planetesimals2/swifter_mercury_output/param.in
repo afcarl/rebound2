@@ -3,7 +3,7 @@
 ! 
 ! 
 T0             0.0E0 
-TSTOP          1.000000e+03        !In units where G=1
+TSTOP          1.000000e+02        !In units where G=1
 DT             1.249271e-03        !In units where G=1
 PL_IN          swifter_pl.in
 !TP_IN         tp.in     !Commented out for now, no test par
