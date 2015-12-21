@@ -496,7 +496,7 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
             _Bool found_in_mini = 0;
             for(int k=0; k<N_encounters_previous && found_in_mini == 0; k++){
                 if(global[j].id == previous_encounter_index[k]){
-                    HSR *= 1.02;    //HSR(mini) is a bit bigger so no constant enter/leave
+                    HSR *= 1.05;    //HSR(mini) is a bit bigger so no constant enter/leave
                     found_in_mini = 1;
                 }
             }
