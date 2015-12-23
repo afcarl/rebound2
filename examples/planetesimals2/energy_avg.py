@@ -1,4 +1,4 @@
-#This macro calculates the average energy for a collection of runs to average out the noise.
+#This macro calculates the average energy for a collection of runs in energy_avg/ to average out the noise.
 
 import glob
 import matplotlib.pyplot as plt
