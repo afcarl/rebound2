@@ -15,7 +15,7 @@
 #include "../examples/planetesimals2/functions.h"
 
 void heartbeat(struct reb_simulation* r);
-char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", xyz_check[200]="output/planet_", CEprint[200]="output/planet_";
+char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", removeddir[200]="output/planet_", CEprint[200]="output/planet_";
 
 double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft, dE_collision = 0, movie_ti, movie_tf, ejection_distance2;
 int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, movie_mini = 0, movie_output, movie_counter, movie_mc = 0, movie_output_interval, movie_output_file_per_time, err_print = 0;
@@ -202,7 +202,7 @@ int main(int argc, char* argv[]){
     if(mercury_swifter_output == 1) output_to_mercury_swifter(r, sqrt(HSR2), tmax, n_output, movie_output_interval);
     
     //Initializing stuff
-    legend(plntdir, lgnddir, xyz_check, CEprint, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, star.m, dRHill,ias_epsilon,seed,HYBRID_ON);
+    legend(plntdir, lgnddir, removeddir, CEprint, r, tmax, planetesimal_mass, M_planetesimals, N_planetesimals,inner, outer, powerlaw, star.m, dRHill,ias_epsilon,seed,HYBRID_ON);
     E0 = calc_Etot(r, soft, 0);
     
     //Ini mini
@@ -225,7 +225,7 @@ void heartbeat(struct reb_simulation* r){
     double min_r = 1e8, max_val = 1e-8;
     if(HYBRID_ON == 1){
         if(N_encounters_previous == 0){
-            check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, xyz_check, &dE_collision, soft, ejection_distance2);
+            check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, removeddir, &dE_collision, soft, ejection_distance2);
             if(N_encounters > 0){//1st update in a while, update mini massive bodies, add particles, no int
                 s->t = r->t;
                 int N_active = s->N_active;
@@ -252,7 +252,7 @@ void heartbeat(struct reb_simulation* r){
                 exit(0);
             }*/
             update_global(s,r,N_encounters_previous);
-            check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, xyz_check, &dE_collision, soft, ejection_distance2);
+            check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, removeddir, &dE_collision, soft, ejection_distance2);
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,CEprint,soft,dE_collision,E0); //remove soft,dE_collision,E0 later
             update_previous_global_positions(r, N_encounters);
         }
@@ -322,7 +322,7 @@ void heartbeat(struct reb_simulation* r){
 /*
  if(reb_output_check(r,tmax/100)){
  FILE *xyz_output;
- xyz_output = fopen(xyz_check, "a");
+ xyz_output = fopen(removeddir, "a");
  struct reb_particle* global = r->particles;
  fprintf(xyz_output, "%.16f\n",r->t);
  for(int i=0;i<r->N;i++){
@@ -334,7 +334,7 @@ void heartbeat(struct reb_simulation* r){
 /*
  if(r->t > 74.5){
  FILE *xyz_output;
- xyz_output = fopen(xyz_check, "a");
+ xyz_output = fopen(removeddir, "a");
  struct reb_particle* global = r->particles;
  //fprintf(xyz_output, "%.16f,rmin=%.16f,vmax/rmin=%.16f\n",r->t,min_r,max_val);
  int i = 20;
