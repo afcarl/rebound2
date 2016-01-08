@@ -42,13 +42,13 @@ int main(int argc, char* argv[]){
     int p1_satellite_on = 0;
     int mercury_swifter_output = 1;
     //movie
-    movie_output = 0;
-    movie_output_interval = 100;                 //number of dt per movie output (used for swifter/mercury too)
+    movie_output = 1;
+    movie_output_interval = 1;                 //number of dt per movie output (used for swifter/mercury too)
     if(movie_output == 1){
-        movie_mini = 0;                         //whether to output particles from mini or global
+        movie_mini = 1;                         //whether to output particles from mini or global
         movie_output_file_per_time = 1;          //output a file every unit of time (best for analyzing mini), or output file for each body and keep filling them
-        movie_ti = 10;
-        movie_tf = 100;
+        movie_ti = 0;
+        movie_tf = 1;
         system("rm -v movie/movie_output/*.txt");
         movie_counter = movie_output_interval;
     }
@@ -237,7 +237,7 @@ void heartbeat(struct reb_simulation* r){
             } //otherwise do nothing.
         } else { //integrate existing mini, update global, add/remove new/old particles.
             reb_integrate(s, r->t);
-            update_global(s,r,N_encounters_previous);
+            chkcoll_and_update_global(s,r,N_encounters_previous,&dE_collision, removeddir);
             check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, removeddir, &output_it, &dE_collision, soft, ejection_distance2);
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,CEprint,soft,dE_collision,E0); //remove soft,dE_collision,E0 later
             update_previous_global_positions(r, N_encounters);
@@ -249,7 +249,7 @@ void heartbeat(struct reb_simulation* r){
     double dE = fabs((E1 - E0)/E0);
     double comp = 0;
     if(r->t > r->dt) comp = dE/dE_prev;
-    if(comp > 3){
+    if(comp > 2){
         fprintf(stderr,"\n\033[1mEnergy Error Jumped by %fx \033[0m at t=%f\n",comp,r->t);
 
         FILE *append;
@@ -275,6 +275,16 @@ void heartbeat(struct reb_simulation* r){
         
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
     }
+    
+    /*
+    if(r->t < 0.05){
+        struct reb_particle* g = r->particles;
+        double dx = g[1].x - g[159].x;
+        double dy = g[1].y - g[159].y;
+        double dz = g[1].z - g[159].z;
+        double rr = sqrt(dx*dx + dy*dy + dz*dz);
+        printf("\n t=%f, r=%f\n",r->t,rr);
+    }*/
     
     //output movie - outputs in heliocentric coords
     if(movie_output == 1){
