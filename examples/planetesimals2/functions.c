@@ -475,7 +475,7 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
 }
 
 //collect the id/array number of all planetesimals involved in a close encounter
-void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int* N_encounters, int N_encounters_previous, double* min_r, double* max_val, char* removeddir, double* dE_collision, double soft, double ejection_distance2){
+void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int* N_encounters, int N_encounters_previous, double* min_r, double* max_val, char* removeddir, int* output_it, double* dE_collision, double soft, double ejection_distance2){
     const int rN = r->N;
     const int rN_active = r->N_active;
     struct reb_particle* global = r->particles;
@@ -534,14 +534,15 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
                     fprintf(stderr,"\n\033[1mCollision at t=%.16f!\033[0m between Particle %d and Planet %d, r=%f, planet radius=%f.\n",r->t,pj.id,body->id,sqrt(rij2),sqrt(radius2));
                     FILE* ff;
                     ff = fopen(removeddir,"a");
-                    fprintf(ff,"Collision at t=%f! between Particle %d and Planet %d, r=%f.\n",r->t,pj.id,body->id,sqrt(rij2));
+                    fprintf(ff,"Collision at t=%f between Particle %d and Planet %d, r=%f.\n",r->t,pj.id,body->id,sqrt(rij2));
                     fclose(ff);
+                    *output_it = 1;
                     
                     reb_remove(r,j,1);
                     
                     double E_f = calc_Etot(r, soft, 0);
                     *dE_collision += E_i - E_f;
-                
+                    
                     //Update Hill radii and xyz_prev arrays
                     Hill2[i] = pow((body->m/(p0.m*3.)), 2./3.);
                     for(int k=j;k<rN-1;k++){
@@ -570,6 +571,7 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
                 fprintf(ff,"Ejection at t=%f! for particle %d, r=%f.\n",r->t,pj.id,sqrt(rij2));
                 fclose(ff);
                 fprintf(stderr,"\n\033[1mEjected Particle %d at t=%f!\033[0m Particle too far from sun r=%f.\n",pj.id,r->t,sqrt(rij2));
+                *output_it = 1;
                 
                 double E_i = calc_Etot(r, soft, 0);
                 reb_remove(r,j,1);

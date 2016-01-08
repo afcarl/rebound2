@@ -5,8 +5,8 @@
 )---------------------------------------------------------------------
  algorithm (MVS, BS, BS2, RADAU, HYBRID etc) = hyb
  start time (days)= 2451179.500000
- stop time (days) =2456992.6
- output interval (days) = 7.26d0
+ stop time (days) =8264313.8
+ output interval (days) = 581.26d0
  timestep (days) = 0.072622
  accuracy parameter=1.d-12
 )---------------------------------------------------------------------

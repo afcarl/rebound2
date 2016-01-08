@@ -1,4 +1,4 @@
-#This macro plots the distribution of ejections for a given run. Takes *.txt as input
+#This macro plots the distribution of ejections/collisions for a given run. Takes *.txt as input
 
 import sys
 import matplotlib.pyplot as plt

@@ -17,8 +17,8 @@
 void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", removeddir[200]="output/planet_", CEprint[200]="output/planet_";
 
-double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft, dE_collision = 0, movie_ti, movie_tf, ejection_distance2;
-int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, err_print_msg = 0, n_o=0, movie_mini = 0, movie_output, movie_counter, movie_mc = 0, movie_output_interval, movie_output_file_per_time, err_print = 0;
+double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft, dE_collision = 0, movie_ti, movie_tf, ejection_distance2, dE_prev=0;
+int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, n_o=0, movie_mini = 0, movie_output, movie_counter, movie_mc = 0, movie_output_interval, movie_output_file_per_time;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
 
@@ -42,7 +42,7 @@ int main(int argc, char* argv[]){
     int p1_satellite_on = 0;
     int mercury_swifter_output = 1;
     //movie
-    movie_output = 1;
+    movie_output = 0;
     movie_output_interval = 100;                 //number of dt per movie output (used for swifter/mercury too)
     if(movie_output == 1){
         movie_mini = 0;                         //whether to output particles from mini or global
@@ -84,7 +84,7 @@ int main(int argc, char* argv[]){
     double a=0.5, m=5e-4, e=0, inc = reb_random_normal(0.00001);
     struct reb_particle p1 = {0};
     p1 = reb_tools_orbit_to_particle(r->G, star, m, a, e, inc, 0, 0, 0);
-    p1.r = 1.6e-4;              //I think radius of particle is in AU!
+    p1.r = 1.6e-4;              //radius of particle is in AU!
     p1.id = r->N;
     reb_add(r, p1);
     dt_ini = calc_dt(r, m, star.m, a, dRHill, 1);
@@ -222,10 +222,10 @@ int main(int argc, char* argv[]){
 }
 
 void heartbeat(struct reb_simulation* r){
-    double min_r = 1e8, max_val = 1e-8;
+    double min_r = 1e8, max_val = 1e-8; int output_it = 0;
     if(HYBRID_ON == 1){
         if(N_encounters_previous == 0){
-            check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, removeddir, &dE_collision, soft, ejection_distance2);
+            check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, removeddir, &output_it, &dE_collision, soft, ejection_distance2);
             if(N_encounters > 0){//1st update in a while, update mini massive bodies, add particles, no int
                 s->t = r->t;
                 int N_active = s->N_active;
@@ -237,22 +237,8 @@ void heartbeat(struct reb_simulation* r){
             } //otherwise do nothing.
         } else { //integrate existing mini, update global, add/remove new/old particles.
             reb_integrate(s, r->t);
-            /*if(N_encounters == 0){//last particle just leaving
-                printf("\n");
-                struct reb_particle comr = reb_get_com(r);
-                struct reb_particle coms = reb_get_com(s);
-                printf("com: dx=%.16f, dy=%.16f, dz=%.16f, dvx=%.16f, dvy=%.16f, dvz=%.16f\n",comr.x - coms.x, comr.y - coms.y,comr.z - coms.z,comr.vx - coms.vx,comr.vy - coms.vy,comr.vz - coms.vz);
-                struct reb_particle* global = r->particles;
-                struct reb_particle* mini = s->particles;
-                for(int i=0;i<r->N_active;i++){
-                    printf("%d, dx=%.16f, dy=%.16f, dz=%.16f, dvx=%.16f, dvy=%.16f, dvz=%.16f\n",global[i].id, global[i].x-mini[i].x,global[i].y-mini[i].y,global[i].z-mini[i].z,global[i].vx-mini[i].vx,global[i].vy-mini[i].vy,global[i].vz-mini[i].vz);
-                    printf("%d, px=%.16f, py=%.16f, pz=%.16f, pvx=%.16f, pvy=%.16f, pvz=%.16f\n",global[i].id, (global[i].x-mini[i].x)/global[i].x,(global[i].y-mini[i].y)/global[i].y,(global[i].z-mini[i].z)/global[i].z,(global[i].vx-mini[i].vx)/global[i].vx,(global[i].vy-mini[i].vy)/global[i].vy,(global[i].vz-mini[i].vz)/global[i].vz);
-                    printf("%d, x=%.16f, y=%.16f, z=%.16f, vx=%.16f, vy=%.16f, vz=%.16f\n",global[i].id, global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz);
-                }
-                exit(0);
-            }*/
             update_global(s,r,N_encounters_previous);
-            check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, removeddir, &dE_collision, soft, ejection_distance2);
+            check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, removeddir, &output_it, &dE_collision, soft, ejection_distance2);
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,CEprint,soft,dE_collision,E0); //remove soft,dE_collision,E0 later
             update_previous_global_positions(r, N_encounters);
         }
@@ -261,15 +247,22 @@ void heartbeat(struct reb_simulation* r){
     
     double E1 = calc_Etot(r, soft, dE_collision);
     double dE = fabs((E1 - E0)/E0);
-    if(dE > 1e-6 && err_print == 0){
-        fprintf(stderr,"\n\033[1mError Exceeded at t=%f\n",r->t);
-        err_print = 1;
+    double comp = 0;
+    if(r->t > r->dt) comp = dE/dE_prev;
+    if(comp > 3){
+        fprintf(stderr,"\n\033[1mEnergy Error Jumped by %fx \033[0m at t=%f\n",comp,r->t);
 
+        FILE *append;
+        append = fopen(plntdir, "a");
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,-20000\n",r->t,s->t,r->N,min_r,max_val,dE);
+        fclose(append);
+    } else if(output_it == 1){
         FILE *append;
         append = fopen(plntdir, "a");
         fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,-10000\n",r->t,s->t,r->N,min_r,max_val,dE);
         fclose(append);
     }
+    dE_prev = dE;
     
     //OUTPUT stuff*******
     if(r->t > t_output || r->t <= r->dt){
@@ -298,6 +291,21 @@ void heartbeat(struct reb_simulation* r){
     }
     
 }
+
+/*if(N_encounters == 0){//last particle just leaving
+ printf("\n");
+ struct reb_particle comr = reb_get_com(r);
+ struct reb_particle coms = reb_get_com(s);
+ printf("com: dx=%.16f, dy=%.16f, dz=%.16f, dvx=%.16f, dvy=%.16f, dvz=%.16f\n",comr.x - coms.x, comr.y - coms.y,comr.z - coms.z,comr.vx - coms.vx,comr.vy - coms.vy,comr.vz - coms.vz);
+ struct reb_particle* global = r->particles;
+ struct reb_particle* mini = s->particles;
+ for(int i=0;i<r->N_active;i++){
+ printf("%d, dx=%.16f, dy=%.16f, dz=%.16f, dvx=%.16f, dvy=%.16f, dvz=%.16f\n",global[i].id, global[i].x-mini[i].x,global[i].y-mini[i].y,global[i].z-mini[i].z,global[i].vx-mini[i].vx,global[i].vy-mini[i].vy,global[i].vz-mini[i].vz);
+ printf("%d, px=%.16f, py=%.16f, pz=%.16f, pvx=%.16f, pvy=%.16f, pvz=%.16f\n",global[i].id, (global[i].x-mini[i].x)/global[i].x,(global[i].y-mini[i].y)/global[i].y,(global[i].z-mini[i].z)/global[i].z,(global[i].vx-mini[i].vx)/global[i].vx,(global[i].vy-mini[i].vy)/global[i].vy,(global[i].vz-mini[i].vz)/global[i].vz);
+ printf("%d, x=%.16f, y=%.16f, z=%.16f, vx=%.16f, vy=%.16f, vz=%.16f\n",global[i].id, global[i].x,global[i].y,global[i].z,global[i].vx,global[i].vy,global[i].vz);
+ }
+ exit(0);
+ }*/
 
 /*
  //output error stuff - every iteration
