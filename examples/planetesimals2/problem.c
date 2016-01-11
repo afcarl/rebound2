@@ -42,7 +42,7 @@ int main(int argc, char* argv[]){
     int p1_satellite_on = 0;
     int mercury_swifter_output = 1;
     //movie
-    movie_output = 1;
+    movie_output = 0;
     movie_output_interval = 1;                 //number of dt per movie output (used for swifter/mercury too)
     if(movie_output == 1){
         movie_mini = 1;                         //whether to output particles from mini or global
@@ -237,7 +237,7 @@ void heartbeat(struct reb_simulation* r){
             } //otherwise do nothing.
         } else { //integrate existing mini, update global, add/remove new/old particles.
             reb_integrate(s, r->t);
-            chkcoll_and_update_global(s,r,N_encounters_previous,&dE_collision, removeddir);
+            update_global(s,r,N_encounters_previous);
             check_for_encounter(r, s, &N_encounters, N_encounters_previous, &min_r, &max_val, removeddir, &output_it, &dE_collision, soft, ejection_distance2);
             add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,CEprint,soft,dE_collision,E0); //remove soft,dE_collision,E0 later
             update_previous_global_positions(r, N_encounters);
@@ -249,7 +249,7 @@ void heartbeat(struct reb_simulation* r){
     double dE = fabs((E1 - E0)/E0);
     double comp = 0;
     if(r->t > r->dt) comp = dE/dE_prev;
-    if(comp > 2){
+    if(comp > 2 && r->t > 100){
         fprintf(stderr,"\n\033[1mEnergy Error Jumped by %fx \033[0m at t=%f\n",comp,r->t);
 
         FILE *append;
