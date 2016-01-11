@@ -1,6 +1,6 @@
-from ctypes import *
+from ctypes import Structure, c_double, POINTER, c_int, c_uint, c_long, c_ulong, c_void_p, c_char_p, CFUNCTYPE, byref
 from . import clibrebound, Escape, NoParticles, Encounter, SimulationError
-from .particle import *
+from .particle import Particle
 from .units import units_convert_particle, check_units, convert_G
 import math
 import os
@@ -210,12 +210,6 @@ class Simulation(Structure):
         else:
             raise ValueError("File does not exist.")
 
-    _afp = None # additional forces pointer
-    _corfp = None # coefficient of restitution function pointer
-    _ptmp = None # post timestep modifications pointer 
-    _units = {'length':None, 'time':None, 'mass':None}
-    _extras_ref = None # for additional REBOUND libraries to set and keep a reference alive for the lifetime of the simulation
-
     def __del__(self):
         if self._b_needsfree_ == 1: # to avoid, e.g., sim.particles[1]._sim.contents.G creating a Simulation instance to get G, and then freeing the C simulation when it immediately goes out of scope
             clibrebound.reb_free_pointers(byref(self))
@@ -254,7 +248,7 @@ class Simulation(Structure):
         the particle structures might contain incorrect velocity 
         values.
         """
-        return self._afp   # getter might not be needed
+        raise AttributeError("You can only set C function pointers from python.")
     @additional_forces.setter
     def additional_forces(self, func):
         self._afp = AFF(func)
@@ -268,7 +262,7 @@ class Simulation(Structure):
         The argument can be a python function or something that can be cast to a C function or a
         python function.
         """
-        return self._ptmp
+        raise AttributeError("You can only set C function pointers from python.")
     @post_timestep_modifications.setter
     def post_timestep_modifications(self, func):
         self._ptmp = AFF(func)
@@ -279,7 +273,7 @@ class Simulation(Structure):
         """
         Get or set a function pointer that defined the coefficient of restitution.
         """
-        return self._corfp   # getter might not be needed
+        raise AttributeError("You can only set C function pointers from python.")
     @coefficient_of_restitution.setter
     def coefficient_of_restitution(self, func):
         self._corfp = CORFF(func)
@@ -472,10 +466,15 @@ class Simulation(Structure):
         >>> sim.units = ('yr', 'AU', 'Msun')
 
         """
+        if not hasattr(self, '_units'):
+            self._units = {'length':None, 'mass':None, 'time':None}
+
         return self._units
 
     @units.setter
     def units(self, newunits):
+        if not hasattr(self, '_units'):
+            self._units = {'length':None, 'mass':None, 'time':None}
         newunits = check_units(newunits)        
         if self.particles: # some particles are loaded
             raise AttributeError("Error:  You cannot set the units after populating the particles array.  See ipython_examples/Units.ipynb.")
@@ -553,6 +552,9 @@ class Simulation(Structure):
         if particle is not None:
             if isinstance(particle, Particle):
                 if kwargs == {}: # copy particle
+                    if (self.gravity == "tree" or self.collision == "tree") and self.root_size <=0.:
+                        raise ValueError("The tree code for gravity and/or collision detection has been selected. However, the simulation box has not been configured yet. You cannot add particles until the the simulation box has a finite size.")
+
                     clibrebound.reb_add(byref(self), particle)
                 else: # use particle as primary
                     self.add(Particle(simulation=self, primary=particle, **kwargs))
@@ -669,20 +671,21 @@ class Simulation(Structure):
         >>> sim = rebound.Simulation()
         >>> sim.add(m=1, x=0)
         >>> sim.add(m=1, x=1)
-        >>> com sim.calculate_com()
+        >>> com = sim.calculate_com()
         >>> com.x
         0.5
 
         """
         if last is not None:
-            last = min(last, self.N_real)
+            last = min(last, self.N_real-1)
+            clibrebound.reb_get_jacobi_com.restype = Particle
+            com = clibrebound.reb_get_jacobi_com(byref(self.particles[last]))
+            return com
         else:
-            last = self.N_real
+            clibrebound.reb_get_com.restype = Particle
+            com = clibrebound.reb_get_com(byref(self))
+            return com
         
-        clibrebound.reb_get_jacobi_com.restype = Particle
-        com = clibrebound.reb_get_jacobi_com(byref(self.particles[last]))
-
-        return com
 
 # Tools
     def move_to_com(self):
@@ -878,6 +881,7 @@ Simulation._fields_ = [("t", c_double),
                 ("gravity_cs", POINTER(reb_vec3d)),
                 ("gravity_cs_allocatedN", c_int),
                 ("tree_root", c_void_p),
+                ("tree_needs_update", c_int),
                 ("opening_angle2", c_double),
                 ("_status", c_int),
                 ("exact_finish_time", c_int),
