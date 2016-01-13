@@ -43,8 +43,8 @@ except:
     title1 = raw_input("Enter Title (e.g. Symba): ")
     title2 = raw_input("Enter Number of Planetesimals (e.g. Np500): ")
 
-pl.hist(eject_times, bins = np.logspace(-1,np.log10(outerlim), num=50), color='orange', alpha=0.7,label='Ejected particles, N='+str(len(eject_times)))
-pl.hist(collide_times, bins = np.logspace(-1,np.log10(outerlim), num=50), color='green', alpha=0.7, label='Collided particles, N='+str(len(collide_times)))
+pl.hist(eject_times, bins = np.logspace(-1,np.log10(outerlim), num=50), color='orange', alpha=0.7,label='My Ejected particles, N='+str(len(eject_times)))
+pl.hist(collide_times, bins = np.logspace(-1,np.log10(outerlim), num=50), color='green', alpha=0.7, label='My Collided particles, N='+str(len(collide_times)))
 
 if swifter_compare == 1:
     try:
@@ -66,7 +66,7 @@ if swifter_compare == 1:
         except:
             skipped_lines += 1
     pl.hist(eject_times, bins = np.logspace(-1,np.log10(outerlim), num=50), color='red', alpha=0.5, label='Swifter Ejected particles, N='+str(len(eject_times)))
-    pl.hist(collide_times, bins = np.logspace(-1,np.log10(outerlim), num=50), color='blue', alpha = 0.75, label='Swifter Collided particles, N='+str(len(collide_times)))
+    pl.hist(collide_times, bins = np.logspace(-1,np.log10(outerlim), num=50), color='blue', alpha = 0.6, label='Swifter Collided particles, N='+str(len(collide_times)))
 
 pl.legend(loc='upper left',prop={'size':10})
 pl.gca().set_xscale("log")

@@ -301,6 +301,7 @@ static int reb_integrator_ias15_step(struct reb_simulation* r) {
 				particles[i].y = xk1 + x0[k1];
 				double xk2  = -csx[k2] + (s[8]*b.p6[k2] + s[7]*b.p5[k2] + s[6]*b.p4[k2] + s[5]*b.p3[k2] + s[4]*b.p2[k2] + s[3]*b.p1[k2] + s[2]*b.p0[k2] + s[1]*a0[k2] + s[0]*v0[k2] );
 				particles[i].z = xk2 + x0[k2];
+                
 			}
 			if (N_var || (r->additional_forces && r->force_is_velocity_dependent)){
 				s[0] = r->dt * h[n];
@@ -533,6 +534,7 @@ static int reb_integrator_ias15_step(struct reb_simulation* r) {
 				particles[k].vx = v0[3*k+0];	// Set inital velocity
 				particles[k].vy = v0[3*k+1];
 				particles[k].vz = v0[3*k+2];
+                
 			}
 			r->dt = dt_new;
 			if (r->dt_last_done!=0.){		// Do not predict next e/b values if this is the first time step.
@@ -592,10 +594,28 @@ static int reb_integrator_ias15_step(struct reb_simulation* r) {
 		particles[k].vy = v0[3*k+1];
 		particles[k].vz = v0[3*k+2];
 	}
+    
 	copybuffers(e,er,N3);		
 	copybuffers(b,br,N3);		
 	double ratio = r->dt/dt_done;
 	predict_next_step(ratio, N3, e, b, e, b);
+    
+    //A.S. Check for collision
+    for(int kk=0;kk<r->N_active;kk++){
+        struct reb_particle body = particles[kk];
+        for(int ll=r->N_active;ll<r->N;ll++){
+            struct reb_particle* pj = &(particles[ll]);
+            double dxj = pj->x - body.x;
+            double dyj = pj->y - body.y;
+            double dzj = pj->z - body.z;
+            double rij2 = dxj*dxj + dyj*dyj + dzj*dzj;
+            double rirj = body.r;
+            if(rij2 <= rirj*rirj){
+                pj->lastcollision = 1;
+            }
+        }
+    }
+    
 	return 1; // Success.
 }
 

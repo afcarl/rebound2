@@ -33,7 +33,7 @@ int main(int argc, char* argv[]){
     double ias_epsilon = 1e-8;                              //sets precision of ias15
     double HSR2 = 3;                                        //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
     double dRHill = 0.125;                                   //Sets the timestep - max # Hill radii/timestep.
-    soft = 1.6e-4/10.;                                          //gravity softening length scale in AU. R_Neptune/100.
+    soft = 0;                                               //gravity softening length scale in AU. R_Neptune/100.
     int seed = atoi(argv[3]);
     
     //switches
@@ -137,7 +137,7 @@ int main(int argc, char* argv[]){
     dt_ini = calc_dt(r, m, star.m, a, dRHill, dt_ini);
     */
     amax = a;
-    ejection_distance2 = pow(3*amax,2);     //distance at which particles removed from simulation (squared)
+    ejection_distance2 = pow(10*amax,2);     //distance at which particles removed from simulation (squared)
     
     //calc dt
     if(r->integrator == REB_INTEGRATOR_IAS15){
@@ -276,16 +276,6 @@ void heartbeat(struct reb_simulation* r){
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time
     }
     
-    /*
-    if(r->t < 0.05){
-        struct reb_particle* g = r->particles;
-        double dx = g[1].x - g[159].x;
-        double dy = g[1].y - g[159].y;
-        double dz = g[1].z - g[159].z;
-        double rr = sqrt(dx*dx + dy*dy + dz*dz);
-        printf("\n t=%f, r=%f\n",r->t,rr);
-    }*/
-    
     //output movie - outputs in heliocentric coords
     if(movie_output == 1){
         if(r->t > movie_ti && r->t < movie_tf){
@@ -299,7 +289,6 @@ void heartbeat(struct reb_simulation* r){
             movie_counter++;
         }
     }
-    
 }
 
 /*if(N_encounters == 0){//last particle just leaving
