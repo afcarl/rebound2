@@ -515,7 +515,7 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
             
             if(ratio < HSR){
                 double radius2 = body->r*body->r;
-                double dx1 = (pj.vx - body->vx)*r->dt; //xf - xi = distance travelled in dt relative to body
+                /*double dx1 = (pj.vx - body->vx)*r->dt; //xf - xi = distance travelled in dt relative to body
                 double dy1 = (pj.vy - body->vy)*r->dt;
                 double dz1 = (pj.vz - body->vz)*r->dt;
                 double dx2 = pj.x - body->x;
@@ -524,7 +524,7 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
                 double x = dy1*dz2 - dz1*dy2;
                 double y = dz1*dx2 - dx1*dz2;
                 double z = dx1*dy2 - dy1*dx2;
-                double d2 = (x*x + y*y + z*z)/(dx1*dx1 + dy1*dy1 + dz1*dz1);
+                double d2 = (x*x + y*y + z*z)/(dx1*dx1 + dy1*dy1 + dz1*dz1);*/
                 //if(d2 < radius2){//Collision will happen next time step.
                 if(ratio < radius2 || pj.lastcollision == 1){
                     if(j < rN_active){
@@ -543,8 +543,8 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
                     mini[i] = *body;     //need to update mini accordingly
                     
                     if(pj.lastcollision == 1){
-                        fprintf(stderr,"\n\033[1mIAS15Collision at t=%.16f!\033[0m between Particle %d and Planet %d, r=%f, d_est=%f, planet radius=%f.\n",r->t,pj.id,body->id,sqrt(rij2),sqrt(d2),sqrt(radius2));
-                    } else {fprintf(stderr,"\n\033[1mCollision at t=%.16f!\033[0m between Particle %d and Planet %d, r=%f, d_est=%f, planet radius=%f.\n",r->t,pj.id,body->id,sqrt(rij2),sqrt(d2),sqrt(radius2));}
+                        fprintf(stderr,"\n\033[1mIAS15Collision at t=%.16f!\033[0m between Particle %d and Planet %d, r=%f, planet radius=%f.\n",r->t,pj.id,body->id,sqrt(rij2),sqrt(radius2));
+                    } else {fprintf(stderr,"\n\033[1mCollision at t=%.16f!\033[0m between Particle %d and Planet %d, r=%f, planet radius=%f.\n",r->t,pj.id,body->id,sqrt(rij2),sqrt(radius2));}
                     
                     FILE* ff;
                     ff = fopen(removeddir,"a");
@@ -591,6 +591,18 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
                 reb_remove(r,j,1);
                 double E_f = calc_Etot(r, soft, 0);
                 *dE_collision += E_i - E_f;
+                
+                //Update Hill radii and xyz_prev arrays
+                for(int k=j;k<rN-1;k++){
+                    x_prev[k] = x_prev[k+1];
+                    y_prev[k] = y_prev[k+1];
+                    z_prev[k] = z_prev[k+1];
+                    Hill2[k] = Hill2[k+1];
+                }
+                Hill2 = realloc(Hill2,(rN-1)*sizeof(double));
+                x_prev = realloc(x_prev,(rN-1)*sizeof(double));
+                y_prev = realloc(y_prev,(rN-1)*sizeof(double));
+                z_prev = realloc(z_prev,(rN-1)*sizeof(double));
             }
             
             //calculate dt*(vrel/rmin)

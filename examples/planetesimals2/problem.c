@@ -166,7 +166,7 @@ int main(int argc, char* argv[]){
         struct reb_particle pt = {0};
         //pt = reb_tools_orbit_to_particle(r->G, p1, 0, x, 0, 0, 0, 0, 0.1);    //works well with m2=5e-4
         //pt.y += p1.y;
-        pt = reb_tools_orbit_to_particle(r->G, star, 0, a - x, 0, 0, 0, 0, -0.1); //m=planetesimal_mass?
+        pt = reb_tools_orbit_to_particle(r->G, star, planetesimal_mass, a - x, 0, 0, 0, 0, -0.1); //m=planetesimal_mass?
         pt.r = 4e-5;            //I think radius of particle is in AU!
         pt.id = r->N;              //1 = planet
         reb_add(r, pt);
@@ -174,7 +174,7 @@ int main(int argc, char* argv[]){
     
     //planetesimals
     if(turn_planetesimal_forces_on == 0) planetesimal_mass = 0;
-    double planetesimal_buffer = 0.1;   //max +/- distance from massive bodies, Chatterjee & Ford use 0.01
+    double planetesimal_buffer = 0.05;   //max +/- distance from massive bodies, Chatterjee & Ford use 0.01
     double inner = amin - planetesimal_buffer, outer = amax + planetesimal_buffer, powerlaw = 0.5;
     while(r->N<N_planetesimals + r->N_active){
 		struct reb_particle pt = {0};
@@ -187,7 +187,7 @@ int main(int argc, char* argv[]){
 		pt.r 		= 4e-5;
         pt.id       = r->N;
 		reb_add(r, pt);
-	}
+    }
     
     //Ini malloc arrays
     x_prev = calloc(sizeof(double),r->N);           //Previous global positions for interpolating
