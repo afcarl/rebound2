@@ -614,9 +614,10 @@ static int reb_integrator_ias15_step(struct reb_simulation* r) {
             double x = dy1*dz2 - dz1*dy2;
             double y = dz1*dx2 - dx1*dz2;
             double z = dx1*dy2 - dy1*dx2;
+            double rij2 = dx2*dx2 + dy2*dy2 + dz2*dz2;
             double d2 = (x*x + y*y + z*z)/(dx1*dx1 + dy1*dy1 + dz1*dz1);
-            double rirj = body.r + pj->r;
-            if(d2 <= rirj*rirj){
+            double radius2 = (body.r + pj->r)*(body.r + pj->r);
+            if(d2 <= radius2 || rij2 <= radius2){
                 pj->lastcollision = 1;
             }
         }
