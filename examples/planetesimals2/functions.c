@@ -514,8 +514,8 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
             const double ratio = rij2/(rhi+rhj);    //(p-p distance/Hill radii)^2
             
             if(ratio < HSR){
-                double radius2 = body->r*body->r;
-                /*double dx1 = (pj.vx - body->vx)*r->dt; //xf - xi = distance travelled in dt relative to body
+                double radius2 = (body->r+pj.r)*(body->r+pj.r);
+                double dx1 = (pj.vx - body->vx)*r->dt; //xf - xi = distance travelled in dt relative to body
                 double dy1 = (pj.vy - body->vy)*r->dt;
                 double dz1 = (pj.vz - body->vz)*r->dt;
                 double dx2 = pj.x - body->x;
@@ -524,9 +524,9 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
                 double x = dy1*dz2 - dz1*dy2;
                 double y = dz1*dx2 - dx1*dz2;
                 double z = dx1*dy2 - dy1*dx2;
-                double d2 = (x*x + y*y + z*z)/(dx1*dx1 + dy1*dy1 + dz1*dz1);*/
-                //if(d2 < radius2){//Collision will happen next time step.
-                if(ratio < radius2 || pj.lastcollision == 1){
+                double d2 = (x*x + y*y + z*z)/(dx1*dx1 + dy1*dy1 + dz1*dz1);
+                if(d2 < radius2 || pj.lastcollision == 1 || ratio < radius2){//Collision will happen next time step.
+                //if(ratio < radius2 || pj.lastcollision == 1){
                     if(j < rN_active){
                         fprintf(stderr,"\n\033[1mCollision at t=%f between %d and %d, both are Massive bodies. Can't deal with this collisional physics right now. Exiting. \033[0m \n",r->t,pj.id,body->id);
                         exit(0);
@@ -548,7 +548,7 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
                     
                     FILE* ff;
                     ff = fopen(removeddir,"a");
-                    fprintf(ff,"Collision at t=%f between Particle %d and Planet %d, r=%f.\n",r->t,pj.id,body->id,sqrt(rij2));
+                    if(pj.lastcollision == 1) fprintf(ff,"IAS15Collision at t=%f between Particle %d and Planet %d, r=%f.\n",r->t,pj.id,body->id,sqrt(rij2)); else fprintf(ff,"GlobalCollision at t=%f between Particle %d and Planet %d, r=%f.\n",r->t,pj.id,body->id,sqrt(rij2));
                     fclose(ff);
                     *output_it = 1;
                     

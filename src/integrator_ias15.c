@@ -605,6 +605,28 @@ static int reb_integrator_ias15_step(struct reb_simulation* r) {
         struct reb_particle body = particles[kk];
         for(int ll=r->N_active;ll<r->N;ll++){
             struct reb_particle* pj = &(particles[ll]);
+            double dx1 = (pj->vx - body.vx)*r->dt; //xf - xi = distance travelled in dt relative to body
+            double dy1 = (pj->vy - body.vy)*r->dt;
+            double dz1 = (pj->vz - body.vz)*r->dt;
+            double dx2 = pj->x - body.x;
+            double dy2 = pj->y - body.y;
+            double dz2 = pj->z - body.z;
+            double x = dy1*dz2 - dz1*dy2;
+            double y = dz1*dx2 - dx1*dz2;
+            double z = dx1*dy2 - dy1*dx2;
+            double d2 = (x*x + y*y + z*z)/(dx1*dx1 + dy1*dy1 + dz1*dz1);
+            double rirj = body.r + pj->r;
+            if(d2 <= rirj*rirj){
+                pj->lastcollision = 1;
+            }
+        }
+    }
+    
+    /*
+    for(int kk=0;kk<r->N_active;kk++){
+        struct reb_particle body = particles[kk];
+        for(int ll=r->N_active;ll<r->N;ll++){
+            struct reb_particle* pj = &(particles[ll]);
             double dxj = pj->x - body.x;
             double dyj = pj->y - body.y;
             double dzj = pj->z - body.z;
@@ -614,7 +636,7 @@ static int reb_integrator_ias15_step(struct reb_simulation* r) {
                 pj->lastcollision = 1;
             }
         }
-    }
+    }*/
     
 	return 1; // Success.
 }

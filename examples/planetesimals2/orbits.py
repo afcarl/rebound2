@@ -50,10 +50,15 @@ if arg1 == 5:
     plt.legend(loc='upper left',prop={'size':10})
 plt.xscale('log')
 
+if arg4 == 0:
+    xlim1 = 0.1
+else:
+    xlim1 = data[arg4,0]
+
 plt.ylabel(names[arg1])
 plt.xlabel('time (years)')
 plt.yscale('log')
-plt.xlim([0.1,max(data[arg4:arg3,0])])
+plt.xlim([xlim1,max(data[arg4:arg3,0])])
 file_output_name = re.sub('\.txt$', '', file_name)
 plt.savefig(file_output_name+'.png')
 plt.show()
