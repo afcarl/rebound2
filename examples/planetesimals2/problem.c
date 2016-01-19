@@ -33,7 +33,7 @@ int main(int argc, char* argv[]){
     double ias_epsilon = 1e-8;                              //sets precision of ias15
     double HSR2 = 3;                                        //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
     double dRHill = 0.125;                                   //Sets the timestep - max # Hill radii/timestep.
-    soft = 0;                                               //gravity softening length scale in AU. R_Neptune/100.
+    soft = 4e-5;                                             //gravity softening length scale in AU. R_Neptune/100.
     int seed = atoi(argv[3]);
     
     //switches
