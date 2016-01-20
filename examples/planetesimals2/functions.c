@@ -465,12 +465,41 @@ void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double i
     s->exact_finish_time = 1;
     s->ri_ias15.epsilon = ias_epsilon;
     s->dt = ias_timestep;
+    s->heartbeat = mini_check_for_collision;
     s->softening = soft;
     
     struct reb_particle* restrict const particles = r->particles;
     for(int k=0; k<s->N_active; k++){
         struct reb_particle p = particles[k];
         reb_add(s,p);
+    }
+}
+
+//check for collisions in mini each heartbeat
+void mini_check_for_collision(struct reb_simulation* mini){
+    struct reb_particle* particles = mini->particles;
+    int N_active = mini->N_active;
+    double dtmini = mini->dt;
+    for(int i=0;i<N_active;i++){
+        struct reb_particle pi = particles[i];
+        for(int j=N_active;j<mini->N;j++){
+            struct reb_particle* pj = &(particles[j]);
+            double dvx = pi.vx - pj->vx;
+            double dvy = pi.vy - pj->vy;
+            double dvz = pi.vz - pj->vz;
+            double dx = pj->x - pi.x;
+            double dy = pj->y - pi.y;
+            double dz = pj->z - pi.z;
+            double tmin = (dx*dvx + dy*dvy + dz*dvz)/(dvx*dvx + dvy*dvy + dvz*dvz);
+            
+            double dstart2 = dx*dx + dy*dy + dz*dz;
+            double dmin2 = (dx - dvx*tmin)*(dx - dvx*tmin) + (dy - dvy*tmin)*(dy - dvy*tmin) + (dz - dvz*tmin)*(dz - dvz*tmin);
+            double dend2 = (dx - dvx*dtmini)*(dx - dvx*dtmini) + (dy - dvy*dtmini)*(dy - dvy*dtmini) + (dz - dvz*dtmini)*(dz - dvz*dtmini);
+            double radius2 = (pi.r+pj->r)*(pi.r+pj->r);
+            if(dmin2 <= radius2 || dstart2 <= radius2 || dend2 <= radius2){
+                pj->lastcollision = 1;
+            }
+        }
     }
 }
 

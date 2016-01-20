@@ -35,6 +35,14 @@ elif arg1 == 7:
     plt.plot(data[arg4:arg3,0],data[arg4:arg3,4],  'or', ms=msval, markeredgecolor='none')
     plt.xscale('log')
     print 'max(dt*v_rel/r) is', max(data[arg4:arg3,4])
+elif arg1 == 8:
+    plt.plot(data[arg4:arg3,0],data[arg4:arg3,5], 'o', ms=msval, markeredgecolor='none')
+    plt.plot(data[arg4:arg3,0],data[arg4:arg3,6],  'or', ms=msval, markeredgecolor='none')
+    plt.xscale('log')
+elif arg1 == 9:
+    plt.plot(data[arg4:arg3,0],data[arg4:arg3,5], 'o', ms=msval, markeredgecolor='none')
+    plt.plot(data[arg4:arg3,0],data[arg4:arg3,2],  'or', ms=msval, markeredgecolor='none')
+    plt.xscale('log')
 elif arg1 == 2:
     fig, axes = plt.subplots(nrows=2, ncols=1)
     axes[1].plot(data[arg4:arg3,0],data[arg4:arg3,5], 'o', ms=msval, markeredgecolor='none')

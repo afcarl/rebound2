@@ -35,6 +35,8 @@ void check_for_encounter(struct reb_simulation* r, struct reb_simulation* s, int
 
 void ini_mini(struct reb_simulation* const r, struct reb_simulation* s, double ias_epsilon, int turn_planetesimal_forces_on, double ias_timestep, double timestep);
 
+void mini_check_for_collision(struct reb_simulation* mini);
+
 void update_global(struct reb_simulation* const s, struct reb_simulation* const r, int N_encounters_previous);
 
 void add_or_subtract_particles(struct reb_simulation* r, struct reb_simulation* s, int N_encounters,int N_encounters_previous, char* CEprint, double soft, double dE_collison, double E0);
