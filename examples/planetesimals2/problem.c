@@ -18,7 +18,7 @@ void heartbeat(struct reb_simulation* r);
 char plntdir[200] = "output/planet_", lgnddir[200] = "output/planet_", removeddir[200]="output/planet_", CEprint[200]="output/planet_";
 
 double tmax, planetesimal_mass, E0, n_output, dt_ini, t_output, t_log_output, ias_timestep, soft, dE_collision = 0, movie_ti, movie_tf, ejection_distance2, dE_prev=0;
-int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, n_o=0, movie_mini = 0, movie_output, movie_counter, movie_mc = 0, movie_output_interval, movie_output_file_per_time;
+int N_encounters = 0, N_encounters_previous, N_encounters_tot = 0, HYBRID_ON, n_o=0, movie_mini = 0, movie_output, movie_counter, movie_mc = 0, movie_output_interval, movie_output_file_per_time, n_IASnew = 0;
 int* encounter_index; int* previous_encounter_index; double* Hill2; double* x_prev; double* y_prev; double* z_prev; double t_prev;
 struct reb_simulation* s; struct reb_simulation* r;
 
@@ -30,10 +30,10 @@ int main(int argc, char* argv[]){
     //planetesimal_mass = M_planetesimals/N_planetesimals;  //mass of each planetesimal
     planetesimal_mass = 3e-8;                               //each is a moon
     double M_planetesimals = planetesimal_mass*N_planetesimals;
-    double ias_epsilon = 1e-8;                              //sets precision of ias15
+    double ias_epsilon = 1e-9;                              //sets precision of ias15
     double HSR2 = 3;                                        //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
     double dRHill = 0.125;                                   //Sets the timestep - max # Hill radii/timestep.
-    soft = 4e-5;                                             //gravity softening length scale in AU. R_Neptune/100.
+    soft = 1e-7;                                             //gravity softening length scale in AU. R_Neptune/100.
     int seed = atoi(argv[3]);
     
     //switches
@@ -234,6 +234,7 @@ void heartbeat(struct reb_simulation* r){
                 for(int i=0; i<N_active; i++) mini[i] = global[i];
                 add_or_subtract_particles(r,s,N_encounters,N_encounters_previous,CEprint,soft,dE_collision,E0); //remove soft,dE_collision,E0 later
                 update_previous_global_positions(r, N_encounters);
+                n_IASnew++;
             } //otherwise do nothing.
         } else { //integrate existing mini, update global, add/remove new/old particles.
             reb_integrate(s, r->t);
@@ -254,12 +255,12 @@ void heartbeat(struct reb_simulation* r){
 
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,-20000\n",r->t,s->t,r->N,min_r,max_val,dE);
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%d,-20000\n",r->t,s->t,r->N,min_r,max_val,dE,n_IASnew);
         fclose(append);
     } else if(output_it == 1){
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,-10000\n",r->t,s->t,r->N,min_r,max_val,dE);
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%d,-10000\n",r->t,s->t,r->N,min_r,max_val,dE,n_IASnew);
         fclose(append);
     }
     dE_prev = dE;
@@ -270,7 +271,7 @@ void heartbeat(struct reb_simulation* r){
         n_o++;
         FILE *append;
         append = fopen(plntdir, "a");
-        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%d\n",r->t,s->t,r->N,min_r,max_val,dE,n_o);
+        fprintf(append, "%.16f,%.16f, %d, %.12f,%.12f,%.16f,%d,%d\n",r->t,s->t,r->N,min_r,max_val,dE,n_IASnew,n_o);
         fclose(append);
         
         reb_output_timing(r, 0);    //output only when outputting values. Saves some time

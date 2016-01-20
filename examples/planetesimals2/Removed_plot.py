@@ -21,7 +21,7 @@ skipped_lines = 0
 for line in lines:
     try:
         split = line.split()
-        if split[0] == "IAS15Collision":
+        if split[0] == "IAS15Collision" or split[0] == "GlobalCollision" or split[0] == "Collision":
             try:
                 collide_times = np.append(collide_times, float(re.sub('t=','',split[2])))
             except:
