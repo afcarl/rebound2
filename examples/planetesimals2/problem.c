@@ -30,8 +30,8 @@ int main(int argc, char* argv[]){
     //planetesimal_mass = M_planetesimals/N_planetesimals;  //mass of each planetesimal
     planetesimal_mass = 3e-8;                               //each is a moon
     double M_planetesimals = planetesimal_mass*N_planetesimals;
-    double ias_epsilon = 1e-9;                              //sets precision of ias15
-    double HSR2 = 3;                                        //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
+    double ias_epsilon = 1e-8;                              //sets precision of ias15
+    double HSR2 = 7;                                        //Transition boundary bet. WHFAST & IAS15. Units of Hill^2
     double dRHill = 0.125;                                   //Sets the timestep - max # Hill radii/timestep.
     soft = 1e-7;                                             //gravity softening length scale in AU. R_Neptune/100.
     int seed = atoi(argv[3]);
